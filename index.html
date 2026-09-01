@@ -1,0 +1,1291 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>16H — Timeline</title>
+
+  <meta name="theme-color" content="#f4f5f7" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="16H" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./icon-180.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png" />
+  <style>
+    :root{
+      --bg:#f4f5f7;
+      --panel:#ffffff;
+      --text:#17191c;
+      --muted:#747b84;
+      --line:#d9dde3;
+      --line-strong:#aeb5bf;
+      --accent:#1f7aec;
+      --accent-soft:#eaf2ff;
+      --danger:#c83f49;
+      --sleep:#5b6472;
+      --block:#23272d;
+      --slot: 38px;
+      --radius:14px;
+      --shadow:0 10px 30px rgba(20,24,30,.07);
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ margin:0; min-height:100%; }
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+
+    button,input{
+      font:inherit;
+    }
+
+    button{
+      cursor:pointer;
+      border:0;
+    }
+
+    .app{
+      max-width:1600px;
+      margin:0 auto;
+      padding:26px;
+    }
+
+    .topbar{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:20px;
+      margin-bottom:18px;
+    }
+
+    h1{
+      font-size:32px;
+      line-height:1;
+      margin:0 0 8px;
+      letter-spacing:-.035em;
+    }
+
+    .subtitle{
+      color:var(--muted);
+      font-size:14px;
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .btn{
+      background:var(--panel);
+      color:var(--text);
+      border:1px solid var(--line);
+      padding:10px 14px;
+      border-radius:10px;
+      box-shadow:0 2px 8px rgba(0,0,0,.02);
+    }
+    .btn:hover{ border-color:var(--line-strong); }
+    .btn.primary{
+      background:var(--text);
+      color:white;
+      border-color:var(--text);
+    }
+
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+
+    .timeline-toolbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      padding:14px 16px;
+      border-bottom:1px solid var(--line);
+    }
+
+    .window-label{
+      font-weight:650;
+      letter-spacing:-.01em;
+    }
+    .hint{
+      color:var(--muted);
+      font-size:13px;
+      text-align:right;
+    }
+
+    .timeline-scroll{
+      overflow-x:auto;
+      overflow-y:hidden;
+      padding:18px 16px 22px;
+    }
+
+    .timeline{
+      position:relative;
+      width:calc(var(--slot) * 64);
+      min-width:calc(var(--slot) * 64);
+      height:190px;
+      user-select:none;
+      touch-action:none;
+    }
+
+    .labels{
+      position:absolute;
+      left:0;
+      top:0;
+      width:100%;
+      height:32px;
+    }
+
+    .time-label{
+      position:absolute;
+      top:0;
+      transform:translateX(-50%);
+      font-size:12px;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+
+    .rule{
+      position:absolute;
+      left:0;
+      right:0;
+      top:38px;
+      height:110px;
+      border-top:1px solid var(--line-strong);
+      border-bottom:1px solid var(--line);
+      background:
+        repeating-linear-gradient(
+          to right,
+          transparent 0,
+          transparent calc(var(--slot) - 1px),
+          rgba(130,138,149,.20) calc(var(--slot) - 1px),
+          rgba(130,138,149,.20) var(--slot)
+        );
+    }
+
+    .rule::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:
+        repeating-linear-gradient(
+          to right,
+          transparent 0,
+          transparent calc(var(--slot) * 4 - 1px),
+          rgba(90,98,110,.24) calc(var(--slot) * 4 - 1px),
+          rgba(90,98,110,.24) calc(var(--slot) * 4)
+        );
+    }
+
+    .block{
+      position:absolute;
+      top:53px;
+      height:80px;
+      min-width:var(--slot);
+      border-radius:12px;
+      color:white;
+      background:var(--block);
+      box-shadow:0 8px 18px rgba(24,28,35,.16);
+      display:flex;
+      align-items:center;
+      overflow:hidden;
+      z-index:5;
+      border:1px solid rgba(255,255,255,.12);
+    }
+
+    .block.recurring{
+      background:var(--sleep);
+      box-shadow:none;
+    }
+
+    .block.clipped-left{
+      border-top-left-radius:0;
+      border-bottom-left-radius:0;
+    }
+    .block.clipped-right{
+      border-top-right-radius:0;
+      border-bottom-right-radius:0;
+    }
+
+    .block-content{
+      width:100%;
+      min-width:0;
+      padding:11px 16px;
+      pointer-events:none;
+    }
+
+    .block-title{
+      font-weight:700;
+      font-size:14px;
+      overflow:hidden;
+      white-space:nowrap;
+      text-overflow:ellipsis;
+    }
+
+    .block-time{
+      margin-top:4px;
+      font-size:11px;
+      opacity:.78;
+      white-space:nowrap;
+    }
+
+    .handle{
+      position:absolute;
+      top:0;
+      bottom:0;
+      width:12px;
+      z-index:10;
+      opacity:0;
+      transition:opacity .12s;
+    }
+    .block:hover .handle{ opacity:1; }
+    .handle.left{ left:0; cursor:ew-resize; }
+    .handle.right{ right:0; cursor:ew-resize; }
+    .handle::before{
+      content:"";
+      position:absolute;
+      top:20px;
+      bottom:20px;
+      width:2px;
+      border-radius:2px;
+      background:rgba(255,255,255,.55);
+    }
+    .handle.left::before{ left:5px; }
+    .handle.right::before{ right:5px; }
+
+    .now-marker{
+      position:absolute;
+      top:32px;
+      bottom:29px;
+      width:2px;
+      background:var(--accent);
+      z-index:8;
+      pointer-events:none;
+    }
+    .now-dot{
+      position:absolute;
+      top:-4px;
+      left:50%;
+      transform:translateX(-50%);
+      width:9px;
+      height:9px;
+      background:var(--accent);
+      border-radius:999px;
+    }
+
+    .empty-overlay{
+      position:absolute;
+      inset:38px 0 42px;
+      z-index:2;
+      cursor:crosshair;
+    }
+
+    .footer-scale{
+      position:absolute;
+      left:0;
+      right:0;
+      top:158px;
+      font-size:11px;
+      color:var(--muted);
+      display:flex;
+      justify-content:space-between;
+    }
+
+    .below{
+      display:grid;
+      grid-template-columns:1.3fr .9fr;
+      gap:18px;
+      margin-top:18px;
+    }
+
+    .card{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:18px;
+    }
+    .card h2{
+      font-size:17px;
+      margin:0 0 12px;
+      letter-spacing:-.015em;
+    }
+
+    .rule-row{
+      display:grid;
+      grid-template-columns:1fr auto auto auto;
+      gap:10px;
+      align-items:center;
+      padding:10px 0;
+      border-top:1px solid #edf0f3;
+    }
+    .rule-row:first-of-type{ border-top:0; }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:7px;
+      color:var(--muted);
+      font-size:13px;
+    }
+    .badge-dot{
+      width:9px;
+      height:9px;
+      border-radius:99px;
+      background:var(--sleep);
+    }
+
+    .small-btn{
+      background:#f1f3f6;
+      color:var(--text);
+      border-radius:8px;
+      padding:7px 9px;
+      font-size:12px;
+    }
+
+    .small-btn.danger{
+      color:var(--danger);
+      background:#fff0f1;
+    }
+
+    .stats{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
+    .stat{
+      background:#f7f8fa;
+      border-radius:12px;
+      padding:14px;
+    }
+    .stat strong{
+      display:block;
+      font-size:21px;
+      letter-spacing:-.02em;
+      margin-bottom:3px;
+    }
+    .stat span{
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    dialog{
+      width:min(520px, calc(100vw - 30px));
+      border:0;
+      border-radius:18px;
+      padding:0;
+      box-shadow:0 26px 70px rgba(0,0,0,.24);
+    }
+    dialog::backdrop{
+      background:rgba(20,25,32,.34);
+      backdrop-filter:blur(3px);
+    }
+    .modal{
+      padding:20px;
+    }
+    .modal h3{
+      margin:0 0 16px;
+      font-size:20px;
+    }
+    .form-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .field.full{ grid-column:1 / -1; }
+    .field label{
+      font-size:12px;
+      color:var(--muted);
+      font-weight:600;
+    }
+    .field input{
+      width:100%;
+      padding:10px 11px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      outline:none;
+      background:white;
+    }
+    .field input:focus{ border-color:var(--accent); }
+
+    .color-row{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .color-row input[type="color"]{
+      width:54px;
+      height:42px;
+      padding:4px;
+      border-radius:10px;
+      cursor:pointer;
+      background:white;
+    }
+    .color-presets{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+    .color-swatch{
+      width:28px;
+      height:28px;
+      border-radius:999px;
+      border:2px solid white;
+      box-shadow:0 0 0 1px var(--line);
+      cursor:pointer;
+    }
+    .color-swatch.active{
+      box-shadow:0 0 0 2px var(--text);
+    }
+
+    .modal-actions{
+      display:flex;
+      justify-content:flex-end;
+      gap:9px;
+      margin-top:18px;
+    }
+
+    .error{
+      display:none;
+      margin-top:12px;
+      color:var(--danger);
+      font-size:13px;
+      background:#fff4f4;
+      border:1px solid #ffd7d9;
+      border-radius:10px;
+      padding:9px 10px;
+    }
+
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:24px;
+      transform:translateX(-50%) translateY(20px);
+      background:#17191c;
+      color:white;
+      padding:10px 14px;
+      border-radius:10px;
+      opacity:0;
+      pointer-events:none;
+      transition:.18s ease;
+      z-index:100;
+      font-size:13px;
+    }
+    .toast.show{
+      opacity:1;
+      transform:translateX(-50%) translateY(0);
+    }
+
+    @media (max-width:800px){
+      .app{ padding:14px; }
+      .topbar{ flex-direction:column; }
+      .actions{ justify-content:flex-start; }
+      .below{ grid-template-columns:1fr; }
+      .timeline-toolbar{ align-items:flex-start; flex-direction:column; }
+      .hint{ text-align:left; }
+    }
+
+    @media (display-mode: standalone) {
+      body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div>
+        <h1>16H</h1>
+        <div class="subtitle">Une carte simple des 16 prochaines heures.</div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="recenterBtn">Recentrer maintenant</button>
+        <button class="btn" id="rulesBtn">Nouvelle règle quotidienne</button>
+        <button class="btn primary" id="addBtn">+ Ajouter un bloc</button>
+      </div>
+    </div>
+
+    <section class="panel">
+      <div class="timeline-toolbar">
+        <div class="window-label" id="windowLabel"></div>
+        <div class="hint">Double-clique sur la règle pour créer un bloc · déplacement et redimensionnement par pas de 15 min</div>
+      </div>
+      <div class="timeline-scroll" id="timelineScroll">
+        <div class="timeline" id="timeline">
+          <div class="labels" id="labels"></div>
+          <div class="rule"></div>
+          <div class="empty-overlay" id="emptyOverlay"></div>
+          <div id="blocks"></div>
+          <div class="now-marker" id="nowMarker"><div class="now-dot"></div></div>
+          <div class="footer-scale">
+            <span>début</span>
+            <span>16 h plus tard</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="below">
+      <section class="card">
+        <h2>Règles quotidiennes</h2>
+        <div id="rulesList"></div>
+      </section>
+      <section class="card">
+        <h2>Dans cette fenêtre</h2>
+        <div class="stats">
+          <div class="stat"><strong id="blockCount">0</strong><span>blocs visibles</span></div>
+          <div class="stat"><strong id="freeTime">16 h</strong><span>temps libre</span></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <dialog id="blockDialog">
+    <form class="modal" id="blockForm" method="dialog">
+      <h3 id="blockDialogTitle">Ajouter un bloc</h3>
+      <div class="form-grid">
+        <div class="field full">
+          <label>Nom du bloc</label>
+          <input id="blockName" required maxlength="80" placeholder="Ex. Travail, sport, montage..." />
+        </div>
+        <div class="field">
+          <label>Début</label>
+          <input id="blockStart" type="datetime-local" step="900" required />
+        </div>
+        <div class="field">
+          <label>Fin</label>
+          <input id="blockEnd" type="datetime-local" step="900" required />
+        </div>
+        <div class="field full">
+          <label>Couleur</label>
+          <div class="color-row">
+            <input id="blockColor" type="color" value="#23272d" />
+            <div class="color-presets" id="blockColorPresets"></div>
+          </div>
+        </div>
+      </div>
+      <div class="error" id="blockError"></div>
+      <div class="modal-actions">
+        <button class="btn" type="button" id="deleteBlockBtn" style="margin-right:auto;display:none;color:#c83f49">Supprimer</button>
+        <button class="btn" type="button" data-close="blockDialog">Annuler</button>
+        <button class="btn primary" type="submit">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="ruleDialog">
+    <form class="modal" id="ruleForm" method="dialog">
+      <h3 id="ruleDialogTitle">Nouvelle règle quotidienne</h3>
+      <div class="form-grid">
+        <div class="field full">
+          <label>Nom</label>
+          <input id="ruleName" required maxlength="80" placeholder="Ex. Sommeil" />
+        </div>
+        <div class="field">
+          <label>Début chaque jour</label>
+          <input id="ruleStart" type="time" step="900" required />
+        </div>
+        <div class="field">
+          <label>Fin</label>
+          <input id="ruleEnd" type="time" step="900" required />
+        </div>
+        <div class="field full">
+          <label>Couleur</label>
+          <div class="color-row">
+            <input id="ruleColor" type="color" value="#5b6472" />
+            <div class="color-presets" id="ruleColorPresets"></div>
+          </div>
+        </div>
+      </div>
+      <div class="error" id="ruleError"></div>
+      <div class="modal-actions">
+        <button class="btn" type="button" data-close="ruleDialog">Annuler</button>
+        <button class="btn primary" type="submit">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    (() => {
+      const SLOT_MIN = 15;
+      const SLOT_MS = SLOT_MIN * 60 * 1000;
+      const WINDOW_HOURS = 16;
+      const WINDOW_MS = WINDOW_HOURS * 60 * 60 * 1000;
+      const TOTAL_SLOTS = WINDOW_HOURS * 4;
+      const STORAGE_KEY = "timeline16h_v1";
+      const SLOT_PX = 38;
+      const COLOR_PRESETS = [
+        "#23272d", "#5b6472", "#1f7aec", "#199da2",
+        "#7c5cff", "#c05b8e", "#d97706", "#3f8f5f",
+        "#b44545", "#6b7280"
+      ];
+
+      const el = (id) => document.getElementById(id);
+      const timeline = el("timeline");
+      const blocksEl = el("blocks");
+      const labelsEl = el("labels");
+      const nowMarker = el("nowMarker");
+      const windowLabel = el("windowLabel");
+      const blockDialog = el("blockDialog");
+      const blockForm = el("blockForm");
+      const ruleDialog = el("ruleDialog");
+      const ruleForm = el("ruleForm");
+
+      let anchor = getAnchor();
+      let selectedBlockId = null;
+      let editingRuleId = null;
+      let dragState = null;
+
+      let state = loadState();
+      if (!state.rules.length) {
+        state.rules.push({
+          id: uid(),
+          name: "Sommeil",
+          start: "00:00",
+          end: "08:00",
+          enabled: true,
+          color: "#5b6472"
+        });
+        saveState();
+      }
+
+      function uid(){
+        return (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+      }
+
+      function getAnchor(now = new Date()){
+        const d = new Date(now);
+        d.setSeconds(0,0);
+        const m = d.getMinutes();
+        if (m === 0 || m === 30) {
+          if (now.getSeconds() === 0 && now.getMilliseconds() === 0) return d;
+        }
+        if (m < 30) d.setMinutes(30,0,0);
+        else {
+          d.setHours(d.getHours()+1,0,0,0);
+        }
+        return d;
+      }
+
+      function loadState(){
+        try{
+          const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+          return {
+            blocks: Array.isArray(raw.blocks) ? raw.blocks : [],
+            rules: Array.isArray(raw.rules) ? raw.rules : []
+          };
+        }catch{
+          return {blocks:[], rules:[]};
+        }
+      }
+
+      function saveState(){
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
+
+      function fmtTime(ts){
+        return new Date(ts).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+      }
+
+      function fmtDateTime(ts){
+        return new Date(ts).toLocaleString("fr-FR",{
+          weekday:"short", day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit"
+        });
+      }
+
+      function toLocalInput(ts){
+        const d = new Date(ts);
+        const pad = n => String(n).padStart(2,"0");
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      }
+
+      function roundToQuarter(ts){
+        return Math.round(ts / SLOT_MS) * SLOT_MS;
+      }
+
+      function ceilToQuarter(ts){
+        return Math.ceil(ts / SLOT_MS) * SLOT_MS;
+      }
+
+      function durationText(ms){
+        const total = Math.round(ms / 60000);
+        const h = Math.floor(total/60);
+        const m = total%60;
+        if (h && m) return `${h} h ${m.toString().padStart(2,"0")}`;
+        if (h) return `${h} h`;
+        return `${m} min`;
+      }
+
+      function showToast(msg){
+        const t = el("toast");
+        t.textContent = msg;
+        t.classList.add("show");
+        clearTimeout(showToast.timer);
+        showToast.timer = setTimeout(()=>t.classList.remove("show"),1500);
+      }
+
+      function intervalsOverlap(aStart,aEnd,bStart,bEnd){
+        return aStart < bEnd && aEnd > bStart;
+      }
+
+      function getRecurringInstances(rangeStart, rangeEnd){
+        const instances = [];
+        const startDate = new Date(rangeStart);
+        startDate.setHours(0,0,0,0);
+        startDate.setDate(startDate.getDate()-1);
+
+        const endDate = new Date(rangeEnd);
+        endDate.setHours(0,0,0,0);
+        endDate.setDate(endDate.getDate()+1);
+
+        for (let day = new Date(startDate); day <= endDate; day.setDate(day.getDate()+1)) {
+          for (const rule of state.rules.filter(r => r.enabled)) {
+            const [sh,sm] = rule.start.split(":").map(Number);
+            const [eh,em] = rule.end.split(":").map(Number);
+
+            const s = new Date(day);
+            s.setHours(sh,sm,0,0);
+            const e = new Date(day);
+            e.setHours(eh,em,0,0);
+
+            if (e <= s) e.setDate(e.getDate()+1);
+
+            const sTs = s.getTime(), eTs = e.getTime();
+            if (intervalsOverlap(sTs,eTs,rangeStart,rangeEnd)) {
+              instances.push({
+                id:`rule-${rule.id}-${sTs}`,
+                ruleId:rule.id,
+                name:rule.name,
+                start:sTs,
+                end:eTs,
+                recurring:true,
+                color: rule.color || "#5b6472"
+              });
+            }
+          }
+        }
+        return instances;
+      }
+
+      function hasConflict(start,end,excludeBlockId=null){
+        for (const b of state.blocks){
+          if (b.id === excludeBlockId) continue;
+          if (intervalsOverlap(start,end,b.start,b.end)) return true;
+        }
+        for (const r of getRecurringInstances(start - 24*3600000, end + 24*3600000)){
+          if (intervalsOverlap(start,end,r.start,r.end)) return true;
+        }
+        return false;
+      }
+
+      function render(){
+        renderLabels();
+        renderBlocks();
+        renderRules();
+        renderWindow();
+        renderStats();
+        renderNow();
+      }
+
+      function renderWindow(){
+        const end = anchor.getTime()+WINDOW_MS;
+        windowLabel.textContent = `${fmtDateTime(anchor.getTime())} → ${fmtDateTime(end)}`;
+      }
+
+      function renderLabels(){
+        labelsEl.innerHTML = "";
+        for(let i=0;i<=TOTAL_SLOTS;i++){
+          if(i % 2 !== 0) continue;
+          const ts = anchor.getTime()+i*SLOT_MS;
+          const div = document.createElement("div");
+          div.className = "time-label";
+          div.style.left = `${i*SLOT_PX}px`;
+          div.textContent = fmtTime(ts);
+          labelsEl.appendChild(div);
+        }
+      }
+
+      function renderNow(){
+        const now = Date.now();
+        const x = (now - anchor.getTime()) / SLOT_MS * SLOT_PX;
+        if (x >= 0 && x <= TOTAL_SLOTS*SLOT_PX){
+          nowMarker.style.display = "block";
+          nowMarker.style.left = `${x}px`;
+        } else {
+          nowMarker.style.display = "none";
+        }
+      }
+
+      function visibleItems(){
+        const start = anchor.getTime();
+        const end = start + WINDOW_MS;
+        const explicit = state.blocks
+          .filter(b => intervalsOverlap(b.start,b.end,start,end))
+          .map(b=>({...b, recurring:false}));
+        const recurring = getRecurringInstances(start,end);
+        return [...recurring, ...explicit].sort((a,b)=>a.start-b.start);
+      }
+
+      function renderBlocks(){
+        blocksEl.innerHTML = "";
+        const start = anchor.getTime();
+        const end = start + WINDOW_MS;
+
+        for (const item of visibleItems()){
+          const displayStart = Math.max(item.start,start);
+          const displayEnd = Math.min(item.end,end);
+          const x = (displayStart-start)/SLOT_MS*SLOT_PX;
+          const w = Math.max((displayEnd-displayStart)/SLOT_MS*SLOT_PX, 4);
+
+          const div = document.createElement("div");
+          div.className = "block" + (item.recurring ? " recurring" : "");
+          if(item.start < start) div.classList.add("clipped-left");
+          if(item.end > end) div.classList.add("clipped-right");
+          div.style.left = `${x}px`;
+          div.style.width = `${w}px`;
+          div.style.background = item.color || (item.recurring ? "#5b6472" : "#23272d");
+          div.dataset.id = item.id;
+
+          const content = document.createElement("div");
+          content.className = "block-content";
+          content.innerHTML = `<div class="block-title"></div><div class="block-time"></div>`;
+          content.querySelector(".block-title").textContent = item.name;
+          content.querySelector(".block-time").textContent = `${fmtTime(item.start)}–${fmtTime(item.end)} · ${durationText(item.end-item.start)}`;
+          div.appendChild(content);
+
+          if (!item.recurring){
+            const left = document.createElement("div");
+            left.className = "handle left";
+            left.dataset.handle = "left";
+            const right = document.createElement("div");
+            right.className = "handle right";
+            right.dataset.handle = "right";
+            div.appendChild(left);
+            div.appendChild(right);
+
+            div.addEventListener("pointerdown", onBlockPointerDown);
+            div.addEventListener("dblclick", (e)=>{
+              e.stopPropagation();
+              openEditBlock(item.id);
+            });
+          } else {
+            div.title = "Règle quotidienne — modifiable dans la liste en dessous";
+          }
+
+          blocksEl.appendChild(div);
+        }
+      }
+
+      function renderRules(){
+        const list = el("rulesList");
+        list.innerHTML = "";
+        if (!state.rules.length){
+          list.innerHTML = `<div class="subtitle">Aucune règle quotidienne.</div>`;
+          return;
+        }
+        state.rules.forEach(rule=>{
+          const row = document.createElement("div");
+          row.className="rule-row";
+
+          const info = document.createElement("div");
+          info.innerHTML = `<div style="font-weight:650"></div><div class="badge"><span class="badge-dot"></span><span>${rule.start} → ${rule.end}</span></div>`;
+          info.querySelector("div").textContent = rule.name;
+          info.querySelector(".badge-dot").style.background = rule.color || "#5b6472";
+
+          const toggle = document.createElement("button");
+          toggle.className="small-btn";
+          toggle.textContent = rule.enabled ? "Active" : "Inactive";
+          toggle.onclick=()=>{
+            rule.enabled=!rule.enabled;
+            saveState(); render();
+          };
+
+          const edit = document.createElement("button");
+          edit.className="small-btn";
+          edit.textContent="Modifier";
+          edit.onclick=()=>openEditRule(rule.id);
+
+          const del = document.createElement("button");
+          del.className="small-btn danger";
+          del.textContent="Supprimer";
+          del.onclick=()=>{
+            if(confirm(`Supprimer la règle « ${rule.name} » ?`)){
+              state.rules=state.rules.filter(r=>r.id!==rule.id);
+              saveState(); render();
+            }
+          };
+
+          row.append(info,toggle,edit,del);
+          list.appendChild(row);
+        });
+      }
+
+      function renderStats(){
+        const items = visibleItems();
+        el("blockCount").textContent = items.length;
+
+        const start = anchor.getTime(), end = start+WINDOW_MS;
+        const intervals = items
+          .map(i=>[Math.max(i.start,start),Math.min(i.end,end)])
+          .filter(([s,e])=>e>s)
+          .sort((a,b)=>a[0]-b[0]);
+
+        let occupied=0, curS=null, curE=null;
+        for (const [s,e] of intervals){
+          if(curS===null){ curS=s; curE=e; continue; }
+          if(s<=curE) curE=Math.max(curE,e);
+          else { occupied+=curE-curS; curS=s; curE=e; }
+        }
+        if(curS!==null) occupied+=curE-curS;
+        el("freeTime").textContent=durationText(Math.max(0,WINDOW_MS-occupied));
+      }
+
+      function openNewBlock(startTs=null){
+        selectedBlockId=null;
+        el("blockDialogTitle").textContent="Ajouter un bloc";
+        el("deleteBlockBtn").style.display="none";
+        el("blockError").style.display="none";
+        const s = startTs ?? ceilToQuarter(anchor.getTime());
+        el("blockName").value="";
+        el("blockStart").value=toLocalInput(s);
+        el("blockEnd").value=toLocalInput(s + 30*60*1000);
+        el("blockColor").value="#23272d";
+        syncPresetState("block");
+        blockDialog.showModal();
+        setTimeout(()=>el("blockName").focus(),50);
+      }
+
+      function openEditBlock(id){
+        const b=state.blocks.find(x=>x.id===id);
+        if(!b) return;
+        selectedBlockId=id;
+        el("blockDialogTitle").textContent="Modifier le bloc";
+        el("deleteBlockBtn").style.display="inline-block";
+        el("blockError").style.display="none";
+        el("blockName").value=b.name;
+        el("blockStart").value=toLocalInput(b.start);
+        el("blockEnd").value=toLocalInput(b.end);
+        el("blockColor").value=b.color || "#23272d";
+        syncPresetState("block");
+        blockDialog.showModal();
+      }
+
+      function openNewRule(){
+        editingRuleId=null;
+        el("ruleDialogTitle").textContent="Nouvelle règle quotidienne";
+        el("ruleError").style.display="none";
+        el("ruleName").value="";
+        el("ruleStart").value="00:00";
+        el("ruleEnd").value="08:00";
+        el("ruleColor").value="#5b6472";
+        syncPresetState("rule");
+        ruleDialog.showModal();
+      }
+
+      function openEditRule(id){
+        const r=state.rules.find(x=>x.id===id);
+        if(!r) return;
+        editingRuleId=id;
+        el("ruleDialogTitle").textContent="Modifier la règle";
+        el("ruleError").style.display="none";
+        el("ruleName").value=r.name;
+        el("ruleStart").value=r.start;
+        el("ruleEnd").value=r.end;
+        el("ruleColor").value=r.color || "#5b6472";
+        syncPresetState("rule");
+        ruleDialog.showModal();
+      }
+
+      blockForm.addEventListener("submit",(e)=>{
+        e.preventDefault();
+        const name=el("blockName").value.trim();
+        const color=el("blockColor").value || "#23272d";
+        let start=new Date(el("blockStart").value).getTime();
+        let end=new Date(el("blockEnd").value).getTime();
+        const err=el("blockError");
+
+        start=roundToQuarter(start);
+        end=roundToQuarter(end);
+
+        if(!name || !Number.isFinite(start) || !Number.isFinite(end)){
+          return showFormError(err,"Remplis tous les champs.");
+        }
+        if(end-start < SLOT_MS){
+          return showFormError(err,"Un bloc doit durer au minimum 15 minutes.");
+        }
+        if(start % SLOT_MS !== 0 || end % SLOT_MS !== 0){
+          return showFormError(err,"Les horaires doivent tomber sur un quart d'heure.");
+        }
+        if(hasConflict(start,end,selectedBlockId)){
+          return showFormError(err,"Ce bloc chevauche déjà un autre bloc ou une règle quotidienne.");
+        }
+
+        if(selectedBlockId){
+          const b=state.blocks.find(x=>x.id===selectedBlockId);
+          Object.assign(b,{name,start,end,color});
+        }else{
+          state.blocks.push({id:uid(),name,start,end,color});
+        }
+        saveState();
+        blockDialog.close();
+        render();
+        showToast("Bloc enregistré");
+      });
+
+      ruleForm.addEventListener("submit",(e)=>{
+        e.preventDefault();
+        const name=el("ruleName").value.trim();
+        const start=el("ruleStart").value;
+        const end=el("ruleEnd").value;
+        const color=el("ruleColor").value || "#5b6472";
+        const err=el("ruleError");
+
+        if(!name || !start || !end){
+          return showFormError(err,"Remplis tous les champs.");
+        }
+        if(start===end){
+          return showFormError(err,"La règle doit avoir une durée différente de 24 h.");
+        }
+
+        const candidate={id:editingRuleId || uid(),name,start,end,enabled:true,color};
+        if(editingRuleId){
+          const old=state.rules.find(r=>r.id===editingRuleId);
+          candidate.enabled=old.enabled;
+        }
+
+        const oldRules=[...state.rules];
+        state.rules = editingRuleId
+          ? state.rules.map(r=>r.id===editingRuleId ? candidate : r)
+          : [...state.rules,candidate];
+
+        const checkStart=anchor.getTime()-24*3600000;
+        const checkEnd=anchor.getTime()+WINDOW_MS+24*3600000;
+        const instances=getRecurringInstances(checkStart,checkEnd)
+          .filter(i=>i.ruleId===candidate.id);
+
+        let conflict=false;
+        for(const inst of instances){
+          for(const b of state.blocks){
+            if(intervalsOverlap(inst.start,inst.end,b.start,b.end)){ conflict=true; break; }
+          }
+          if(conflict) break;
+
+          const otherInstances=getRecurringInstances(inst.start-24*3600000,inst.end+24*3600000)
+            .filter(i=>i.ruleId!==candidate.id);
+          if(otherInstances.some(other=>intervalsOverlap(inst.start,inst.end,other.start,other.end))){
+            conflict=true;
+            break;
+          }
+        }
+
+        if(conflict){
+          state.rules=oldRules;
+          return showFormError(err,"Cette règle chevauche déjà un bloc ponctuel ou une autre règle quotidienne.");
+        }
+
+        saveState();
+        ruleDialog.close();
+        render();
+        showToast("Règle enregistrée");
+      });
+
+      function showFormError(node,msg){
+        node.textContent=msg;
+        node.style.display="block";
+      }
+
+      el("deleteBlockBtn").addEventListener("click",()=>{
+        if(!selectedBlockId) return;
+        const b=state.blocks.find(x=>x.id===selectedBlockId);
+        if(b && confirm(`Supprimer « ${b.name} » ?`)){
+          state.blocks=state.blocks.filter(x=>x.id!==selectedBlockId);
+          saveState();
+          blockDialog.close();
+          render();
+          showToast("Bloc supprimé");
+        }
+      });
+
+      document.querySelectorAll("[data-close]").forEach(btn=>{
+        btn.addEventListener("click",()=>el(btn.dataset.close).close());
+      });
+
+      el("addBtn").onclick=()=>openNewBlock();
+      el("rulesBtn").onclick=openNewRule;
+      el("recenterBtn").onclick=()=>{
+        anchor=getAnchor();
+        render();
+        el("timelineScroll").scrollLeft=0;
+      };
+
+      el("emptyOverlay").addEventListener("dblclick",(e)=>{
+        const rect=timeline.getBoundingClientRect();
+        const x=e.clientX-rect.left;
+        const slot=Math.max(0,Math.min(TOTAL_SLOTS-1,Math.floor(x/SLOT_PX)));
+        openNewBlock(anchor.getTime()+slot*SLOT_MS);
+      });
+
+      function onBlockPointerDown(e){
+        if(e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        const blockEl=e.currentTarget;
+        const id=blockEl.dataset.id;
+        const block=state.blocks.find(b=>b.id===id);
+        if(!block) return;
+
+        const mode=e.target.dataset.handle === "left" ? "resize-left"
+          : e.target.dataset.handle === "right" ? "resize-right"
+          : "move";
+
+        dragState={
+          id,
+          mode,
+          startX:e.clientX,
+          originalStart:block.start,
+          originalEnd:block.end,
+          previewStart:block.start,
+          previewEnd:block.end,
+          el:blockEl,
+          pointerId:e.pointerId
+        };
+
+        blockEl.setPointerCapture(e.pointerId);
+        blockEl.addEventListener("pointermove",onBlockPointerMove);
+        blockEl.addEventListener("pointerup",onBlockPointerUp,{once:true});
+        blockEl.addEventListener("pointercancel",onBlockPointerUp,{once:true});
+      }
+
+      function onBlockPointerMove(e){
+        if(!dragState) return;
+        const deltaSlots=Math.round((e.clientX-dragState.startX)/SLOT_PX);
+        const delta=deltaSlots*SLOT_MS;
+
+        let s=dragState.originalStart;
+        let en=dragState.originalEnd;
+
+        if(dragState.mode==="move"){
+          s += delta; en += delta;
+        }else if(dragState.mode==="resize-left"){
+          s = Math.min(dragState.originalStart+delta, en-SLOT_MS);
+        }else{
+          en = Math.max(dragState.originalEnd+delta, s+SLOT_MS);
+        }
+
+        dragState.previewStart=s;
+        dragState.previewEnd=en;
+
+        const displayStart=Math.max(s,anchor.getTime());
+        const displayEnd=Math.min(en,anchor.getTime()+WINDOW_MS);
+        dragState.el.style.left=`${(displayStart-anchor.getTime())/SLOT_MS*SLOT_PX}px`;
+        dragState.el.style.width=`${Math.max(4,(displayEnd-displayStart)/SLOT_MS*SLOT_PX)}px`;
+        const timeLine=dragState.el.querySelector(".block-time");
+        timeLine.textContent=`${fmtTime(s)}–${fmtTime(en)} · ${durationText(en-s)}`;
+      }
+
+      function onBlockPointerUp(e){
+        if(!dragState) return;
+        const ds=dragState;
+        ds.el.removeEventListener("pointermove",onBlockPointerMove);
+
+        if(hasConflict(ds.previewStart,ds.previewEnd,ds.id)){
+          showToast("Impossible : chevauchement");
+          dragState=null;
+          render();
+          return;
+        }
+
+        const b=state.blocks.find(x=>x.id===ds.id);
+        if(b){
+          b.start=ds.previewStart;
+          b.end=ds.previewEnd;
+          saveState();
+        }
+        dragState=null;
+        render();
+      }
+
+      function buildColorPresets(type){
+        const container=el(type==="block" ? "blockColorPresets" : "ruleColorPresets");
+        const input=el(type==="block" ? "blockColor" : "ruleColor");
+        container.innerHTML="";
+        COLOR_PRESETS.forEach(color=>{
+          const sw=document.createElement("button");
+          sw.type="button";
+          sw.className="color-swatch";
+          sw.style.background=color;
+          sw.title=color;
+          sw.dataset.color=color.toLowerCase();
+          sw.addEventListener("click",()=>{
+            input.value=color;
+            syncPresetState(type);
+          });
+          container.appendChild(sw);
+        });
+        input.addEventListener("input",()=>syncPresetState(type));
+      }
+
+      function syncPresetState(type){
+        const container=el(type==="block" ? "blockColorPresets" : "ruleColorPresets");
+        const input=el(type==="block" ? "blockColor" : "ruleColor");
+        if(!container || !input) return;
+        container.querySelectorAll(".color-swatch").forEach(sw=>{
+          sw.classList.toggle("active", sw.dataset.color === input.value.toLowerCase());
+        });
+      }
+
+      buildColorPresets("block");
+      buildColorPresets("rule");
+
+      window.addEventListener("keydown",(e)=>{
+        if(e.key==="Escape"){
+          if(blockDialog.open) blockDialog.close();
+          if(ruleDialog.open) ruleDialog.close();
+        }
+      });
+
+      render();
+
+      setInterval(()=>{
+        const next=getAnchor();
+        if(next.getTime()!==anchor.getTime() && !dragState && !blockDialog.open && !ruleDialog.open){
+          anchor=next;
+          render();
+        } else {
+          renderNow();
+        }
+      },30000);
+    })();
+  </script>
+
+  <script>
+    if ("serviceWorker" in navigator && location.protocol !== "file:") {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+      });
+    }
+  </script>
+
+</body>
+</html>
