@@ -1,7 +1,5 @@
-const CACHE_NAME = "16h-pwa-supabase-v1";
+const CACHE_NAME = "16h-pwa-v3";
 const APP_ASSETS = [
-  "./",
-  "./index.html",
   "./manifest.webmanifest",
   "./icon-180.png",
   "./icon-192.png",
@@ -27,18 +25,28 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
 
+  // Always try the network first for pages, so GitHub updates appear quickly.
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put("./index.html", clone));
+          return response;
+        })
+        .catch(() => caches.match("./index.html"))
+    );
+    return;
+  }
+
+  // Static assets: cache first, then network.
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;
-
       return fetch(event.request).then(response => {
         const clone = response.clone();
         caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         return response;
-      }).catch(() => {
-        if (event.request.mode === "navigate") {
-          return caches.match("./index.html");
-        }
       });
     })
   );

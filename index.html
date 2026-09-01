@@ -756,6 +756,7 @@
       const STORAGE_KEY = "timeline16h_v1";
       const CLOUD_CONFIG_KEY = "timeline16h_supabase_config_v1";
       const SYNC_META_KEY = "timeline16h_sync_meta_v1";
+      const SUPABASE_AUTH_STORAGE_KEY = "timeline16h_supabase_auth_v1";
       const SLOT_PX = 38;
       const COLOR_PRESETS = [
         "#23272d", "#5b6472", "#1f7aec", "#199da2",
@@ -1478,6 +1479,63 @@
         updateCloudUi();
       }
 
+      const authStorage = {
+        getItem(key){
+          try { return window.localStorage.getItem(key); }
+          catch { return null; }
+        },
+        setItem(key,value){
+          try { window.localStorage.setItem(key,value); }
+          catch {}
+        },
+        removeItem(key){
+          try { window.localStorage.removeItem(key); }
+          catch {}
+        }
+      };
+
+      function migrateLegacySupabaseSession(url){
+        try{
+          if(localStorage.getItem(SUPABASE_AUTH_STORAGE_KEY)) return;
+          const host=new URL(url).hostname;
+          const projectRef=host.split(".")[0];
+          const legacyKey=`sb-${projectRef}-auth-token`;
+          const legacyValue=localStorage.getItem(legacyKey);
+          if(legacyValue){
+            localStorage.setItem(SUPABASE_AUTH_STORAGE_KEY,legacyValue);
+          }
+        }catch{}
+      }
+
+      async function restoreCloudSession(){
+        if(!supabaseClient) return null;
+        try{
+          let {data,error}=await supabaseClient.auth.getSession();
+          if(error) throw error;
+          let session=data?.session || null;
+
+          if(session?.expires_at){
+            const secondsLeft=session.expires_at-Math.floor(Date.now()/1000);
+            if(secondsLeft < 90){
+              const refreshed=await supabaseClient.auth.refreshSession();
+              if(!refreshed.error && refreshed.data?.session){
+                session=refreshed.data.session;
+              }
+            }
+          }
+
+          cloudUser=session?.user || null;
+          updateCloudUi();
+          if(cloudUser) scheduleCloudSync(100);
+          return session;
+        }catch(err){
+          console.warn("16H session restore",err);
+          cloudUser=null;
+          updateCloudUi("auto","Session cloud indisponible pour le moment. Tes données locales restent intactes.");
+          return null;
+        }
+      }
+
       async function setupSupabaseClient(){
         if(authSubscription){
           try{ authSubscription.unsubscribe(); }catch{}
@@ -1497,12 +1555,19 @@
         }
 
         try{
+          migrateLegacySupabaseSession(url);
           supabaseClient=window.supabase.createClient(url,key,{
-            auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
+            auth:{
+              storage:authStorage,
+              storageKey:SUPABASE_AUTH_STORAGE_KEY,
+              persistSession:true,
+              autoRefreshToken:true,
+              detectSessionInUrl:false,
+              flowType:"pkce"
+            }
           });
-          const {data,error}=await supabaseClient.auth.getSession();
-          if(error) throw error;
-          cloudUser=data.session?.user || null;
+
+          await restoreCloudSession();
 
           const authState=supabaseClient.auth.onAuthStateChange((_event,session)=>{
             cloudUser=session?.user || null;
@@ -1743,7 +1808,7 @@
 
       el("cloudSignOutBtn").addEventListener("click",async()=>{
         clearCloudError();
-        if(supabaseClient) await supabaseClient.auth.signOut();
+        if(supabaseClient) await supabaseClient.auth.signOut({scope:"local"});
         cloudUser=null;
         updateCloudUi();
         showToast("Déconnecté du cloud");
@@ -1755,15 +1820,22 @@
         syncCloud(true);
       });
 
+      async function resumeCloud(){
+        if(!supabaseClient || !navigator.onLine) return;
+        await restoreCloudSession();
+        if(cloudUser) scheduleCloudSync(150);
+      }
+
       window.addEventListener("online",()=>{
         updateCloudUi();
-        scheduleCloudSync(150);
+        resumeCloud();
       });
       window.addEventListener("offline",()=>updateCloudUi());
       document.addEventListener("visibilitychange",()=>{
-        if(document.visibilityState==="visible") scheduleCloudSync(150);
+        if(document.visibilityState==="visible") resumeCloud();
       });
-      window.addEventListener("focus",()=>scheduleCloudSync(150));
+      window.addEventListener("focus",()=>resumeCloud());
+      window.addEventListener("pageshow",()=>resumeCloud());
 
       function buildColorPresets(type){
         const container=el(type==="block" ? "blockColorPresets" : "ruleColorPresets");
@@ -1825,7 +1897,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=3").catch(() => {});
       });
     }
   </script>

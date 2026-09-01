@@ -52,3 +52,16 @@ FONCTIONNEMENT
 - En hors-ligne, l'app continue de fonctionner.
 - Au retour d'Internet ou au retour dans l'app, une synchronisation est relancée.
 - Les conflits utilisent une logique "dernière modification gagnante".
+
+
+V2 CACHE FIX
+- Navigation uses network-first caching.
+- Future GitHub Pages updates should appear without the old app being stuck in cache.
+
+
+V3 — PERSISTANCE DE SESSION IPHONE
+- Auth Supabase stockée explicitement dans le localStorage de la PWA.
+- Clé de stockage stable propre à 16H.
+- Migration automatique de la session V2 si elle existe.
+- Restauration et refresh au lancement / retour au premier plan.
+- Déconnexion limitée à l'appareil courant.
