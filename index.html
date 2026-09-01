@@ -13,6 +13,7 @@
   <link rel="apple-touch-icon" href="./icon-180.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
   <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{
       --bg:#f4f5f7;
@@ -94,6 +95,70 @@
       background:var(--text);
       color:white;
       border-color:var(--text);
+    }
+
+    .cloud-btn{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
+    .cloud-dot{
+      width:8px;
+      height:8px;
+      border-radius:999px;
+      background:#9aa1aa;
+      box-shadow:0 0 0 3px rgba(154,161,170,.12);
+    }
+    .cloud-dot.connected{
+      background:#2f9e63;
+      box-shadow:0 0 0 3px rgba(47,158,99,.12);
+    }
+    .cloud-dot.syncing{
+      background:#1f7aec;
+      box-shadow:0 0 0 3px rgba(31,122,236,.12);
+    }
+    .cloud-dot.warning{
+      background:#d08a16;
+      box-shadow:0 0 0 3px rgba(208,138,22,.12);
+    }
+    .cloud-status-card{
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px 13px;
+      margin-bottom:14px;
+      background:#f7f8fa;
+    }
+    .cloud-status-title{
+      font-weight:700;
+      font-size:14px;
+      margin-bottom:3px;
+    }
+    .cloud-status-text{
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.45;
+    }
+    .cloud-section{
+      padding-top:14px;
+      margin-top:14px;
+      border-top:1px solid var(--line);
+    }
+    .cloud-section-title{
+      font-weight:700;
+      font-size:13px;
+      margin-bottom:10px;
+    }
+    .cloud-note{
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.45;
+      margin-top:8px;
+    }
+    .cloud-account{
+      font-size:12px;
+      color:var(--muted);
+      margin-top:8px;
+      overflow-wrap:anywhere;
     }
 
     .panel{
@@ -519,6 +584,7 @@
       <div class="actions">
         <button class="btn" id="recenterBtn">Recentrer maintenant</button>
         <button class="btn" id="rulesBtn">Nouvelle règle quotidienne</button>
+        <button class="btn cloud-btn" id="cloudBtn"><span class="cloud-dot" id="cloudDot"></span><span id="cloudLabel">Cloud</span></button>
         <button class="btn primary" id="addBtn">+ Ajouter un bloc</button>
       </div>
     </div>
@@ -623,6 +689,61 @@
     </form>
   </dialog>
 
+  <dialog id="cloudDialog">
+    <div class="modal">
+      <h3>Synchronisation Supabase</h3>
+
+      <div class="cloud-status-card">
+        <div class="cloud-status-title" id="cloudStatusTitle">Cloud non configuré</div>
+        <div class="cloud-status-text" id="cloudStatusText">L'application continue de fonctionner et de sauvegarder localement.</div>
+        <div class="cloud-account" id="cloudAccount"></div>
+      </div>
+
+      <div class="cloud-section" style="padding-top:0;margin-top:0;border-top:0">
+        <div class="cloud-section-title">1. Projet Supabase</div>
+        <div class="form-grid">
+          <div class="field full">
+            <label>Project URL</label>
+            <input id="supabaseUrl" type="url" placeholder="https://xxxx.supabase.co" autocomplete="off" />
+          </div>
+          <div class="field full">
+            <label>Publishable key</label>
+            <input id="supabaseKey" type="password" placeholder="sb_publishable_… ou clé anon legacy" autocomplete="off" />
+          </div>
+        </div>
+        <div class="cloud-note">Utilise uniquement la Publishable key / anon key. Ne mets jamais une clé service_role dans cette application.</div>
+        <div class="modal-actions" style="margin-top:10px">
+          <button class="btn" type="button" id="saveCloudConfigBtn">Enregistrer la connexion</button>
+        </div>
+      </div>
+
+      <div class="cloud-section">
+        <div class="cloud-section-title">2. Ton compte 16H</div>
+        <div class="form-grid">
+          <div class="field full">
+            <label>Email</label>
+            <input id="cloudEmail" type="email" autocomplete="email" placeholder="ton@email.com" />
+          </div>
+          <div class="field full">
+            <label>Mot de passe</label>
+            <input id="cloudPassword" type="password" autocomplete="current-password" placeholder="Mot de passe" />
+          </div>
+        </div>
+        <div class="modal-actions" style="justify-content:flex-start;margin-top:10px">
+          <button class="btn primary" type="button" id="cloudSignInBtn">Se connecter</button>
+          <button class="btn" type="button" id="cloudSignUpBtn">Créer le compte</button>
+          <button class="btn" type="button" id="cloudSignOutBtn" style="display:none">Se déconnecter</button>
+        </div>
+      </div>
+
+      <div class="error" id="cloudError"></div>
+      <div class="modal-actions">
+        <button class="btn" type="button" id="syncNowBtn">Synchroniser maintenant</button>
+        <button class="btn" type="button" data-close="cloudDialog">Fermer</button>
+      </div>
+    </div>
+  </dialog>
+
   <div class="toast" id="toast"></div>
 
   <script>
@@ -633,6 +754,8 @@
       const WINDOW_MS = WINDOW_HOURS * 60 * 60 * 1000;
       const TOTAL_SLOTS = WINDOW_HOURS * 4;
       const STORAGE_KEY = "timeline16h_v1";
+      const CLOUD_CONFIG_KEY = "timeline16h_supabase_config_v1";
+      const SYNC_META_KEY = "timeline16h_sync_meta_v1";
       const SLOT_PX = 38;
       const COLOR_PRESETS = [
         "#23272d", "#5b6472", "#1f7aec", "#199da2",
@@ -650,23 +773,32 @@
       const blockForm = el("blockForm");
       const ruleDialog = el("ruleDialog");
       const ruleForm = el("ruleForm");
+      const cloudDialog = el("cloudDialog");
 
       let anchor = getAnchor();
       let selectedBlockId = null;
       let editingRuleId = null;
       let dragState = null;
+      let supabaseClient = null;
+      let cloudUser = null;
+      let authSubscription = null;
+      let syncTimer = null;
+      let cloudSyncing = false;
+      let suppressCloudSchedule = false;
 
       let state = loadState();
+      let syncMeta = loadSyncMeta();
       if (!state.rules.length) {
         state.rules.push({
-          id: uid(),
+          id: "default-sleep",
           name: "Sommeil",
           start: "00:00",
           end: "08:00",
           enabled: true,
-          color: "#5b6472"
+          color: "#5b6472",
+          updatedAt: Date.now()
         });
-        saveState();
+        saveState(false);
       }
 
       function uid(){
@@ -690,17 +822,48 @@
       function loadState(){
         try{
           const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-          return {
-            blocks: Array.isArray(raw.blocks) ? raw.blocks : [],
-            rules: Array.isArray(raw.rules) ? raw.rules : []
-          };
+          const now = Date.now();
+          const blocks = Array.isArray(raw.blocks) ? raw.blocks.map(b => ({...b, updatedAt:Number(b.updatedAt)||now})) : [];
+          const rules = Array.isArray(raw.rules) ? raw.rules.map(r => ({...r, updatedAt:Number(r.updatedAt)||now})) : [];
+
+          // Migrate the untouched default sleep rule to a deterministic ID so
+          // a new device does not create a duplicate during the first sync.
+          if(rules.length === 1 && rules[0].name === "Sommeil" && rules[0].start === "00:00" && rules[0].end === "08:00"){
+            rules[0].id = "default-sleep";
+          }
+          return {blocks, rules};
         }catch{
           return {blocks:[], rules:[]};
         }
       }
 
-      function saveState(){
+      function loadSyncMeta(){
+        try{
+          const raw = JSON.parse(localStorage.getItem(SYNC_META_KEY) || "{}");
+          return {
+            deletedBlocks:Array.isArray(raw.deletedBlocks) ? raw.deletedBlocks : [],
+            deletedRules:Array.isArray(raw.deletedRules) ? raw.deletedRules : []
+          };
+        }catch{
+          return {deletedBlocks:[],deletedRules:[]};
+        }
+      }
+
+      function saveSyncMeta(){
+        localStorage.setItem(SYNC_META_KEY, JSON.stringify(syncMeta));
+      }
+
+      function saveState(scheduleSync=true){
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        if(scheduleSync && !suppressCloudSchedule) scheduleCloudSync();
+      }
+
+      function markDeleted(kind,id,updatedAt=Date.now()){
+        const key = kind === "block" ? "deletedBlocks" : "deletedRules";
+        syncMeta[key] = syncMeta[key].filter(x => x.id !== id);
+        syncMeta[key].push({id,updatedAt});
+        saveSyncMeta();
+        scheduleCloudSync();
       }
 
       function fmtTime(ts){
@@ -917,6 +1080,7 @@
           toggle.textContent = rule.enabled ? "Active" : "Inactive";
           toggle.onclick=()=>{
             rule.enabled=!rule.enabled;
+            rule.updatedAt=Date.now();
             saveState(); render();
           };
 
@@ -930,7 +1094,9 @@
           del.textContent="Supprimer";
           del.onclick=()=>{
             if(confirm(`Supprimer la règle « ${rule.name} » ?`)){
+              const deletedAt=Date.now();
               state.rules=state.rules.filter(r=>r.id!==rule.id);
+              markDeleted("rule",rule.id,deletedAt);
               saveState(); render();
             }
           };
@@ -1040,11 +1206,12 @@
           return showFormError(err,"Ce bloc chevauche déjà un autre bloc ou une règle quotidienne.");
         }
 
+        const updatedAt=Date.now();
         if(selectedBlockId){
           const b=state.blocks.find(x=>x.id===selectedBlockId);
-          Object.assign(b,{name,start,end,color});
+          Object.assign(b,{name,start,end,color,updatedAt});
         }else{
-          state.blocks.push({id:uid(),name,start,end,color});
+          state.blocks.push({id:uid(),name,start,end,color,updatedAt});
         }
         saveState();
         blockDialog.close();
@@ -1067,7 +1234,7 @@
           return showFormError(err,"La règle doit avoir une durée différente de 24 h.");
         }
 
-        const candidate={id:editingRuleId || uid(),name,start,end,enabled:true,color};
+        const candidate={id:editingRuleId || uid(),name,start,end,enabled:true,color,updatedAt:Date.now()};
         if(editingRuleId){
           const old=state.rules.find(r=>r.id===editingRuleId);
           candidate.enabled=old.enabled;
@@ -1118,7 +1285,9 @@
         if(!selectedBlockId) return;
         const b=state.blocks.find(x=>x.id===selectedBlockId);
         if(b && confirm(`Supprimer « ${b.name} » ?`)){
+          const deletedAt=Date.now();
           state.blocks=state.blocks.filter(x=>x.id!==selectedBlockId);
+          markDeleted("block",selectedBlockId,deletedAt);
           saveState();
           blockDialog.close();
           render();
@@ -1132,6 +1301,10 @@
 
       el("addBtn").onclick=()=>openNewBlock();
       el("rulesBtn").onclick=openNewRule;
+      el("cloudBtn").onclick=()=>{
+        populateCloudDialog();
+        cloudDialog.showModal();
+      };
       el("recenterBtn").onclick=()=>{
         anchor=getAnchor();
         render();
@@ -1220,11 +1393,377 @@
         if(b){
           b.start=ds.previewStart;
           b.end=ds.previewEnd;
+          b.updatedAt=Date.now();
           saveState();
         }
         dragState=null;
         render();
       }
+
+
+      function getCloudConfig(){
+        try{
+          const raw=JSON.parse(localStorage.getItem(CLOUD_CONFIG_KEY)||"{}");
+          return {url:(raw.url||"").trim(),key:(raw.key||"").trim()};
+        }catch{
+          return {url:"",key:""};
+        }
+      }
+
+      function setCloudConfig(url,key){
+        localStorage.setItem(CLOUD_CONFIG_KEY,JSON.stringify({url:url.trim(),key:key.trim()}));
+      }
+
+      function cloudConfigured(){
+        const c=getCloudConfig();
+        return !!(c.url && c.key);
+      }
+
+      function updateCloudUi(mode="auto",message=""){
+        const dot=el("cloudDot");
+        const label=el("cloudLabel");
+        const title=el("cloudStatusTitle");
+        const status=el("cloudStatusText");
+        const account=el("cloudAccount");
+        dot.className="cloud-dot";
+
+        if(!navigator.onLine){
+          dot.classList.add("warning");
+          label.textContent="Hors ligne";
+          title.textContent="Hors ligne";
+          status.textContent="Tes changements restent sauvegardés sur cet appareil et seront synchronisés au retour d’Internet.";
+        }else if(mode==="syncing" || cloudSyncing){
+          dot.classList.add("syncing");
+          label.textContent="Sync…";
+          title.textContent="Synchronisation…";
+          status.textContent=message || "Mise à jour de ta timeline dans Supabase.";
+        }else if(cloudUser){
+          dot.classList.add("connected");
+          label.textContent="Cloud";
+          title.textContent="Synchronisation active";
+          status.textContent=message || "Mac et iPhone utilisent la même timeline lorsque tu es connecté avec ce compte.";
+        }else if(cloudConfigured()){
+          dot.classList.add("warning");
+          label.textContent="Cloud";
+          title.textContent="Compte non connecté";
+          status.textContent=message || "Le projet Supabase est configuré. Connecte-toi pour activer la synchronisation.";
+        }else{
+          label.textContent="Cloud";
+          title.textContent="Cloud non configuré";
+          status.textContent=message || "L'application continue de fonctionner et de sauvegarder localement.";
+        }
+
+        account.textContent=cloudUser?.email ? `Connecté : ${cloudUser.email}` : "";
+        el("cloudSignInBtn").style.display=cloudUser ? "none" : "inline-block";
+        el("cloudSignUpBtn").style.display=cloudUser ? "none" : "inline-block";
+        el("cloudSignOutBtn").style.display=cloudUser ? "inline-block" : "none";
+      }
+
+      function cloudError(message){
+        const err=el("cloudError");
+        err.textContent=message || "Une erreur est survenue.";
+        err.style.display="block";
+      }
+
+      function clearCloudError(){
+        el("cloudError").style.display="none";
+        el("cloudError").textContent="";
+      }
+
+      function populateCloudDialog(){
+        const c=getCloudConfig();
+        el("supabaseUrl").value=c.url;
+        el("supabaseKey").value=c.key;
+        clearCloudError();
+        updateCloudUi();
+      }
+
+      async function setupSupabaseClient(){
+        if(authSubscription){
+          try{ authSubscription.unsubscribe(); }catch{}
+          authSubscription=null;
+        }
+        supabaseClient=null;
+        cloudUser=null;
+
+        const {url,key}=getCloudConfig();
+        if(!url || !key){
+          updateCloudUi();
+          return;
+        }
+        if(!window.supabase?.createClient){
+          updateCloudUi("auto","La bibliothèque Supabase n'est pas disponible. L'app reste utilisable localement.");
+          return;
+        }
+
+        try{
+          supabaseClient=window.supabase.createClient(url,key,{
+            auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
+          });
+          const {data,error}=await supabaseClient.auth.getSession();
+          if(error) throw error;
+          cloudUser=data.session?.user || null;
+
+          const authState=supabaseClient.auth.onAuthStateChange((_event,session)=>{
+            cloudUser=session?.user || null;
+            updateCloudUi();
+            if(cloudUser) scheduleCloudSync(100);
+          });
+          authSubscription=authState.data.subscription;
+          updateCloudUi();
+          if(cloudUser) scheduleCloudSync(100);
+        }catch(err){
+          supabaseClient=null;
+          cloudUser=null;
+          updateCloudUi("auto","Impossible de se connecter à Supabase avec cette configuration.");
+        }
+      }
+
+      function scheduleCloudSync(delay=700){
+        if(!supabaseClient || !cloudUser || !navigator.onLine) return;
+        clearTimeout(syncTimer);
+        syncTimer=setTimeout(()=>syncCloud(),delay);
+      }
+
+      function localBlockToRow(b,userId,deleted=false,deletedAt=null){
+        return {
+          user_id:userId,
+          id:String(b.id),
+          name:b.name || "",
+          start_ms:Number(b.start)||0,
+          end_ms:Number(b.end)||0,
+          color:b.color || "#23272d",
+          updated_ms:Number(deletedAt ?? b.updatedAt ?? Date.now()),
+          deleted:!!deleted
+        };
+      }
+
+      function localRuleToRow(r,userId,deleted=false,deletedAt=null){
+        return {
+          user_id:userId,
+          id:String(r.id),
+          name:r.name || "",
+          start_time:r.start || "00:00",
+          end_time:r.end || "08:00",
+          enabled:r.enabled !== false,
+          color:r.color || "#5b6472",
+          updated_ms:Number(deletedAt ?? r.updatedAt ?? Date.now()),
+          deleted:!!deleted
+        };
+      }
+
+      function rowToLocalBlock(r){
+        return {
+          id:r.id,
+          name:r.name,
+          start:Number(r.start_ms),
+          end:Number(r.end_ms),
+          color:r.color || "#23272d",
+          updatedAt:Number(r.updated_ms)||0
+        };
+      }
+
+      function rowToLocalRule(r){
+        return {
+          id:r.id,
+          name:r.name,
+          start:r.start_time,
+          end:r.end_time,
+          enabled:r.enabled !== false,
+          color:r.color || "#5b6472",
+          updatedAt:Number(r.updated_ms)||0
+        };
+      }
+
+      async function syncCollection({table,items,tombstones,kind,toRow,fromRow}){
+        const userId=cloudUser.id;
+        const {data:cloudRows,error:readError}=await supabaseClient
+          .from(table)
+          .select("*")
+          .eq("user_id",userId);
+        if(readError) throw readError;
+
+        const cloudMap=new Map((cloudRows||[]).map(r=>[String(r.id),r]));
+        const localMap=new Map(items.map(i=>[String(i.id),i]));
+        const tombMap=new Map(tombstones.map(t=>[String(t.id),t]));
+        const ids=new Set([...cloudMap.keys(),...localMap.keys(),...tombMap.keys()]);
+        const merged=[];
+        const upserts=[];
+        const resolvedTombstones=new Set();
+
+        for(const id of ids){
+          const localItem=localMap.get(id);
+          const localTomb=tombMap.get(id);
+          const cloud=cloudMap.get(id);
+
+          let localCandidate=null;
+          if(localItem){
+            localCandidate={deleted:false,updatedAt:Number(localItem.updatedAt)||0,item:localItem};
+          }
+          if(localTomb && (!localCandidate || Number(localTomb.updatedAt)>=localCandidate.updatedAt)){
+            localCandidate={deleted:true,updatedAt:Number(localTomb.updatedAt)||0,item:null};
+          }
+          const cloudCandidate=cloud ? {
+            deleted:!!cloud.deleted,
+            updatedAt:Number(cloud.updated_ms)||0,
+            item:cloud
+          } : null;
+
+          let winnerSource=null;
+          let winner=null;
+          if(localCandidate && cloudCandidate){
+            if(localCandidate.updatedAt >= cloudCandidate.updatedAt){
+              winnerSource="local"; winner=localCandidate;
+            }else{
+              winnerSource="cloud"; winner=cloudCandidate;
+            }
+          }else if(localCandidate){
+            winnerSource="local"; winner=localCandidate;
+          }else if(cloudCandidate){
+            winnerSource="cloud"; winner=cloudCandidate;
+          }
+
+          if(!winner) continue;
+
+          if(winnerSource==="local"){
+            if(winner.deleted){
+              if(cloud){
+                const base=kind==="block"
+                  ? {id,name:cloud.name,start:Number(cloud.start_ms)||0,end:Number(cloud.end_ms)||0,color:cloud.color}
+                  : {id,name:cloud.name,start:cloud.start_time,end:cloud.end_time,enabled:cloud.enabled,color:cloud.color};
+                upserts.push(toRow(base,userId,true,winner.updatedAt));
+              }else{
+                resolvedTombstones.add(id);
+              }
+            }else{
+              merged.push(winner.item);
+              if(!cloud || winner.updatedAt > Number(cloud.updated_ms)||0 || cloud.deleted){
+                upserts.push(toRow(winner.item,userId,false));
+              }
+            }
+          }else{
+            resolvedTombstones.add(id);
+            if(!winner.deleted){
+              merged.push(fromRow(cloud));
+            }
+          }
+        }
+
+        if(upserts.length){
+          const {error:writeError}=await supabaseClient.from(table).upsert(upserts);
+          if(writeError) throw writeError;
+          upserts.filter(r=>r.deleted).forEach(r=>resolvedTombstones.add(String(r.id)));
+        }
+
+        return {merged,resolvedTombstones};
+      }
+
+      async function syncCloud(manual=false){
+        if(cloudSyncing || !supabaseClient || !cloudUser || !navigator.onLine) return;
+        cloudSyncing=true;
+        updateCloudUi("syncing");
+        try{
+          const blocksResult=await syncCollection({
+            table:"timeline_blocks",
+            items:state.blocks,
+            tombstones:syncMeta.deletedBlocks,
+            kind:"block",
+            toRow:localBlockToRow,
+            fromRow:rowToLocalBlock
+          });
+          const rulesResult=await syncCollection({
+            table:"timeline_rules",
+            items:state.rules,
+            tombstones:syncMeta.deletedRules,
+            kind:"rule",
+            toRow:localRuleToRow,
+            fromRow:rowToLocalRule
+          });
+
+          suppressCloudSchedule=true;
+          state.blocks=blocksResult.merged;
+          state.rules=rulesResult.merged;
+          syncMeta.deletedBlocks=syncMeta.deletedBlocks.filter(t=>!blocksResult.resolvedTombstones.has(String(t.id)));
+          syncMeta.deletedRules=syncMeta.deletedRules.filter(t=>!rulesResult.resolvedTombstones.has(String(t.id)));
+          saveState(false);
+          saveSyncMeta();
+          suppressCloudSchedule=false;
+          render();
+          updateCloudUi("auto",manual ? "Synchronisation terminée." : "À jour sur cet appareil.");
+          if(manual) showToast("Synchronisation terminée");
+        }catch(err){
+          console.error("16H sync error",err);
+          suppressCloudSchedule=false;
+          updateCloudUi("auto","La synchronisation a échoué. Les données locales sont conservées.");
+          if(manual) cloudError(err?.message || "Erreur de synchronisation Supabase.");
+        }finally{
+          cloudSyncing=false;
+          updateCloudUi();
+        }
+      }
+
+      el("saveCloudConfigBtn").addEventListener("click",async()=>{
+        clearCloudError();
+        const url=el("supabaseUrl").value.trim();
+        const key=el("supabaseKey").value.trim();
+        if(!url || !key) return cloudError("Ajoute le Project URL et la Publishable key.");
+        if(!/^https:\/\//i.test(url)) return cloudError("Le Project URL doit commencer par https://");
+        setCloudConfig(url,key);
+        await setupSupabaseClient();
+        updateCloudUi();
+        showToast("Connexion Supabase enregistrée");
+      });
+
+      el("cloudSignInBtn").addEventListener("click",async()=>{
+        clearCloudError();
+        if(!supabaseClient) return cloudError("Enregistre d'abord la connexion Supabase.");
+        const email=el("cloudEmail").value.trim();
+        const password=el("cloudPassword").value;
+        if(!email || !password) return cloudError("Entre ton email et ton mot de passe.");
+        const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+        if(error) return cloudError(error.message);
+        cloudUser=data.user;
+        updateCloudUi();
+        await syncCloud(true);
+      });
+
+      el("cloudSignUpBtn").addEventListener("click",async()=>{
+        clearCloudError();
+        if(!supabaseClient) return cloudError("Enregistre d'abord la connexion Supabase.");
+        const email=el("cloudEmail").value.trim();
+        const password=el("cloudPassword").value;
+        if(!email || !password) return cloudError("Entre ton email et un mot de passe.");
+        if(password.length<6) return cloudError("Utilise un mot de passe d'au moins 6 caractères.");
+        const {data,error}=await supabaseClient.auth.signUp({email,password});
+        if(error) return cloudError(error.message);
+        cloudUser=data.session?.user || null;
+        updateCloudUi("auto",cloudUser ? "Compte créé et connecté." : "Compte créé. Vérifie ton email si Supabase demande une confirmation.");
+        if(cloudUser) await syncCloud(true);
+      });
+
+      el("cloudSignOutBtn").addEventListener("click",async()=>{
+        clearCloudError();
+        if(supabaseClient) await supabaseClient.auth.signOut();
+        cloudUser=null;
+        updateCloudUi();
+        showToast("Déconnecté du cloud");
+      });
+
+      el("syncNowBtn").addEventListener("click",()=>{
+        clearCloudError();
+        if(!cloudUser) return cloudError("Connecte-toi d'abord à ton compte 16H.");
+        syncCloud(true);
+      });
+
+      window.addEventListener("online",()=>{
+        updateCloudUi();
+        scheduleCloudSync(150);
+      });
+      window.addEventListener("offline",()=>updateCloudUi());
+      document.addEventListener("visibilitychange",()=>{
+        if(document.visibilityState==="visible") scheduleCloudSync(150);
+      });
+      window.addEventListener("focus",()=>scheduleCloudSync(150));
 
       function buildColorPresets(type){
         const container=el(type==="block" ? "blockColorPresets" : "ruleColorPresets");
@@ -1257,11 +1796,15 @@
 
       buildColorPresets("block");
       buildColorPresets("rule");
+      updateCloudUi();
+      setupSupabaseClient();
+      setInterval(()=>scheduleCloudSync(0),30000);
 
       window.addEventListener("keydown",(e)=>{
         if(e.key==="Escape"){
           if(blockDialog.open) blockDialog.close();
           if(ruleDialog.open) ruleDialog.close();
+          if(cloudDialog.open) cloudDialog.close();
         }
       });
 

@@ -1,7 +1,7 @@
 {
   "name": "16H — Timeline",
   "short_name": "16H",
-  "description": "Une carte simple des 16 prochaines heures.",
+  "description": "Une carte simple des 16 prochaines heures, synchronisée entre tes appareils.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
