@@ -65,3 +65,18 @@ V3 — PERSISTANCE DE SESSION IPHONE
 - Migration automatique de la session V2 si elle existe.
 - Restauration et refresh au lancement / retour au premier plan.
 - Déconnexion limitée à l'appareil courant.
+
+
+V4 — INTERFACE CLOUD IPHONE
+- Quand la session est active, les champs Project URL, clé, email et mot de passe sont masqués.
+- Le mot de passe est vidé immédiatement après connexion/création du compte.
+- L'écran connecté n'affiche plus que l'état, le compte, Synchroniser, Se déconnecter et Fermer.
+
+
+V5 — BLOCS ENRICHIS + TYPES
+- Bloc : titre, adresse, description, début, fin, couleur.
+- Double-clic : fiche de consultation, puis bouton Modifier.
+- Types pré-enregistrés et création de nouveaux types.
+- Types synchronisés entre Mac et iPhone avec Supabase.
+- Timeline recentrée toutes les 15 minutes.
+- IMPORTANT : exécuter supabase-migration-v5.sql dans Supabase SQL Editor AVANT de publier cette version.

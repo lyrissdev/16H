@@ -518,6 +518,74 @@
       box-shadow:0 0 0 2px var(--text);
     }
 
+
+    .field textarea,
+    .field select{
+      width:100%;
+      padding:10px 11px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      outline:none;
+      background:white;
+      color:var(--text);
+    }
+    .field textarea{
+      min-height:92px;
+      resize:vertical;
+    }
+    .field textarea:focus,
+    .field select:focus{ border-color:var(--accent); }
+
+    .block-view{
+      display:grid;
+      gap:14px;
+    }
+    .block-view-card{
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:#f8f9fb;
+      padding:15px;
+    }
+    .block-view-title{
+      font-size:24px;
+      font-weight:800;
+      letter-spacing:-.025em;
+      margin-bottom:12px;
+    }
+    .block-view-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+    .block-view-item{
+      min-width:0;
+    }
+    .block-view-item.full{
+      grid-column:1 / -1;
+    }
+    .block-view-label{
+      color:var(--muted);
+      font-size:12px;
+      font-weight:700;
+      margin-bottom:4px;
+    }
+    .block-view-value{
+      white-space:pre-wrap;
+      overflow-wrap:anywhere;
+      font-size:15px;
+    }
+    .block-color-chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
+    .block-color-dot{
+      width:16px;
+      height:16px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,.12);
+    }
+
     .modal-actions{
       display:flex;
       justify-content:flex-end;
@@ -624,38 +692,121 @@
     </div>
   </div>
 
+
   <dialog id="blockDialog">
-    <form class="modal" id="blockForm" method="dialog">
+    <div class="modal">
       <h3 id="blockDialogTitle">Ajouter un bloc</h3>
-      <div class="form-grid">
-        <div class="field full">
-          <label>Nom du bloc</label>
-          <input id="blockName" required maxlength="80" placeholder="Ex. Travail, sport, montage..." />
-        </div>
-        <div class="field">
-          <label>Début</label>
-          <input id="blockStart" type="datetime-local" step="900" required />
-        </div>
-        <div class="field">
-          <label>Fin</label>
-          <input id="blockEnd" type="datetime-local" step="900" required />
-        </div>
-        <div class="field full">
-          <label>Couleur</label>
-          <div class="color-row">
-            <input id="blockColor" type="color" value="#23272d" />
-            <div class="color-presets" id="blockColorPresets"></div>
+
+      <div id="blockViewMode" class="block-view" style="display:none">
+        <div class="block-view-card">
+          <div class="block-view-title" id="blockViewTitle"></div>
+          <div class="block-view-grid">
+            <div class="block-view-item full">
+              <div class="block-view-label">Adresse</div>
+              <div class="block-view-value" id="blockViewAddress"></div>
+            </div>
+            <div class="block-view-item full">
+              <div class="block-view-label">Description</div>
+              <div class="block-view-value" id="blockViewDescription"></div>
+            </div>
+            <div class="block-view-item">
+              <div class="block-view-label">Début</div>
+              <div class="block-view-value" id="blockViewStart"></div>
+            </div>
+            <div class="block-view-item">
+              <div class="block-view-label">Fin</div>
+              <div class="block-view-value" id="blockViewEnd"></div>
+            </div>
+            <div class="block-view-item full">
+              <div class="block-view-label">Couleur</div>
+              <div class="block-view-value block-color-chip">
+                <span class="block-color-dot" id="blockViewColorDot"></span>
+                <span id="blockViewColor"></span>
+              </div>
+            </div>
           </div>
         </div>
+        <div class="modal-actions">
+          <button class="btn" type="button" id="deleteBlockBtn" style="margin-right:auto;color:#c83f49">Supprimer</button>
+          <button class="btn" type="button" data-close="blockDialog">Fermer</button>
+          <button class="btn primary" type="button" id="editBlockBtn">Modifier</button>
+        </div>
       </div>
-      <div class="error" id="blockError"></div>
+
+      <form id="blockForm">
+        <div id="blockEditMode">
+          <div class="form-grid">
+            <div class="field full" id="blockTypeField">
+              <label>Type de bloc</label>
+              <select id="blockTypeSelect"></select>
+            </div>
+            <div class="field full">
+              <label>Titre</label>
+              <input id="blockName" required maxlength="80" placeholder="Nom du bloc" />
+            </div>
+            <div class="field full">
+              <label>Adresse</label>
+              <input id="blockAddress" maxlength="220" placeholder="Aucune" />
+            </div>
+            <div class="field full">
+              <label>Description</label>
+              <textarea id="blockDescription" maxlength="1000" placeholder="Aucune"></textarea>
+            </div>
+            <div class="field">
+              <label>Début</label>
+              <input id="blockStart" type="datetime-local" step="900" required />
+            </div>
+            <div class="field">
+              <label>Fin</label>
+              <input id="blockEnd" type="datetime-local" step="900" required />
+            </div>
+            <div class="field full">
+              <label>Couleur</label>
+              <div class="color-row">
+                <input id="blockColor" type="color" value="#23272d" />
+                <div class="color-presets" id="blockColorPresets"></div>
+              </div>
+            </div>
+          </div>
+          <div class="error" id="blockError"></div>
+          <div class="modal-actions">
+            <button class="btn" type="button" id="cancelBlockEditBtn">Annuler</button>
+            <button class="btn primary" type="submit">Enregistrer</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <dialog id="typeDialog">
+    <form class="modal" id="typeForm">
+      <h3>Nouveau type de bloc</h3>
+      <div class="form-grid">
+        <div class="field full">
+          <label>Titre</label>
+          <input id="typeName" required maxlength="80" placeholder="Ex. SPORT" />
+        </div>
+        <div class="field full">
+          <label>Adresse par défaut</label>
+          <input id="typeAddress" maxlength="220" value="Aucune" />
+        </div>
+        <div class="field full">
+          <label>Description par défaut</label>
+          <textarea id="typeDescription" maxlength="1000">Aucune</textarea>
+        </div>
+        <div class="field full">
+          <label>Durée prévue</label>
+          <select id="typeDuration"></select>
+        </div>
+      </div>
+      <div class="error" id="typeError"></div>
       <div class="modal-actions">
-        <button class="btn" type="button" id="deleteBlockBtn" style="margin-right:auto;display:none;color:#c83f49">Supprimer</button>
-        <button class="btn" type="button" data-close="blockDialog">Annuler</button>
-        <button class="btn primary" type="submit">Enregistrer</button>
+        <button class="btn" type="button" data-close="typeDialog">Annuler</button>
+        <button class="btn primary" type="submit">Créer le type</button>
       </div>
     </form>
   </dialog>
+
 
   <dialog id="ruleDialog">
     <form class="modal" id="ruleForm" method="dialog">
@@ -699,7 +850,7 @@
         <div class="cloud-account" id="cloudAccount"></div>
       </div>
 
-      <div class="cloud-section" style="padding-top:0;margin-top:0;border-top:0">
+      <div class="cloud-section" id="cloudProjectSection" style="padding-top:0;margin-top:0;border-top:0">
         <div class="cloud-section-title">1. Projet Supabase</div>
         <div class="form-grid">
           <div class="field full">
@@ -717,7 +868,7 @@
         </div>
       </div>
 
-      <div class="cloud-section">
+      <div class="cloud-section" id="cloudAccountSection">
         <div class="cloud-section-title">2. Ton compte 16H</div>
         <div class="form-grid">
           <div class="field full">
@@ -738,8 +889,9 @@
 
       <div class="error" id="cloudError"></div>
       <div class="modal-actions">
+        <button class="btn" type="button" id="cloudSignOutBottomBtn" style="display:none;margin-right:auto">Se déconnecter</button>
         <button class="btn" type="button" id="syncNowBtn">Synchroniser maintenant</button>
-        <button class="btn" type="button" data-close="cloudDialog">Fermer</button>
+        <button class="btn primary" type="button" data-close="cloudDialog">Fermer</button>
       </div>
     </div>
   </dialog>
@@ -758,6 +910,7 @@
       const SYNC_META_KEY = "timeline16h_sync_meta_v1";
       const SUPABASE_AUTH_STORAGE_KEY = "timeline16h_supabase_auth_v1";
       const SLOT_PX = 38;
+      const DEFAULT_BLOCK_TYPES = [{"id": "preset-deep-work", "name": "DEEP WORK SESSION", "address": "Aucune", "description": "Définir le projet et les taches", "durationMinutes": 90}, {"id": "preset-cinema", "name": "CINÉMA", "address": "Aucune", "description": "Aucune", "durationMinutes": 120}, {"id": "preset-trajet", "name": "TRAJET", "address": "Aucune", "description": "Définir le moyen de transport", "durationMinutes": 15}, {"id": "preset-repas-prep", "name": "REPAS PREP", "address": "Aucune", "description": "Aucune", "durationMinutes": 15}, {"id": "preset-pause-repas", "name": "PAUSE REPAS", "address": "Aucune", "description": "Aucune", "durationMinutes": 30}, {"id": "preset-marche-digestive", "name": "MARCHE DIGESTIVE", "address": "Aucune", "description": "Aucune", "durationMinutes": 15}, {"id": "preset-lecture", "name": "LECTURE", "address": "Aucune", "description": "Aucune", "durationMinutes": 15}];
       const COLOR_PRESETS = [
         "#23272d", "#5b6472", "#1f7aec", "#199da2",
         "#7c5cff", "#c05b8e", "#d97706", "#3f8f5f",
@@ -772,6 +925,8 @@
       const windowLabel = el("windowLabel");
       const blockDialog = el("blockDialog");
       const blockForm = el("blockForm");
+      const typeDialog = el("typeDialog");
+      const typeForm = el("typeForm");
       const ruleDialog = el("ruleDialog");
       const ruleForm = el("ruleForm");
       const cloudDialog = el("cloudDialog");
@@ -789,6 +944,7 @@
 
       let state = loadState();
       let syncMeta = loadSyncMeta();
+      if(!Array.isArray(state.blockTypes)) state.blockTypes=DEFAULT_BLOCK_TYPES.map(t=>({...t,updatedAt:1}));
       if (!state.rules.length) {
         state.rules.push({
           id: "default-sleep",
@@ -807,34 +963,45 @@
       }
 
       function getAnchor(now = new Date()){
-        const d = new Date(now);
-        d.setSeconds(0,0);
-        const m = d.getMinutes();
-        if (m === 0 || m === 30) {
-          if (now.getSeconds() === 0 && now.getMilliseconds() === 0) return d;
-        }
-        if (m < 30) d.setMinutes(30,0,0);
-        else {
-          d.setHours(d.getHours()+1,0,0,0);
-        }
-        return d;
+        return new Date(Math.ceil(now.getTime() / SLOT_MS) * SLOT_MS);
       }
 
       function loadState(){
         try{
           const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
           const now = Date.now();
-          const blocks = Array.isArray(raw.blocks) ? raw.blocks.map(b => ({...b, updatedAt:Number(b.updatedAt)||now})) : [];
+          const blocks = Array.isArray(raw.blocks) ? raw.blocks.map(b => ({
+            ...b,
+            address:b.address || "Aucune",
+            description:b.description || "Aucune",
+            typeId:b.typeId || null,
+            updatedAt:Number(b.updatedAt)||now
+          })) : [];
           const rules = Array.isArray(raw.rules) ? raw.rules.map(r => ({...r, updatedAt:Number(r.updatedAt)||now})) : [];
+          const savedTypes = Array.isArray(raw.blockTypes) ? raw.blockTypes.map(t => ({
+            ...t,
+            address:t.address || "Aucune",
+            description:t.description || "Aucune",
+            durationMinutes:Math.max(15,Number(t.durationMinutes)||15),
+            updatedAt:Number(t.updatedAt)||now
+          })) : [];
 
-          // Migrate the untouched default sleep rule to a deterministic ID so
-          // a new device does not create a duplicate during the first sync.
           if(rules.length === 1 && rules[0].name === "Sommeil" && rules[0].start === "00:00" && rules[0].end === "08:00"){
             rules[0].id = "default-sleep";
           }
-          return {blocks, rules};
+
+          const typeMap=new Map(savedTypes.map(t=>[String(t.id),t]));
+          DEFAULT_BLOCK_TYPES.forEach(t=>{
+            if(!typeMap.has(t.id)) typeMap.set(t.id,{...t,updatedAt:1});
+          });
+
+          return {blocks, rules, blockTypes:[...typeMap.values()]};
         }catch{
-          return {blocks:[], rules:[]};
+          return {
+            blocks:[],
+            rules:[],
+            blockTypes:DEFAULT_BLOCK_TYPES.map(t=>({...t,updatedAt:1}))
+          };
         }
       }
 
@@ -843,10 +1010,11 @@
           const raw = JSON.parse(localStorage.getItem(SYNC_META_KEY) || "{}");
           return {
             deletedBlocks:Array.isArray(raw.deletedBlocks) ? raw.deletedBlocks : [],
-            deletedRules:Array.isArray(raw.deletedRules) ? raw.deletedRules : []
+            deletedRules:Array.isArray(raw.deletedRules) ? raw.deletedRules : [],
+            deletedTypes:Array.isArray(raw.deletedTypes) ? raw.deletedTypes : []
           };
         }catch{
-          return {deletedBlocks:[],deletedRules:[]};
+          return {deletedBlocks:[],deletedRules:[],deletedTypes:[]};
         }
       }
 
@@ -860,7 +1028,7 @@
       }
 
       function markDeleted(kind,id,updatedAt=Date.now()){
-        const key = kind === "block" ? "deletedBlocks" : "deletedRules";
+        const key = kind === "block" ? "deletedBlocks" : kind === "rule" ? "deletedRules" : "deletedTypes";
         syncMeta[key] = syncMeta[key].filter(x => x.id !== id);
         syncMeta[key].push({id,updatedAt});
         saveSyncMeta();
@@ -1127,33 +1295,109 @@
         el("freeTime").textContent=durationText(Math.max(0,WINDOW_MS-occupied));
       }
 
+
+      function fillDurationOptions(){
+        const select=el("typeDuration");
+        if(select.options.length) return;
+        for(let minutes=15; minutes<=16*60; minutes+=15){
+          const opt=document.createElement("option");
+          opt.value=String(minutes);
+          opt.textContent=durationText(minutes*60000);
+          select.appendChild(opt);
+        }
+      }
+
+      function refreshBlockTypeSelect(selectedId=null){
+        const select=el("blockTypeSelect");
+        select.innerHTML="";
+        const types=[...state.blockTypes].sort((a,b)=>a.name.localeCompare(b.name,"fr"));
+        types.forEach(t=>{
+          const opt=document.createElement("option");
+          opt.value=String(t.id);
+          opt.textContent=t.name;
+          select.appendChild(opt);
+        });
+        const custom=document.createElement("option");
+        custom.value="__new__";
+        custom.textContent="＋ Créer un nouveau type…";
+        select.appendChild(custom);
+        if(selectedId && types.some(t=>String(t.id)===String(selectedId))) select.value=String(selectedId);
+        else if(types.length) select.value=String(types[0].id);
+      }
+
+      function applyTypeToBlock(typeId, preserveStart=true){
+        const t=state.blockTypes.find(x=>String(x.id)===String(typeId));
+        if(!t) return;
+        el("blockName").value=t.name || "";
+        el("blockAddress").value=t.address || "Aucune";
+        el("blockDescription").value=t.description || "Aucune";
+        const start=new Date(el("blockStart").value).getTime();
+        if(Number.isFinite(start)){
+          el("blockEnd").value=toLocalInput(start + Math.max(15,Number(t.durationMinutes)||15)*60000);
+        }
+      }
+
+      function setBlockDialogMode(mode){
+        const isView=mode==="view";
+        el("blockViewMode").style.display=isView ? "grid" : "none";
+        el("blockForm").style.display=isView ? "none" : "block";
+      }
+
+      function populateBlockView(b){
+        el("blockViewTitle").textContent=b.name || "";
+        el("blockViewAddress").textContent=b.address || "Aucune";
+        el("blockViewDescription").textContent=b.description || "Aucune";
+        el("blockViewStart").textContent=fmtDateTime(b.start);
+        el("blockViewEnd").textContent=fmtDateTime(b.end);
+        const color=b.color || "#23272d";
+        el("blockViewColor").textContent=color;
+        el("blockViewColorDot").style.background=color;
+      }
+
+      function fillBlockEditFields(b){
+        refreshBlockTypeSelect(b?.typeId || null);
+        if(b?.typeId && state.blockTypes.some(t=>String(t.id)===String(b.typeId))){
+          el("blockTypeSelect").value=String(b.typeId);
+        }
+        el("blockName").value=b?.name || "";
+        el("blockAddress").value=b?.address || "Aucune";
+        el("blockDescription").value=b?.description || "Aucune";
+        el("blockStart").value=toLocalInput(b.start);
+        el("blockEnd").value=toLocalInput(b.end);
+        el("blockColor").value=b?.color || "#23272d";
+        syncPresetState("block");
+      }
+
       function openNewBlock(startTs=null){
         selectedBlockId=null;
         el("blockDialogTitle").textContent="Ajouter un bloc";
-        el("deleteBlockBtn").style.display="none";
         el("blockError").style.display="none";
         const s = startTs ?? ceilToQuarter(anchor.getTime());
-        el("blockName").value="";
-        el("blockStart").value=toLocalInput(s);
-        el("blockEnd").value=toLocalInput(s + 30*60*1000);
-        el("blockColor").value="#23272d";
-        syncPresetState("block");
+        refreshBlockTypeSelect();
+        const firstType=state.blockTypes.find(t=>String(t.id)===String(el("blockTypeSelect").value)) || state.blockTypes[0];
+        const duration=Math.max(15,Number(firstType?.durationMinutes)||30);
+        fillBlockEditFields({
+          typeId:firstType?.id || null,
+          name:firstType?.name || "",
+          address:firstType?.address || "Aucune",
+          description:firstType?.description || "Aucune",
+          start:s,
+          end:s+duration*60000,
+          color:"#23272d"
+        });
+        setBlockDialogMode("edit");
+        el("cancelBlockEditBtn").textContent="Annuler";
         blockDialog.showModal();
-        setTimeout(()=>el("blockName").focus(),50);
       }
 
       function openEditBlock(id){
         const b=state.blocks.find(x=>x.id===id);
         if(!b) return;
         selectedBlockId=id;
-        el("blockDialogTitle").textContent="Modifier le bloc";
-        el("deleteBlockBtn").style.display="inline-block";
+        el("blockDialogTitle").textContent="Bloc de temps";
         el("blockError").style.display="none";
-        el("blockName").value=b.name;
-        el("blockStart").value=toLocalInput(b.start);
-        el("blockEnd").value=toLocalInput(b.end);
-        el("blockColor").value=b.color || "#23272d";
-        syncPresetState("block");
+        populateBlockView(b);
+        setBlockDialogMode("view");
         blockDialog.showModal();
       }
 
@@ -1186,6 +1430,11 @@
       blockForm.addEventListener("submit",(e)=>{
         e.preventDefault();
         const name=el("blockName").value.trim();
+        const address=el("blockAddress").value.trim() || "Aucune";
+        const description=el("blockDescription").value.trim() || "Aucune";
+        const typeId=el("blockTypeSelect").value && el("blockTypeSelect").value!=="__new__"
+          ? el("blockTypeSelect").value
+          : null;
         const color=el("blockColor").value || "#23272d";
         let start=new Date(el("blockStart").value).getTime();
         let end=new Date(el("blockEnd").value).getTime();
@@ -1195,7 +1444,7 @@
         end=roundToQuarter(end);
 
         if(!name || !Number.isFinite(start) || !Number.isFinite(end)){
-          return showFormError(err,"Remplis tous les champs.");
+          return showFormError(err,"Remplis au minimum le titre, le début et la fin.");
         }
         if(end-start < SLOT_MS){
           return showFormError(err,"Un bloc doit durer au minimum 15 minutes.");
@@ -1210,9 +1459,9 @@
         const updatedAt=Date.now();
         if(selectedBlockId){
           const b=state.blocks.find(x=>x.id===selectedBlockId);
-          Object.assign(b,{name,start,end,color,updatedAt});
+          Object.assign(b,{name,address,description,typeId,start,end,color,updatedAt});
         }else{
-          state.blocks.push({id:uid(),name,start,end,color,updatedAt});
+          state.blocks.push({id:uid(),name,address,description,typeId,start,end,color,updatedAt});
         }
         saveState();
         blockDialog.close();
@@ -1281,6 +1530,71 @@
         node.textContent=msg;
         node.style.display="block";
       }
+
+
+      el("editBlockBtn").addEventListener("click",()=>{
+        if(!selectedBlockId) return;
+        const b=state.blocks.find(x=>x.id===selectedBlockId);
+        if(!b) return;
+        fillBlockEditFields(b);
+        el("blockDialogTitle").textContent="Modifier le bloc";
+        el("cancelBlockEditBtn").textContent="Retour";
+        setBlockDialogMode("edit");
+      });
+
+      el("cancelBlockEditBtn").addEventListener("click",()=>{
+        if(selectedBlockId){
+          const b=state.blocks.find(x=>x.id===selectedBlockId);
+          if(b){
+            populateBlockView(b);
+            el("blockDialogTitle").textContent="Bloc de temps";
+            setBlockDialogMode("view");
+            return;
+          }
+        }
+        blockDialog.close();
+      });
+
+      el("blockTypeSelect").addEventListener("change",()=>{
+        const value=el("blockTypeSelect").value;
+        if(value==="__new__"){
+          fillDurationOptions();
+          el("typeName").value="";
+          el("typeAddress").value="Aucune";
+          el("typeDescription").value="Aucune";
+          el("typeDuration").value="15";
+          el("typeError").style.display="none";
+          typeDialog.showModal();
+          return;
+        }
+        applyTypeToBlock(value);
+      });
+
+      typeForm.addEventListener("submit",(e)=>{
+        e.preventDefault();
+        const name=el("typeName").value.trim();
+        const address=el("typeAddress").value.trim() || "Aucune";
+        const description=el("typeDescription").value.trim() || "Aucune";
+        const durationMinutes=Math.max(15,Number(el("typeDuration").value)||15);
+        if(!name){
+          return showFormError(el("typeError"),"Donne un titre à ce type.");
+        }
+        const t={
+          id:uid(),
+          name,
+          address,
+          description,
+          durationMinutes,
+          updatedAt:Date.now()
+        };
+        state.blockTypes.push(t);
+        saveState();
+        refreshBlockTypeSelect(t.id);
+        el("blockTypeSelect").value=t.id;
+        applyTypeToBlock(t.id);
+        typeDialog.close();
+        showToast("Type enregistré");
+      });
 
       el("deleteBlockBtn").addEventListener("click",()=>{
         if(!selectedBlockId) return;
@@ -1455,9 +1769,21 @@
         }
 
         account.textContent=cloudUser?.email ? `Connecté : ${cloudUser.email}` : "";
-        el("cloudSignInBtn").style.display=cloudUser ? "none" : "inline-block";
-        el("cloudSignUpBtn").style.display=cloudUser ? "none" : "inline-block";
-        el("cloudSignOutBtn").style.display=cloudUser ? "inline-block" : "none";
+
+        const connected=!!cloudUser;
+        const projectSection=el("cloudProjectSection");
+        const accountSection=el("cloudAccountSection");
+
+        if(projectSection) projectSection.style.display=connected ? "none" : "block";
+        if(accountSection) accountSection.style.display=connected ? "none" : "block";
+
+        el("cloudSignInBtn").style.display=connected ? "none" : "inline-block";
+        el("cloudSignUpBtn").style.display=connected ? "none" : "inline-block";
+        el("cloudSignOutBtn").style.display="none";
+        el("cloudSignOutBottomBtn").style.display=connected ? "inline-block" : "none";
+        el("syncNowBtn").style.display=connected ? "inline-block" : "none";
+
+        if(connected) el("cloudPassword").value="";
       }
 
       function cloudError(message){
@@ -1598,6 +1924,9 @@
           start_ms:Number(b.start)||0,
           end_ms:Number(b.end)||0,
           color:b.color || "#23272d",
+          address:b.address || "Aucune",
+          description:b.description || "Aucune",
+          type_id:b.typeId || null,
           updated_ms:Number(deletedAt ?? b.updatedAt ?? Date.now()),
           deleted:!!deleted
         };
@@ -1617,6 +1946,31 @@
         };
       }
 
+
+      function localTypeToRow(t,userId,deleted=false,deletedAt=null){
+        return {
+          user_id:userId,
+          id:String(t.id),
+          name:t.name || "",
+          address:t.address || "Aucune",
+          description:t.description || "Aucune",
+          duration_minutes:Math.max(15,Number(t.durationMinutes)||15),
+          updated_ms:Number(deletedAt ?? t.updatedAt ?? Date.now()),
+          deleted:!!deleted
+        };
+      }
+
+      function rowToLocalType(r){
+        return {
+          id:r.id,
+          name:r.name,
+          address:r.address || "Aucune",
+          description:r.description || "Aucune",
+          durationMinutes:Math.max(15,Number(r.duration_minutes)||15),
+          updatedAt:Number(r.updated_ms)||0
+        };
+      }
+
       function rowToLocalBlock(r){
         return {
           id:r.id,
@@ -1624,6 +1978,9 @@
           start:Number(r.start_ms),
           end:Number(r.end_ms),
           color:r.color || "#23272d",
+          address:r.address || "Aucune",
+          description:r.description || "Aucune",
+          typeId:r.type_id || null,
           updatedAt:Number(r.updated_ms)||0
         };
       }
@@ -1694,8 +2051,10 @@
             if(winner.deleted){
               if(cloud){
                 const base=kind==="block"
-                  ? {id,name:cloud.name,start:Number(cloud.start_ms)||0,end:Number(cloud.end_ms)||0,color:cloud.color}
-                  : {id,name:cloud.name,start:cloud.start_time,end:cloud.end_time,enabled:cloud.enabled,color:cloud.color};
+                  ? {id,name:cloud.name,start:Number(cloud.start_ms)||0,end:Number(cloud.end_ms)||0,color:cloud.color,address:cloud.address,description:cloud.description,typeId:cloud.type_id}
+                  : kind==="rule"
+                    ? {id,name:cloud.name,start:cloud.start_time,end:cloud.end_time,enabled:cloud.enabled,color:cloud.color}
+                    : {id,name:cloud.name,address:cloud.address,description:cloud.description,durationMinutes:Number(cloud.duration_minutes)||15};
                 upserts.push(toRow(base,userId,true,winner.updatedAt));
               }else{
                 resolvedTombstones.add(id);
@@ -1744,12 +2103,27 @@
             toRow:localRuleToRow,
             fromRow:rowToLocalRule
           });
+          const typesResult=await syncCollection({
+            table:"timeline_block_types",
+            items:state.blockTypes,
+            tombstones:syncMeta.deletedTypes,
+            kind:"type",
+            toRow:localTypeToRow,
+            fromRow:rowToLocalType
+          });
 
           suppressCloudSchedule=true;
           state.blocks=blocksResult.merged;
           state.rules=rulesResult.merged;
+          state.blockTypes=typesResult.merged;
+          DEFAULT_BLOCK_TYPES.forEach(t=>{
+            if(!state.blockTypes.some(x=>String(x.id)===String(t.id))){
+              state.blockTypes.push({...t,updatedAt:1});
+            }
+          });
           syncMeta.deletedBlocks=syncMeta.deletedBlocks.filter(t=>!blocksResult.resolvedTombstones.has(String(t.id)));
           syncMeta.deletedRules=syncMeta.deletedRules.filter(t=>!rulesResult.resolvedTombstones.has(String(t.id)));
+          syncMeta.deletedTypes=syncMeta.deletedTypes.filter(t=>!typesResult.resolvedTombstones.has(String(t.id)));
           saveState(false);
           saveSyncMeta();
           suppressCloudSchedule=false;
@@ -1788,6 +2162,7 @@
         const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
         if(error) return cloudError(error.message);
         cloudUser=data.user;
+        el("cloudPassword").value="";
         updateCloudUi();
         await syncCloud(true);
       });
@@ -1802,17 +2177,22 @@
         const {data,error}=await supabaseClient.auth.signUp({email,password});
         if(error) return cloudError(error.message);
         cloudUser=data.session?.user || null;
+        el("cloudPassword").value="";
         updateCloudUi("auto",cloudUser ? "Compte créé et connecté." : "Compte créé. Vérifie ton email si Supabase demande une confirmation.");
         if(cloudUser) await syncCloud(true);
       });
 
-      el("cloudSignOutBtn").addEventListener("click",async()=>{
+      async function signOutCloud(){
         clearCloudError();
         if(supabaseClient) await supabaseClient.auth.signOut({scope:"local"});
         cloudUser=null;
+        el("cloudPassword").value="";
         updateCloudUi();
         showToast("Déconnecté du cloud");
-      });
+      }
+
+      el("cloudSignOutBtn").addEventListener("click",signOutCloud);
+      el("cloudSignOutBottomBtn").addEventListener("click",signOutCloud);
 
       el("syncNowBtn").addEventListener("click",()=>{
         clearCloudError();
@@ -1897,7 +2277,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=3").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=5").catch(() => {});
       });
     }
   </script>
