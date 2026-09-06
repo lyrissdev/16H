@@ -296,6 +296,14 @@
       overflow:hidden;
       white-space:nowrap;
       text-overflow:ellipsis;
+      pointer-events:auto;
+      cursor:pointer;
+      text-decoration:none;
+    }
+
+    .block-title:hover{
+      text-decoration:underline;
+      text-underline-offset:2px;
     }
 
     .block-time{
@@ -660,7 +668,7 @@
     <section class="panel">
       <div class="timeline-toolbar">
         <div class="window-label" id="windowLabel"></div>
-        <div class="hint">Double-clique sur la règle pour créer un bloc · clic droit sur un bloc pour l’ouvrir · déplacement et redimensionnement par pas de 15 min</div>
+        <div class="hint">Double-clique sur la règle pour créer un bloc · clique sur le titre d’un bloc pour l’ouvrir · déplacement et redimensionnement par pas de 15 min</div>
       </div>
       <div class="timeline-scroll" id="timelineScroll">
         <div class="timeline" id="timeline">
@@ -936,8 +944,6 @@
       let editingRuleId = null;
       let dragState = null;
       let lastBlockTap = {id:null, time:0};
-      let longPressTimer = null;
-      let longPressTriggered = false;
       let supabaseClient = null;
       let cloudUser = null;
       let authSubscription = null;
@@ -1204,8 +1210,21 @@
           const content = document.createElement("div");
           content.className = "block-content";
           content.innerHTML = `<div class="block-title"></div><div class="block-time"></div>`;
-          content.querySelector(".block-title").textContent = item.name;
+          const titleEl=content.querySelector(".block-title");
+          titleEl.textContent = item.name;
           content.querySelector(".block-time").textContent = `${fmtTime(item.start)}–${fmtTime(item.end)} · ${durationText(item.end-item.start)}`;
+
+          if(!item.recurring){
+            titleEl.addEventListener("pointerdown",(e)=>{
+              e.stopPropagation();
+            });
+            titleEl.addEventListener("click",(e)=>{
+              e.preventDefault();
+              e.stopPropagation();
+              openEditBlock(item.id);
+            });
+          }
+
           div.appendChild(content);
 
           if (!item.recurring){
@@ -1219,43 +1238,6 @@
             div.appendChild(right);
 
             div.addEventListener("pointerdown", onBlockPointerDown);
-
-            // Mac / desktop: right-click opens the block details.
-            div.addEventListener("contextmenu",(e)=>{
-              e.preventDefault();
-              e.stopPropagation();
-              openEditBlock(item.id);
-            });
-
-            // iPhone / touch: long press opens the same block details.
-            div.addEventListener("pointerdown",(e)=>{
-              if(e.pointerType!=="touch") return;
-              longPressTriggered=false;
-              clearTimeout(longPressTimer);
-              longPressTimer=setTimeout(()=>{
-                longPressTriggered=true;
-                openEditBlock(item.id);
-              },550);
-            });
-
-            div.addEventListener("pointermove",(e)=>{
-              if(e.pointerType==="touch" && longPressTimer){
-                clearTimeout(longPressTimer);
-                longPressTimer=null;
-              }
-            });
-
-            div.addEventListener("pointerup",(e)=>{
-              if(e.pointerType==="touch" && longPressTimer){
-                clearTimeout(longPressTimer);
-                longPressTimer=null;
-              }
-            });
-
-            div.addEventListener("pointercancel",()=>{
-              clearTimeout(longPressTimer);
-              longPressTimer=null;
-            });
           } else {
             div.title = "Règle quotidienne — modifiable dans la liste en dessous";
           }
@@ -1736,12 +1718,6 @@
         const didMove =
           ds.previewStart !== ds.originalStart ||
           ds.previewEnd !== ds.originalEnd;
-
-        if(longPressTriggered){
-          longPressTriggered=false;
-          dragState=null;
-          return;
-        }
 
         // IMPORTANT:
         // A stationary click must NOT rerender the timeline.
@@ -2347,7 +2323,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=5.2").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=5.3").catch(() => {});
       });
     }
   </script>
