@@ -935,6 +935,7 @@
       let selectedBlockId = null;
       let editingRuleId = null;
       let dragState = null;
+      let lastBlockTap = {id:null, time:0};
       let supabaseClient = null;
       let cloudUser = null;
       let authSubscription = null;
@@ -1216,10 +1217,6 @@
             div.appendChild(right);
 
             div.addEventListener("pointerdown", onBlockPointerDown);
-            div.addEventListener("dblclick", (e)=>{
-              e.stopPropagation();
-              openEditBlock(item.id);
-            });
           } else {
             div.title = "Règle quotidienne — modifiable dans la liste en dessous";
           }
@@ -1398,7 +1395,7 @@
         el("blockError").style.display="none";
         populateBlockView(b);
         setBlockDialogMode("view");
-        blockDialog.showModal();
+        if(!blockDialog.open) blockDialog.showModal();
       }
 
       function openNewRule(){
@@ -1696,6 +1693,34 @@
         if(!dragState) return;
         const ds=dragState;
         ds.el.removeEventListener("pointermove",onBlockPointerMove);
+
+        const didMove =
+          ds.previewStart !== ds.originalStart ||
+          ds.previewEnd !== ds.originalEnd;
+
+        // IMPORTANT:
+        // A stationary click must NOT rerender the timeline.
+        // Otherwise the DOM node disappears before the browser can
+        // complete a double-click. We also detect the second tap ourselves,
+        // which makes this work on both Mac and iPhone.
+        if(!didMove){
+          const now=Date.now();
+          const isDoubleTap =
+            lastBlockTap.id === ds.id &&
+            (now - lastBlockTap.time) <= 450;
+
+          dragState=null;
+
+          if(isDoubleTap){
+            lastBlockTap={id:null,time:0};
+            openEditBlock(ds.id);
+          }else{
+            lastBlockTap={id:ds.id,time:now};
+          }
+          return;
+        }
+
+        lastBlockTap={id:null,time:0};
 
         if(hasConflict(ds.previewStart,ds.previewEnd,ds.id)){
           showToast("Impossible : chevauchement");
@@ -2277,7 +2302,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=5").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=5.1").catch(() => {});
       });
     }
   </script>
