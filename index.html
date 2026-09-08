@@ -431,6 +431,34 @@
       background:#fff0f1;
     }
 
+
+    .scoreboard{margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}
+    .scoreboard-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px}
+    .scoreboard h2{font-size:17px;margin:0 0 4px;letter-spacing:-.015em}
+    .scoreboard-subtitle{color:var(--muted);font-size:12px;line-height:1.4}
+    .podium{display:grid;grid-template-columns:1fr 1.08fr 1fr;gap:10px;align-items:end;margin:16px 0 14px}
+    .podium-card{border:1px solid var(--line);border-radius:14px;background:#f7f8fa;padding:13px;min-width:0}
+    .podium-card.first{padding-top:18px;min-height:132px;background:#f2f4f7}
+    .podium-rank{font-size:12px;color:var(--muted);font-weight:800;margin-bottom:7px}
+    .podium-name{font-size:14px;font-weight:800;line-height:1.2;overflow-wrap:anywhere;min-height:34px}
+    .podium-main{font-size:22px;font-weight:850;letter-spacing:-.025em;margin:8px 0 2px}
+    .podium-caption{color:var(--muted);font-size:11px}
+    .score-list{border-top:1px solid var(--line)}
+    .score-row{display:grid;grid-template-columns:36px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid #edf0f3}
+    .score-row:last-child{border-bottom:0}
+    .score-rank{color:var(--muted);font-size:12px;font-weight:800}
+    .score-name{min-width:0;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .score-metric{text-align:right;min-width:72px}
+    .score-metric strong{display:block;font-size:13px}
+    .score-metric span{display:block;color:var(--muted);font-size:10px;margin-top:2px}
+    .score-empty{color:var(--muted);font-size:13px;padding:14px 0 2px}
+    @media (max-width:700px){
+      .podium{grid-template-columns:1fr;align-items:stretch}
+      .podium-card.first{order:-1;min-height:0}
+      .score-row{grid-template-columns:28px minmax(0,1fr) auto}
+      .score-metric.done{display:none}
+    }
+
     .stats{
       display:grid;
       grid-template-columns:1fr 1fr;
@@ -698,6 +726,18 @@
         </div>
       </section>
     </div>
+
+    <section class="scoreboard">
+      <div class="scoreboard-head">
+        <div>
+          <h2>Score des blocs</h2>
+          <div class="scoreboard-subtitle" id="scoreboardSubtitle"></div>
+        </div>
+      </div>
+      <div class="podium" id="scorePodium"></div>
+      <div class="score-list" id="scoreList"></div>
+    </section>
+
   </div>
 
 
@@ -1139,12 +1179,127 @@
         return false;
       }
 
+
+      function overlapDuration(start,end,rangeStart,rangeEnd){
+        return Math.max(0, Math.min(end,rangeEnd) - Math.max(start,rangeStart));
+      }
+
+      function renderScoreboard(){
+        const podium=el("scorePodium");
+        const list=el("scoreList");
+        if(!podium || !list) return;
+
+        const now=Date.now();
+        const today=new Date(now);
+        const dayStart=new Date(today);
+        dayStart.setHours(8,0,0,0);
+
+        const midnight=new Date(today);
+        midnight.setHours(24,0,0,0);
+
+        const futureStart=Math.max(anchor.getTime(),now);
+        const doneEnd=Math.min(now,midnight.getTime());
+        const dayStartTs=dayStart.getTime();
+        const midnightTs=midnight.getTime();
+
+        const typeMap=new Map();
+        (state.blockTypes || []).forEach(t=>{
+          typeMap.set(String(t.id),{
+            id:String(t.id),
+            name:t.name || "Sans nom",
+            doneMs:0,
+            remainingMs:0
+          });
+        });
+
+        for(const b of state.blocks){
+          let entry=null;
+
+          if(b.typeId && typeMap.has(String(b.typeId))){
+            entry=typeMap.get(String(b.typeId));
+          }else{
+            const normalized=String(b.name || "").trim().toLocaleUpperCase("fr");
+            entry=[...typeMap.values()].find(t=>
+              String(t.name).trim().toLocaleUpperCase("fr")===normalized
+            ) || null;
+          }
+
+          if(!entry) continue;
+
+          if(doneEnd > dayStartTs){
+            entry.doneMs += overlapDuration(b.start,b.end,dayStartTs,doneEnd);
+          }
+          if(midnightTs > futureStart){
+            entry.remainingMs += overlapDuration(b.start,b.end,futureStart,midnightTs);
+          }
+        }
+
+        const rows=[...typeMap.values()].sort((a,b)=>{
+          if(b.remainingMs!==a.remainingMs) return b.remainingMs-a.remainingMs;
+          if(b.doneMs!==a.doneMs) return b.doneMs-a.doneMs;
+          return a.name.localeCompare(b.name,"fr");
+        });
+
+        el("scoreboardSubtitle").textContent =
+          `Classement par temps restant de ${fmtTime(futureStart)} à 00:00 · effectué de 08:00 à ${fmtTime(doneEnd)}.`;
+
+        podium.innerHTML="";
+        list.innerHTML="";
+
+        if(!rows.length){
+          list.innerHTML='<div class="score-empty">Aucun type de bloc enregistré.</div>';
+          return;
+        }
+
+        const top=rows.slice(0,3);
+        const podiumOrder=top.length>=3 ? [top[1],top[0],top[2]] : top;
+
+        podiumOrder.forEach(item=>{
+          const rank=rows.indexOf(item)+1;
+          const card=document.createElement("div");
+          card.className="podium-card"+(rank===1 ? " first" : "");
+          card.innerHTML=`
+            <div class="podium-rank">${rank===1 ? "🥇" : rank===2 ? "🥈" : "🥉"} #${rank}</div>
+            <div class="podium-name"></div>
+            <div class="podium-main">${durationText(item.remainingMs)}</div>
+            <div class="podium-caption">reste à faire · ${durationText(item.doneMs)} fait</div>
+          `;
+          card.querySelector(".podium-name").textContent=item.name;
+          podium.appendChild(card);
+        });
+
+        rows.forEach((item,index)=>{
+          const row=document.createElement("div");
+          row.className="score-row";
+
+          const rank=document.createElement("div");
+          rank.className="score-rank";
+          rank.textContent=`#${index+1}`;
+
+          const name=document.createElement("div");
+          name.className="score-name";
+          name.textContent=item.name;
+
+          const done=document.createElement("div");
+          done.className="score-metric done";
+          done.innerHTML=`<strong>${durationText(item.doneMs)}</strong><span>fait depuis 08:00</span>`;
+
+          const remaining=document.createElement("div");
+          remaining.className="score-metric";
+          remaining.innerHTML=`<strong>${durationText(item.remainingMs)}</strong><span>reste jusqu’à 00:00</span>`;
+
+          row.append(rank,name,done,remaining);
+          list.appendChild(row);
+        });
+      }
+
       function render(){
         renderLabels();
         renderBlocks();
         renderRules();
         renderWindow();
         renderStats();
+        renderScoreboard();
         renderNow();
       }
 
@@ -2315,6 +2470,7 @@
           render();
         } else {
           renderNow();
+          renderScoreboard();
         }
       },30000);
     })();
@@ -2323,7 +2479,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=5.3").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=5.4").catch(() => {});
       });
     }
   </script>

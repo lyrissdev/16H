@@ -80,3 +80,30 @@ V5 — BLOCS ENRICHIS + TYPES
 - Types synchronisés entre Mac et iPhone avec Supabase.
 - Timeline recentrée toutes les 15 minutes.
 - IMPORTANT : exécuter supabase-migration-v5.sql dans Supabase SQL Editor AVANT de publier cette version.
+
+
+V5.1 — CORRECTION OUVERTURE DES BLOCS
+- Correction du double-clic qui était empêché par le rerender après chaque pointerup.
+- Un clic immobile ne rerend plus la timeline.
+- Double-clic Mac et double-tap iPhone ouvrent désormais la fiche du bloc.
+
+
+V5.2 — OUVERTURE FIABLE DES BLOCS
+- Clic droit sur Mac / desktop : ouvre la fiche du bloc.
+- Appui long ~550 ms sur iPhone / tactile : ouvre la fiche du bloc.
+- Le menu contextuel natif du navigateur est bloqué sur les blocs.
+
+
+V5.3 — TITRE CLIQUABLE
+- Seul le titre du bloc ouvre désormais la fiche.
+- Clic Mac ou tap iPhone sur le titre = ouverture immédiate.
+- Le reste du bloc reste disponible pour le drag et le redimensionnement.
+- Suppression du clic droit / appui long pour éviter les conflits.
+
+
+V5.4 — SCORE DES BLOCS
+- Board sous les règles.
+- Classement des types selon le temps restant planifié entre le centrage actuel et minuit.
+- Pour chaque type : temps déjà effectué depuis 08:00 et temps restant jusqu'à minuit.
+- Podium Top 3 + classement complet.
+- Aucune migration Supabase nécessaire.
