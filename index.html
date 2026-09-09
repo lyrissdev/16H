@@ -396,7 +396,7 @@
 
     .rule-row{
       display:grid;
-      grid-template-columns:1fr auto auto auto;
+      grid-template-columns:minmax(0,1fr) auto auto auto auto;
       gap:10px;
       align-items:center;
       padding:10px 0;
@@ -662,6 +662,19 @@
 
     @media (max-width:800px){
       .app{ padding:14px; }
+      .rule-row{
+        grid-template-columns:minmax(0,1fr) auto auto;
+      }
+      .rule-row > .small-btn:nth-of-type(3),
+      .rule-row > .small-btn:nth-of-type(4){
+        grid-row:2;
+      }
+      .rule-row > .small-btn:nth-of-type(3){
+        grid-column:2;
+      }
+      .rule-row > .small-btn:nth-of-type(4){
+        grid-column:3;
+      }
       .topbar{ flex-direction:column; }
       .actions{ justify-content:flex-start; }
       .below{ grid-template-columns:1fr; }
@@ -1157,7 +1170,7 @@
       }
 
       function getRecurringInstances(rangeStart, rangeEnd){
-        const instances = [];
+        const candidates = [];
         const startDate = new Date(rangeStart);
         startDate.setHours(0,0,0,0);
         startDate.setDate(startDate.getDate()-1);
@@ -1172,6 +1185,7 @@
             const override=findRuleOverride(rule.id,dateKey);
             const startTime=override?.start || rule.start;
             const endTime=override?.end || rule.end;
+
             const [sh,sm] = startTime.split(":").map(Number);
             const [eh,em] = endTime.split(":").map(Number);
 
@@ -1184,7 +1198,7 @@
 
             const sTs = s.getTime(), eTs = e.getTime();
             if (intervalsOverlap(sTs,eTs,rangeStart,rangeEnd)) {
-              instances.push({
+              candidates.push({
                 id:`rule-${rule.id}-${dateKey}`,
                 ruleId:rule.id,
                 overrideId:override?.id || null,
@@ -1198,7 +1212,21 @@
             }
           }
         }
-        return instances;
+
+        // An "Aujourd’hui" exception represents that night's actual occurrence.
+        // If it overlaps the normal occurrence of the SAME rule generated for
+        // the following calendar day (e.g. 23:00–07:00 vs normal 00:00–08:00),
+        // keep only the override instead of displaying two sleep blocks.
+        const overrides=candidates.filter(i=>i.overrideId);
+        const filtered=candidates.filter(item=>{
+          if(item.overrideId) return true;
+          return !overrides.some(o=>
+            String(o.ruleId)===String(item.ruleId) &&
+            intervalsOverlap(o.start,o.end,item.start,item.end)
+          );
+        });
+
+        return filtered.sort((a,b)=>a.start-b.start);
       }
 
       function hasConflict(start,end,excludeBlockId=null){
@@ -1472,6 +1500,7 @@
           const del = document.createElement("button");
           del.className="small-btn danger";
           del.textContent="Supprimer";
+          del.style.width="auto";
           del.onclick=()=>{
             if(confirm(`Supprimer la règle « ${rule.name} » ?`)){
               const deletedAt=Date.now();
@@ -2634,7 +2663,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=5.5").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=5.6").catch(() => {});
       });
     }
   </script>
