@@ -982,6 +982,7 @@
       let anchor = getAnchor();
       let selectedBlockId = null;
       let editingRuleId = null;
+      let editingOverride = null;
       let dragState = null;
       let lastBlockTap = {id:null, time:0};
       let supabaseClient = null;
@@ -994,6 +995,7 @@
       let state = loadState();
       let syncMeta = loadSyncMeta();
       if(!Array.isArray(state.blockTypes)) state.blockTypes=DEFAULT_BLOCK_TYPES.map(t=>({...t,updatedAt:1}));
+      if(!Array.isArray(state.ruleOverrides)) state.ruleOverrides=[];
       if (!state.rules.length) {
         state.rules.push({
           id: "default-sleep",
@@ -1027,6 +1029,10 @@
             updatedAt:Number(b.updatedAt)||now
           })) : [];
           const rules = Array.isArray(raw.rules) ? raw.rules.map(r => ({...r, updatedAt:Number(r.updatedAt)||now})) : [];
+          const ruleOverrides = Array.isArray(raw.ruleOverrides) ? raw.ruleOverrides.map(o => ({
+            ...o,
+            updatedAt:Number(o.updatedAt)||now
+          })) : [];
           const savedTypes = Array.isArray(raw.blockTypes) ? raw.blockTypes.map(t => ({
             ...t,
             address:t.address || "Aucune",
@@ -1044,11 +1050,12 @@
             if(!typeMap.has(t.id)) typeMap.set(t.id,{...t,updatedAt:1});
           });
 
-          return {blocks, rules, blockTypes:[...typeMap.values()]};
+          return {blocks, rules, ruleOverrides, blockTypes:[...typeMap.values()]};
         }catch{
           return {
             blocks:[],
             rules:[],
+            ruleOverrides:[],
             blockTypes:DEFAULT_BLOCK_TYPES.map(t=>({...t,updatedAt:1}))
           };
         }
@@ -1060,10 +1067,11 @@
           return {
             deletedBlocks:Array.isArray(raw.deletedBlocks) ? raw.deletedBlocks : [],
             deletedRules:Array.isArray(raw.deletedRules) ? raw.deletedRules : [],
-            deletedTypes:Array.isArray(raw.deletedTypes) ? raw.deletedTypes : []
+            deletedTypes:Array.isArray(raw.deletedTypes) ? raw.deletedTypes : [],
+            deletedOverrides:Array.isArray(raw.deletedOverrides) ? raw.deletedOverrides : []
           };
         }catch{
-          return {deletedBlocks:[],deletedRules:[],deletedTypes:[]};
+          return {deletedBlocks:[],deletedRules:[],deletedTypes:[],deletedOverrides:[]};
         }
       }
 
@@ -1077,7 +1085,13 @@
       }
 
       function markDeleted(kind,id,updatedAt=Date.now()){
-        const key = kind === "block" ? "deletedBlocks" : kind === "rule" ? "deletedRules" : "deletedTypes";
+        const key = kind === "block"
+          ? "deletedBlocks"
+          : kind === "rule"
+            ? "deletedRules"
+            : kind === "override"
+              ? "deletedOverrides"
+              : "deletedTypes";
         syncMeta[key] = syncMeta[key].filter(x => x.id !== id);
         syncMeta[key].push({id,updatedAt});
         saveSyncMeta();
@@ -1129,6 +1143,19 @@
         return aStart < bEnd && aEnd > bStart;
       }
 
+
+      function localDateKey(date){
+        const d = date instanceof Date ? date : new Date(date);
+        const pad=n=>String(n).padStart(2,"0");
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+      }
+
+      function findRuleOverride(ruleId,dateKey){
+        return state.ruleOverrides.find(o=>
+          String(o.ruleId)===String(ruleId) && o.dateKey===dateKey
+        ) || null;
+      }
+
       function getRecurringInstances(rangeStart, rangeEnd){
         const instances = [];
         const startDate = new Date(rangeStart);
@@ -1141,8 +1168,12 @@
 
         for (let day = new Date(startDate); day <= endDate; day.setDate(day.getDate()+1)) {
           for (const rule of state.rules.filter(r => r.enabled)) {
-            const [sh,sm] = rule.start.split(":").map(Number);
-            const [eh,em] = rule.end.split(":").map(Number);
+            const dateKey=localDateKey(day);
+            const override=findRuleOverride(rule.id,dateKey);
+            const startTime=override?.start || rule.start;
+            const endTime=override?.end || rule.end;
+            const [sh,sm] = startTime.split(":").map(Number);
+            const [eh,em] = endTime.split(":").map(Number);
 
             const s = new Date(day);
             s.setHours(sh,sm,0,0);
@@ -1154,13 +1185,15 @@
             const sTs = s.getTime(), eTs = e.getTime();
             if (intervalsOverlap(sTs,eTs,rangeStart,rangeEnd)) {
               instances.push({
-                id:`rule-${rule.id}-${sTs}`,
+                id:`rule-${rule.id}-${dateKey}`,
                 ruleId:rule.id,
+                overrideId:override?.id || null,
+                dateKey,
                 name:rule.name,
                 start:sTs,
                 end:eTs,
                 recurring:true,
-                color: rule.color || "#5b6472"
+                color: override?.color || rule.color || "#5b6472"
               });
             }
           }
@@ -1426,6 +1459,11 @@
             saveState(); render();
           };
 
+          const today = document.createElement("button");
+          today.className="small-btn";
+          today.textContent="Aujourd’hui";
+          today.onclick=()=>openTodayRuleOverride(rule.id);
+
           const edit = document.createElement("button");
           edit.className="small-btn";
           edit.textContent="Modifier";
@@ -1443,7 +1481,7 @@
             }
           };
 
-          row.append(info,toggle,edit,del);
+          row.append(info,toggle,today,edit,del);
           list.appendChild(row);
         });
       }
@@ -1576,8 +1614,10 @@
 
       function openNewRule(){
         editingRuleId=null;
+        editingOverride=null;
         el("ruleDialogTitle").textContent="Nouvelle règle quotidienne";
         el("ruleError").style.display="none";
+        el("ruleName").disabled=false;
         el("ruleName").value="";
         el("ruleStart").value="00:00";
         el("ruleEnd").value="08:00";
@@ -1587,15 +1627,43 @@
       }
 
       function openEditRule(id){
+        editingOverride=null;
         const r=state.rules.find(x=>x.id===id);
         if(!r) return;
         editingRuleId=id;
         el("ruleDialogTitle").textContent="Modifier la règle";
         el("ruleError").style.display="none";
+        el("ruleName").disabled=false;
         el("ruleName").value=r.name;
         el("ruleStart").value=r.start;
         el("ruleEnd").value=r.end;
         el("ruleColor").value=r.color || "#5b6472";
+        syncPresetState("rule");
+        ruleDialog.showModal();
+      }
+
+
+      function openTodayRuleOverride(id){
+        const r=state.rules.find(x=>x.id===id);
+        if(!r) return;
+
+        const todayKey=localDateKey(new Date());
+        const existing=findRuleOverride(id,todayKey);
+
+        editingRuleId=id;
+        editingOverride={
+          id:existing?.id || `override-${id}-${todayKey}`,
+          ruleId:id,
+          dateKey:todayKey
+        };
+
+        el("ruleDialogTitle").textContent=`${r.name} — aujourd’hui seulement`;
+        el("ruleError").style.display="none";
+        el("ruleName").value=r.name;
+        el("ruleName").disabled=true;
+        el("ruleStart").value=existing?.start || r.start;
+        el("ruleEnd").value=existing?.end || r.end;
+        el("ruleColor").value=existing?.color || r.color || "#5b6472";
         syncPresetState("rule");
         ruleDialog.showModal();
       }
@@ -1655,6 +1723,54 @@
         }
         if(start===end){
           return showFormError(err,"La règle doit avoir une durée différente de 24 h.");
+        }
+
+        if(editingOverride){
+          const r=state.rules.find(x=>x.id===editingOverride.ruleId);
+          if(!r) return showFormError(err,"Règle introuvable.");
+
+          const [sh,sm]=start.split(":").map(Number);
+          const [eh,em]=end.split(":").map(Number);
+          const day=new Date(`${editingOverride.dateKey}T00:00:00`);
+          const s=new Date(day); s.setHours(sh,sm,0,0);
+          const e=new Date(day); e.setHours(eh,em,0,0);
+          if(e<=s) e.setDate(e.getDate()+1);
+
+          // Check explicit blocks and OTHER recurring rules only.
+          const blockConflict=state.blocks.some(b=>intervalsOverlap(s.getTime(),e.getTime(),b.start,b.end));
+          const otherRuleConflict=getRecurringInstances(
+            s.getTime()-24*3600000,
+            e.getTime()+24*3600000
+          ).some(inst=>
+            inst.ruleId!==editingOverride.ruleId &&
+            intervalsOverlap(s.getTime(),e.getTime(),inst.start,inst.end)
+          );
+
+          if(blockConflict || otherRuleConflict){
+            return showFormError(err,"Cet horaire chevauche déjà un bloc ponctuel ou une autre règle quotidienne.");
+          }
+
+          const updatedAt=Date.now();
+          const value={
+            id:editingOverride.id,
+            ruleId:editingOverride.ruleId,
+            dateKey:editingOverride.dateKey,
+            start,
+            end,
+            color,
+            updatedAt
+          };
+          const idx=state.ruleOverrides.findIndex(o=>String(o.id)===String(value.id));
+          if(idx>=0) state.ruleOverrides[idx]=value;
+          else state.ruleOverrides.push(value);
+
+          saveState();
+          editingOverride=null;
+          el("ruleName").disabled=false;
+          ruleDialog.close();
+          render();
+          showToast("Sommeil d’aujourd’hui modifié");
+          return;
         }
 
         const candidate={id:editingRuleId || uid(),name,start,end,enabled:true,color,updatedAt:Date.now()};
@@ -2148,6 +2264,33 @@
       }
 
 
+
+      function localOverrideToRow(o,userId,deleted=false,deletedAt=null){
+        return {
+          user_id:userId,
+          id:String(o.id),
+          rule_id:String(o.ruleId || ""),
+          date_key:o.dateKey || "",
+          start_time:o.start || "00:00",
+          end_time:o.end || "08:00",
+          color:o.color || "#5b6472",
+          updated_ms:Number(deletedAt ?? o.updatedAt ?? Date.now()),
+          deleted:!!deleted
+        };
+      }
+
+      function rowToLocalOverride(r){
+        return {
+          id:r.id,
+          ruleId:r.rule_id,
+          dateKey:r.date_key,
+          start:r.start_time,
+          end:r.end_time,
+          color:r.color || "#5b6472",
+          updatedAt:Number(r.updated_ms)||0
+        };
+      }
+
       function localTypeToRow(t,userId,deleted=false,deletedAt=null){
         return {
           user_id:userId,
@@ -2255,7 +2398,9 @@
                   ? {id,name:cloud.name,start:Number(cloud.start_ms)||0,end:Number(cloud.end_ms)||0,color:cloud.color,address:cloud.address,description:cloud.description,typeId:cloud.type_id}
                   : kind==="rule"
                     ? {id,name:cloud.name,start:cloud.start_time,end:cloud.end_time,enabled:cloud.enabled,color:cloud.color}
-                    : {id,name:cloud.name,address:cloud.address,description:cloud.description,durationMinutes:Number(cloud.duration_minutes)||15};
+                    : kind==="override"
+                      ? {id,ruleId:cloud.rule_id,dateKey:cloud.date_key,start:cloud.start_time,end:cloud.end_time,color:cloud.color}
+                      : {id,name:cloud.name,address:cloud.address,description:cloud.description,durationMinutes:Number(cloud.duration_minutes)||15};
                 upserts.push(toRow(base,userId,true,winner.updatedAt));
               }else{
                 resolvedTombstones.add(id);
@@ -2312,11 +2457,20 @@
             toRow:localTypeToRow,
             fromRow:rowToLocalType
           });
+          const overridesResult=await syncCollection({
+            table:"timeline_rule_overrides",
+            items:state.ruleOverrides,
+            tombstones:syncMeta.deletedOverrides,
+            kind:"override",
+            toRow:localOverrideToRow,
+            fromRow:rowToLocalOverride
+          });
 
           suppressCloudSchedule=true;
           state.blocks=blocksResult.merged;
           state.rules=rulesResult.merged;
           state.blockTypes=typesResult.merged;
+          state.ruleOverrides=overridesResult.merged;
           DEFAULT_BLOCK_TYPES.forEach(t=>{
             if(!state.blockTypes.some(x=>String(x.id)===String(t.id))){
               state.blockTypes.push({...t,updatedAt:1});
@@ -2325,6 +2479,7 @@
           syncMeta.deletedBlocks=syncMeta.deletedBlocks.filter(t=>!blocksResult.resolvedTombstones.has(String(t.id)));
           syncMeta.deletedRules=syncMeta.deletedRules.filter(t=>!rulesResult.resolvedTombstones.has(String(t.id)));
           syncMeta.deletedTypes=syncMeta.deletedTypes.filter(t=>!typesResult.resolvedTombstones.has(String(t.id)));
+          syncMeta.deletedOverrides=syncMeta.deletedOverrides.filter(t=>!overridesResult.resolvedTombstones.has(String(t.id)));
           saveState(false);
           saveSyncMeta();
           suppressCloudSchedule=false;
@@ -2479,7 +2634,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=5.4").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=5.5").catch(() => {});
       });
     }
   </script>
