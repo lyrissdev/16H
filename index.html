@@ -730,6 +730,45 @@
     }
 
 
+
+    .schedule-toggle{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:11px 12px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:#f7f8fa;
+    }
+    .schedule-toggle input{width:18px;height:18px;margin:0}
+    .schedule-toggle label{color:var(--text);font-size:14px;font-weight:700;cursor:pointer}
+
+    .priority-section{
+      margin-top:18px;
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:18px;
+    }
+    .priority-section[hidden]{display:none}
+    .priority-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:12px}
+    .priority-title{font-size:17px;font-weight:800;letter-spacing:-.015em;margin:0 0 4px}
+    .priority-help{color:var(--muted);font-size:12px;line-height:1.4}
+    .priority-list{display:flex;flex-wrap:wrap;gap:10px}
+    .priority-item{
+      appearance:none;display:flex;align-items:center;gap:10px;min-width:190px;max-width:320px;
+      padding:10px 12px;border:1px solid var(--line);border-left:6px solid var(--block);
+      border-radius:12px;background:#fff;text-align:left;cursor:grab;box-shadow:0 2px 8px rgba(0,0,0,.03)
+    }
+    .priority-item:active{cursor:grabbing}
+    .priority-item-main{min-width:0;flex:1}
+    .priority-item-title{font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .priority-item-meta{color:var(--muted);font-size:11px;margin-top:3px}
+    .priority-date{flex:0 0 auto;color:var(--muted);font-size:11px;font-weight:700}
+    .timeline.priority-drag-over .rule{box-shadow:inset 0 0 0 2px var(--accent);background-color:var(--accent-soft)}
+    .week-item.floating{background:#f8f9fb;border-style:dashed}
+    .week-item.floating .week-item-time{font-weight:700;color:var(--text)}
+
     .field textarea,
     .field select{
       width:100%;
@@ -911,6 +950,16 @@
       </div>
     </section>
 
+    <section class="priority-section" id="prioritySection" hidden>
+      <div class="priority-head">
+        <div>
+          <div class="priority-title">Priorité à placer</div>
+          <div class="priority-help">Blocs sans heure dont la journée entre dans les 16 prochaines heures. Glisse-les directement sur la timeline.</div>
+        </div>
+      </div>
+      <div class="priority-list" id="priorityList"></div>
+    </section>
+
     <div class="below">
       <section class="card">
         <h2>Règles quotidiennes</h2>
@@ -976,11 +1025,11 @@
               <div class="block-view-value" id="blockViewDescription"></div>
             </div>
             <div class="block-view-item">
-              <div class="block-view-label">Début</div>
+              <div class="block-view-label" id="blockViewStartLabel">Début</div>
               <div class="block-view-value" id="blockViewStart"></div>
             </div>
             <div class="block-view-item">
-              <div class="block-view-label">Fin</div>
+              <div class="block-view-label" id="blockViewEndLabel">Fin</div>
               <div class="block-view-value" id="blockViewEnd"></div>
             </div>
             <div class="block-view-item full">
@@ -1007,6 +1056,12 @@
               <select id="blockTypeSelect"></select>
             </div>
             <div class="field full">
+              <div class="schedule-toggle">
+                <input id="blockHasTime" type="checkbox" />
+                <label for="blockHasTime">Appliquer une heure précise</label>
+              </div>
+            </div>
+            <div class="field full">
               <label>Titre</label>
               <input id="blockName" required maxlength="80" placeholder="Nom du bloc" />
             </div>
@@ -1018,13 +1073,21 @@
               <label>Description</label>
               <textarea id="blockDescription" maxlength="1000" placeholder="Aucune"></textarea>
             </div>
-            <div class="field">
+            <div class="field" id="blockStartField">
               <label>Début</label>
-              <input id="blockStart" type="datetime-local" step="900" required />
+              <input id="blockStart" type="datetime-local" step="900" />
             </div>
-            <div class="field">
+            <div class="field" id="blockEndField">
               <label>Fin</label>
-              <input id="blockEnd" type="datetime-local" step="900" required />
+              <input id="blockEnd" type="datetime-local" step="900" />
+            </div>
+            <div class="field" id="blockDateField" style="display:none">
+              <label>Jour</label>
+              <input id="blockDate" type="date" />
+            </div>
+            <div class="field" id="blockDurationField" style="display:none">
+              <label>Durée prévue</label>
+              <select id="blockDuration"></select>
             </div>
             <div class="field full">
               <label>Couleur</label>
@@ -1203,6 +1266,8 @@
       const topSubtitle = el("topSubtitle");
       const weekBoard = el("weekBoard");
       const weekLabelEl = el("weekLabel");
+      const prioritySection = el("prioritySection");
+      const priorityList = el("priorityList");
 
       let anchor = getAnchor();
       let selectedBlockId = null;
@@ -1253,6 +1318,9 @@
             address:b.address || "Aucune",
             description:b.description || "Aucune",
             typeId:b.typeId || null,
+            floating:!!b.floating,
+            plannedDate:b.plannedDate || (b.start ? localDateKey(new Date(b.start)) : localDateKey(new Date())),
+            durationMinutes:Math.max(15,Number(b.durationMinutes)||Math.round(((Number(b.end)||0)-(Number(b.start)||0))/60000)||15),
             updatedAt:Number(b.updatedAt)||now
           })) : [];
           const rules = Array.isArray(raw.rules) ? raw.rules.map(r => ({...r, updatedAt:Number(r.updatedAt)||now})) : [];
@@ -1642,7 +1710,7 @@
       }
 
       function openNewBlockForDay(dayDate){
-        openNewBlock(getDefaultStartForDate(dayDate));
+        openNewBlock(getDefaultStartForDate(dayDate), false, localDateKey(dayDate));
       }
 
       function formatWeekItemTime(block, dayStart, dayEnd){
@@ -1654,9 +1722,13 @@
       function dayExplicitBlocks(dayDate){
         const start=startOfDayTs(dayDate);
         const end=endOfDayTs(dayDate);
+        const key=localDateKey(dayDate);
         return state.blocks
-          .filter(b=>intervalsOverlap(b.start,b.end,start,end))
-          .sort((a,b)=>a.start-b.start);
+          .filter(b=>b.floating ? b.plannedDate===key : intervalsOverlap(b.start,b.end,start,end))
+          .sort((a,b)=>{
+            if(a.floating!==b.floating) return a.floating ? -1 : 1;
+            return (a.start||0)-(b.start||0);
+          });
       }
 
       function renderWeekView(){
@@ -1700,11 +1772,11 @@
           blocks.forEach(block=>{
             const item=document.createElement("button");
             item.type="button";
-            item.className="week-item";
+            item.className="week-item"+(block.floating ? " floating" : "");
             item.style.borderLeftColor = block.color || "#23272d";
             item.innerHTML = `
               <div class="week-item-title"></div>
-              <div class="week-item-time">${formatWeekItemTime(block, dayStart, dayEnd)}</div>
+              <div class="week-item-time">${block.floating ? `Sans heure · ${durationText((block.durationMinutes||15)*60000)}` : formatWeekItemTime(block, dayStart, dayEnd)}</div>
               <div class="week-item-meta"></div>
             `;
             item.querySelector(".week-item-title").textContent = block.name || "Bloc";
@@ -1730,6 +1802,77 @@
       }
 
 
+
+      function priorityBlocksInWindow(){
+        const start=anchor.getTime();
+        const end=start+WINDOW_MS;
+        return state.blocks
+          .filter(b=>{
+            if(!b.floating || !b.plannedDate) return false;
+            const dayStart=new Date(`${b.plannedDate}T00:00:00`).getTime();
+            const dayEnd=new Date(`${b.plannedDate}T23:59:59`).getTime()+1000;
+            return intervalsOverlap(dayStart,dayEnd,start,end);
+          })
+          .sort((a,b)=>{
+            if(a.plannedDate!==b.plannedDate) return a.plannedDate.localeCompare(b.plannedDate);
+            return a.name.localeCompare(b.name,"fr");
+          });
+      }
+
+      function renderPriorities(){
+        if(!prioritySection || !priorityList) return;
+        const items=priorityBlocksInWindow();
+        prioritySection.hidden=items.length===0;
+        priorityList.innerHTML="";
+        if(!items.length) return;
+
+        items.forEach(block=>{
+          const item=document.createElement("button");
+          item.type="button";
+          item.className="priority-item";
+          item.draggable=true;
+          item.dataset.blockId=block.id;
+          item.style.borderLeftColor=block.color || "#23272d";
+          item.innerHTML=`
+            <div class="priority-item-main">
+              <div class="priority-item-title"></div>
+              <div class="priority-item-meta">${durationText((block.durationMinutes||15)*60000)} · sans heure</div>
+            </div>
+            <div class="priority-date"></div>
+          `;
+          item.querySelector(".priority-item-title").textContent=block.name || "Bloc";
+          item.querySelector(".priority-date").textContent=floatingBlockDateLabel(block.plannedDate);
+          item.addEventListener("dragstart",e=>{
+            e.dataTransfer.effectAllowed="move";
+            e.dataTransfer.setData("text/plain",block.id);
+          });
+          item.addEventListener("click",()=>openEditBlock(block.id));
+          priorityList.appendChild(item);
+        });
+      }
+
+      function placeFloatingBlockAt(blockId,startTs){
+        const block=state.blocks.find(b=>String(b.id)===String(blockId));
+        if(!block || !block.floating) return;
+
+        const start=roundToQuarter(startTs);
+        const end=start+Math.max(15,Number(block.durationMinutes)||15)*60000;
+
+        if(hasConflict(start,end,block.id)){
+          showToast("Impossible : ce créneau chevauche déjà un autre bloc.");
+          return;
+        }
+
+        block.floating=false;
+        block.start=start;
+        block.end=end;
+        block.plannedDate=localDateKey(new Date(start));
+        block.updatedAt=Date.now();
+        saveState();
+        render();
+        showToast("Bloc placé dans la timeline");
+      }
+
       function render(){
         renderLabels();
         renderBlocks();
@@ -1738,6 +1881,7 @@
         renderStats();
         renderScoreboard();
         renderWeekView();
+        renderPriorities();
         updateViewUI();
         renderNow();
       }
@@ -1775,7 +1919,7 @@
         const start = anchor.getTime();
         const end = start + WINDOW_MS;
         const explicit = state.blocks
-          .filter(b => intervalsOverlap(b.start,b.end,start,end))
+          .filter(b => !b.floating && intervalsOverlap(b.start,b.end,start,end))
           .map(b=>({...b, recurring:false}));
         const recurring = getRecurringInstances(start,end);
         return [...recurring, ...explicit].sort((a,b)=>a.start-b.start);
@@ -1915,14 +2059,16 @@
 
 
       function fillDurationOptions(){
-        const select=el("typeDuration");
-        if(select.options.length) return;
-        for(let minutes=15; minutes<=16*60; minutes+=15){
-          const opt=document.createElement("option");
-          opt.value=String(minutes);
-          opt.textContent=durationText(minutes*60000);
-          select.appendChild(opt);
-        }
+        const selects=[el("typeDuration"),el("blockDuration")].filter(Boolean);
+        selects.forEach(select=>{
+          if(select.options.length) return;
+          for(let minutes=15; minutes<=16*60; minutes+=15){
+            const opt=document.createElement("option");
+            opt.value=String(minutes);
+            opt.textContent=durationText(minutes*60000);
+            select.appendChild(opt);
+          }
+        });
       }
 
       function refreshBlockTypeSelect(selectedId=null){
@@ -1949,10 +2095,34 @@
         el("blockName").value=t.name || "";
         el("blockAddress").value=t.address || "Aucune";
         el("blockDescription").value=t.description || "Aucune";
+        const duration=Math.max(15,Number(t.durationMinutes)||15);
+        fillDurationOptions();
+        el("blockDuration").value=String(duration);
         const start=new Date(el("blockStart").value).getTime();
         if(Number.isFinite(start)){
-          el("blockEnd").value=toLocalInput(start + Math.max(15,Number(t.durationMinutes)||15)*60000);
+          el("blockEnd").value=toLocalInput(start + duration*60000);
         }
+      }
+
+
+      function setBlockSchedulingMode(hasTime){
+        el("blockHasTime").checked=!!hasTime;
+        el("blockStartField").style.display=hasTime ? "flex" : "none";
+        el("blockEndField").style.display=hasTime ? "flex" : "none";
+        el("blockDateField").style.display=hasTime ? "none" : "flex";
+        el("blockDurationField").style.display=hasTime ? "none" : "flex";
+      }
+
+      function syntheticTimesForFloating(dateKey,durationMinutes){
+        const base=new Date(`${dateKey}T12:00:00`);
+        const start=base.getTime();
+        const end=start+Math.max(15,Number(durationMinutes)||15)*60000;
+        return {start,end};
+      }
+
+      function floatingBlockDateLabel(dateKey){
+        const d=new Date(`${dateKey}T12:00:00`);
+        return `${shortWeekday(d)} ${shortDateLabel(d)}`;
       }
 
       function setBlockDialogMode(mode){
@@ -1965,8 +2135,17 @@
         el("blockViewTitle").textContent=b.name || "";
         el("blockViewAddress").textContent=b.address || "Aucune";
         el("blockViewDescription").textContent=b.description || "Aucune";
-        el("blockViewStart").textContent=fmtDateTime(b.start);
-        el("blockViewEnd").textContent=fmtDateTime(b.end);
+        if(b.floating){
+          el("blockViewStartLabel").textContent="Jour";
+          el("blockViewEndLabel").textContent="Durée";
+          el("blockViewStart").textContent=floatingBlockDateLabel(b.plannedDate);
+          el("blockViewEnd").textContent=durationText((b.durationMinutes||15)*60000);
+        }else{
+          el("blockViewStartLabel").textContent="Début";
+          el("blockViewEndLabel").textContent="Fin";
+          el("blockViewStart").textContent=fmtDateTime(b.start);
+          el("blockViewEnd").textContent=fmtDateTime(b.end);
+        }
         const color=b.color || "#23272d";
         el("blockViewColor").textContent=color;
         el("blockViewColorDot").style.background=color;
@@ -1974,24 +2153,30 @@
 
       function fillBlockEditFields(b){
         refreshBlockTypeSelect(b?.typeId || null);
+        fillDurationOptions();
         if(b?.typeId && state.blockTypes.some(t=>String(t.id)===String(b.typeId))){
           el("blockTypeSelect").value=String(b.typeId);
         }
         el("blockName").value=b?.name || "";
         el("blockAddress").value=b?.address || "Aucune";
         el("blockDescription").value=b?.description || "Aucune";
+        const floating=!!b?.floating;
+        setBlockSchedulingMode(!floating);
         el("blockStart").value=toLocalInput(b.start);
         el("blockEnd").value=toLocalInput(b.end);
+        el("blockDate").value=b?.plannedDate || localDateKey(new Date(b.start || Date.now()));
+        el("blockDuration").value=String(Math.max(15,Number(b?.durationMinutes)||Math.round((b.end-b.start)/60000)||15));
         el("blockColor").value=b?.color || "#23272d";
         syncPresetState("block");
       }
 
-      function openNewBlock(startTs=null){
+      function openNewBlock(startTs=null, forceHasTime=true, plannedDate=null){
         selectedBlockId=null;
         el("blockDialogTitle").textContent="Ajouter un bloc";
         el("blockError").style.display="none";
         const s = startTs ?? ceilToQuarter(anchor.getTime());
         refreshBlockTypeSelect();
+        fillDurationOptions();
         const firstType=state.blockTypes.find(t=>String(t.id)===String(el("blockTypeSelect").value)) || state.blockTypes[0];
         const duration=Math.max(15,Number(firstType?.durationMinutes)||30);
         fillBlockEditFields({
@@ -2001,9 +2186,12 @@
           description:firstType?.description || "Aucune",
           start:s,
           end:s+duration*60000,
+          plannedDate:plannedDate || localDateKey(new Date(s)),
+          durationMinutes:duration,
+          floating:!forceHasTime,
           color:"#23272d"
         });
-        setBlockDialogMode("edit");
+        setBlockSchedulingMode(forceHasTime);
         el("cancelBlockEditBtn").textContent="Annuler";
         blockDialog.showModal();
       }
@@ -2084,32 +2272,47 @@
           ? el("blockTypeSelect").value
           : null;
         const color=el("blockColor").value || "#23272d";
-        let start=new Date(el("blockStart").value).getTime();
-        let end=new Date(el("blockEnd").value).getTime();
+        const floating=!el("blockHasTime").checked;
         const err=el("blockError");
+        let start,end,plannedDate,durationMinutes;
 
-        start=roundToQuarter(start);
-        end=roundToQuarter(end);
+        if(floating){
+          plannedDate=el("blockDate").value;
+          durationMinutes=Math.max(15,Number(el("blockDuration").value)||15);
+          if(!name || !plannedDate){
+            return showFormError(err,"Remplis au minimum le titre et le jour.");
+          }
+          const synthetic=syntheticTimesForFloating(plannedDate,durationMinutes);
+          start=synthetic.start;
+          end=synthetic.end;
+        }else{
+          start=new Date(el("blockStart").value).getTime();
+          end=new Date(el("blockEnd").value).getTime();
+          start=roundToQuarter(start);
+          end=roundToQuarter(end);
 
-        if(!name || !Number.isFinite(start) || !Number.isFinite(end)){
-          return showFormError(err,"Remplis au minimum le titre, le début et la fin.");
-        }
-        if(end-start < SLOT_MS){
-          return showFormError(err,"Un bloc doit durer au minimum 15 minutes.");
-        }
-        if(start % SLOT_MS !== 0 || end % SLOT_MS !== 0){
-          return showFormError(err,"Les horaires doivent tomber sur un quart d'heure.");
-        }
-        if(hasConflict(start,end,selectedBlockId)){
-          return showFormError(err,"Ce bloc chevauche déjà un autre bloc ou une règle quotidienne.");
+          if(!name || !Number.isFinite(start) || !Number.isFinite(end)){
+            return showFormError(err,"Remplis au minimum le titre, le début et la fin.");
+          }
+          if(end-start < SLOT_MS){
+            return showFormError(err,"Un bloc doit durer au minimum 15 minutes.");
+          }
+          if(start % SLOT_MS !== 0 || end % SLOT_MS !== 0){
+            return showFormError(err,"Les horaires doivent tomber sur un quart d'heure.");
+          }
+          if(hasConflict(start,end,selectedBlockId)){
+            return showFormError(err,"Ce bloc chevauche déjà un autre bloc ou une règle quotidienne.");
+          }
+          plannedDate=localDateKey(new Date(start));
+          durationMinutes=Math.max(15,Math.round((end-start)/60000));
         }
 
         const updatedAt=Date.now();
         if(selectedBlockId){
           const b=state.blocks.find(x=>x.id===selectedBlockId);
-          Object.assign(b,{name,address,description,typeId,start,end,color,updatedAt});
+          Object.assign(b,{name,address,description,typeId,start,end,color,floating,plannedDate,durationMinutes,updatedAt});
         }else{
-          state.blocks.push({id:uid(),name,address,description,typeId,start,end,color,updatedAt});
+          state.blocks.push({id:uid(),name,address,description,typeId,start,end,color,floating,plannedDate,durationMinutes,updatedAt});
         }
         saveState();
         blockDialog.close();
@@ -2227,6 +2430,27 @@
         node.style.display="block";
       }
 
+
+
+      el("blockHasTime").addEventListener("change",()=>{
+        const hasTime=el("blockHasTime").checked;
+        if(hasTime){
+          const dateKey=el("blockDate").value || localDateKey(new Date());
+          const duration=Math.max(15,Number(el("blockDuration").value)||15);
+          const start=new Date(`${dateKey}T09:00:00`).getTime();
+          el("blockStart").value=toLocalInput(start);
+          el("blockEnd").value=toLocalInput(start+duration*60000);
+        }else{
+          const start=new Date(el("blockStart").value).getTime();
+          const end=new Date(el("blockEnd").value).getTime();
+          if(Number.isFinite(start)) el("blockDate").value=localDateKey(new Date(start));
+          if(Number.isFinite(start) && Number.isFinite(end) && end>start){
+            fillDurationOptions();
+            el("blockDuration").value=String(Math.max(15,Math.round((end-start)/60000)));
+          }
+        }
+        setBlockSchedulingMode(hasTime);
+      });
 
       el("editBlockBtn").addEventListener("click",()=>{
         if(!selectedBlockId) return;
@@ -2347,6 +2571,28 @@
         const x=e.clientX-rect.left;
         const slot=Math.max(0,Math.min(TOTAL_SLOTS-1,Math.floor(x/SLOT_PX)));
         openNewBlock(anchor.getTime()+slot*SLOT_MS);
+      });
+
+
+      timeline.addEventListener("dragover",(e)=>{
+        e.preventDefault();
+        if(e.dataTransfer) e.dataTransfer.dropEffect="move";
+        timeline.classList.add("priority-drag-over");
+      });
+
+      timeline.addEventListener("dragleave",()=>{
+        timeline.classList.remove("priority-drag-over");
+      });
+
+      timeline.addEventListener("drop",(e)=>{
+        e.preventDefault();
+        timeline.classList.remove("priority-drag-over");
+        const blockId=e.dataTransfer?.getData("text/plain");
+        if(!blockId) return;
+        const rect=timeline.getBoundingClientRect();
+        const x=Math.max(0,Math.min(TOTAL_SLOTS*SLOT_PX,e.clientX-rect.left));
+        const slot=Math.max(0,Math.min(TOTAL_SLOTS-1,Math.round(x/SLOT_PX)));
+        placeFloatingBlockAt(blockId,anchor.getTime()+slot*SLOT_MS);
       });
 
       function onBlockPointerDown(e){
@@ -2671,6 +2917,9 @@
           address:b.address || "Aucune",
           description:b.description || "Aucune",
           type_id:b.typeId || null,
+          is_floating:!!b.floating,
+          planned_date:b.plannedDate || localDateKey(new Date(b.start || Date.now())),
+          duration_minutes:Math.max(15,Number(b.durationMinutes)||Math.round((b.end-b.start)/60000)||15),
           updated_ms:Number(deletedAt ?? b.updatedAt ?? Date.now()),
           deleted:!!deleted
         };
@@ -2752,6 +3001,9 @@
           address:r.address || "Aucune",
           description:r.description || "Aucune",
           typeId:r.type_id || null,
+          floating:!!r.is_floating,
+          plannedDate:r.planned_date || localDateKey(new Date(Number(r.start_ms)||Date.now())),
+          durationMinutes:Math.max(15,Number(r.duration_minutes)||Math.round((Number(r.end_ms)-Number(r.start_ms))/60000)||15),
           updatedAt:Number(r.updated_ms)||0
         };
       }
@@ -2822,7 +3074,7 @@
             if(winner.deleted){
               if(cloud){
                 const base=kind==="block"
-                  ? {id,name:cloud.name,start:Number(cloud.start_ms)||0,end:Number(cloud.end_ms)||0,color:cloud.color,address:cloud.address,description:cloud.description,typeId:cloud.type_id}
+                  ? {id,name:cloud.name,start:Number(cloud.start_ms)||0,end:Number(cloud.end_ms)||0,color:cloud.color,address:cloud.address,description:cloud.description,typeId:cloud.type_id,floating:!!cloud.is_floating,plannedDate:cloud.planned_date,durationMinutes:Number(cloud.duration_minutes)||15}
                   : kind==="rule"
                     ? {id,name:cloud.name,start:cloud.start_time,end:cloud.end_time,enabled:cloud.enabled,color:cloud.color}
                     : kind==="override"
@@ -3061,7 +3313,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=6").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=6.1").catch(() => {});
       });
     }
   </script>
