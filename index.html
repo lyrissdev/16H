@@ -82,6 +82,181 @@
       justify-content:flex-end;
     }
 
+
+    .brand-nav{
+      display:flex;
+      align-items:center;
+      gap:16px;
+      flex-wrap:wrap;
+    }
+
+    .view-switch{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .view-switch-btn{
+      background:#f1f3f6;
+      color:var(--text);
+      border:1px solid transparent;
+      padding:8px 12px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:700;
+      letter-spacing:.01em;
+    }
+
+    .view-switch-btn.active{
+      background:var(--text);
+      color:white;
+      border-color:var(--text);
+    }
+
+    .week-panel{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+
+    .week-toolbar-subtitle{
+      color:var(--muted);
+      font-size:13px;
+      margin-top:5px;
+    }
+
+    .week-toolbar-actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .week-scroll{
+      overflow-x:auto;
+      padding:18px 16px 18px;
+    }
+
+    .week-board{
+      min-width:1120px;
+      display:grid;
+      grid-template-columns:repeat(7, minmax(150px, 1fr));
+      border:1px solid var(--line);
+      border-radius:16px;
+      overflow:hidden;
+      background:#fff;
+    }
+
+    .week-column{
+      display:flex;
+      flex-direction:column;
+      min-width:0;
+      border-right:1px solid var(--line);
+      background:#fbfcfd;
+    }
+
+    .week-column:last-child{
+      border-right:0;
+    }
+
+    .week-column.today .week-column-header{
+      background:#eef4ff;
+    }
+
+    .week-column-header{
+      padding:14px 14px 12px;
+      border-bottom:1px solid var(--line);
+      min-height:78px;
+      background:#f7f8fa;
+    }
+
+    .week-day-label{
+      font-size:14px;
+      font-weight:800;
+      letter-spacing:-.02em;
+    }
+
+    .week-day-date{
+      color:var(--muted);
+      font-size:12px;
+      margin-top:4px;
+    }
+
+    .week-column-body{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      padding:12px;
+      min-height:420px;
+      background:#fff;
+    }
+
+    .week-item{
+      appearance:none;
+      width:100%;
+      text-align:left;
+      background:#fff;
+      border:1px solid var(--line);
+      border-left:6px solid var(--block);
+      border-radius:14px;
+      padding:10px 11px;
+      box-shadow:0 2px 8px rgba(0,0,0,.03);
+    }
+
+    .week-item:hover{
+      border-color:var(--line-strong);
+    }
+
+    .week-item-title{
+      font-size:13px;
+      font-weight:800;
+      line-height:1.25;
+      margin-bottom:5px;
+      overflow-wrap:anywhere;
+    }
+
+    .week-item-time{
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .week-item-meta{
+      color:var(--muted);
+      font-size:11px;
+      margin-top:5px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .week-empty{
+      color:var(--muted);
+      font-size:12px;
+      padding:2px 2px 0;
+    }
+
+    .week-add{
+      margin-top:auto;
+      width:100%;
+      min-height:42px;
+      border:1px dashed var(--line-strong);
+      border-radius:12px;
+      background:#f1f3f6;
+      color:var(--text);
+      font-size:22px;
+      line-height:1;
+      font-weight:700;
+    }
+
+    .week-add:hover{
+      background:#ebeff3;
+      border-color:#9ba3ad;
+    }
+
     .btn{
       background:var(--panel);
       color:var(--text);
@@ -676,10 +851,13 @@
         grid-column:3;
       }
       .topbar{ flex-direction:column; }
+      .brand-nav{ align-items:flex-start; }
       .actions{ justify-content:flex-start; }
       .below{ grid-template-columns:1fr; }
       .timeline-toolbar{ align-items:flex-start; flex-direction:column; }
       .hint{ text-align:left; }
+      .week-toolbar-actions{ justify-content:flex-start; }
+      .week-board{ min-width:980px; }
     }
 
     @media (display-mode: standalone) {
@@ -695,8 +873,14 @@
   <div class="app">
     <div class="topbar">
       <div>
-        <h1>16H</h1>
-        <div class="subtitle">Une carte simple des 16 prochaines heures.</div>
+        <div class="brand-nav">
+          <h1>16H</h1>
+          <div class="view-switch">
+            <button class="view-switch-btn active" id="timelineViewBtn" type="button">16 HEURES</button>
+            <button class="view-switch-btn" id="weeksViewBtn" type="button">SEMAINES</button>
+          </div>
+        </div>
+        <div class="subtitle" id="topSubtitle">Une carte simple des 16 prochaines heures.</div>
       </div>
       <div class="actions">
         <button class="btn" id="recenterBtn">Recentrer maintenant</button>
@@ -706,6 +890,7 @@
       </div>
     </div>
 
+    <div id="timelinePage">
     <section class="panel">
       <div class="timeline-toolbar">
         <div class="window-label" id="windowLabel"></div>
@@ -750,6 +935,26 @@
       <div class="podium" id="scorePodium"></div>
       <div class="score-list" id="scoreList"></div>
     </section>
+    </div>
+
+    <div id="weeksPage" style="display:none">
+      <section class="week-panel">
+        <div class="timeline-toolbar">
+          <div>
+            <div class="window-label" id="weekLabel"></div>
+            <div class="week-toolbar-subtitle">Vue liste du lundi au dimanche · clique sur un bloc pour l’ouvrir</div>
+          </div>
+          <div class="week-toolbar-actions">
+            <button class="btn" id="prevWeekBtn" type="button">← Semaine précédente</button>
+            <button class="btn" id="currentWeekBtn" type="button">Semaine actuelle</button>
+            <button class="btn" id="nextWeekBtn" type="button">Semaine suivante →</button>
+          </div>
+        </div>
+        <div class="week-scroll">
+          <div class="week-board" id="weekBoard"></div>
+        </div>
+      </section>
+    </div>
 
   </div>
 
@@ -991,6 +1196,13 @@
       const ruleDialog = el("ruleDialog");
       const ruleForm = el("ruleForm");
       const cloudDialog = el("cloudDialog");
+      const timelinePage = el("timelinePage");
+      const weeksPage = el("weeksPage");
+      const timelineViewBtn = el("timelineViewBtn");
+      const weeksViewBtn = el("weeksViewBtn");
+      const topSubtitle = el("topSubtitle");
+      const weekBoard = el("weekBoard");
+      const weekLabelEl = el("weekLabel");
 
       let anchor = getAnchor();
       let selectedBlockId = null;
@@ -998,6 +1210,8 @@
       let editingOverride = null;
       let dragState = null;
       let lastBlockTap = {id:null, time:0};
+      let currentView = "timeline";
+      let weekCursor = getWeekStart(new Date());
       let supabaseClient = null;
       let cloudUser = null;
       let authSubscription = null;
@@ -1354,6 +1568,168 @@
         });
       }
 
+
+      function getWeekStart(date){
+        const d=new Date(date);
+        d.setHours(0,0,0,0);
+        const offset=(d.getDay()+6)%7; // monday-first
+        d.setDate(d.getDate()-offset);
+        return d;
+      }
+
+      function startOfDayTs(date){
+        const d=new Date(date);
+        d.setHours(0,0,0,0);
+        return d.getTime();
+      }
+
+      function endOfDayTs(date){
+        const d=new Date(date);
+        d.setHours(24,0,0,0);
+        return d.getTime();
+      }
+
+      function shortWeekday(date){
+        return ["Dim.","Lun.","Mar.","Mer.","Jeu.","Ven.","Sam."][new Date(date).getDay()];
+      }
+
+      function shortDateLabel(date){
+        const d=new Date(date);
+        return `${d.getDate()} ${["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."][d.getMonth()]}`;
+      }
+
+      function formatWeekRangeLabel(startDate){
+        const start=new Date(startDate);
+        const end=new Date(startDate);
+        end.setDate(end.getDate()+6);
+        return `Semaine du ${shortWeekday(start).toLowerCase()} ${shortDateLabel(start)} au ${shortWeekday(end).toLowerCase()} ${shortDateLabel(end)}`;
+      }
+
+      function updateViewUI(){
+        const isTimeline=currentView==="timeline";
+        if(timelinePage) timelinePage.style.display=isTimeline ? "block" : "none";
+        if(weeksPage) weeksPage.style.display=isTimeline ? "none" : "block";
+        if(timelineViewBtn) timelineViewBtn.classList.toggle("active", isTimeline);
+        if(weeksViewBtn) weeksViewBtn.classList.toggle("active", !isTimeline);
+        if(topSubtitle){
+          topSubtitle.textContent=isTimeline
+            ? "Une carte simple des 16 prochaines heures."
+            : "Tous les blocs de la semaine actuelle, du lundi au dimanche.";
+        }
+        if(el("recenterBtn")) el("recenterBtn").style.display=isTimeline ? "" : "none";
+      }
+
+      function setView(view){
+        currentView = view === "weeks" ? "weeks" : "timeline";
+        updateViewUI();
+        if(currentView === "weeks"){
+          renderWeekView();
+        }else{
+          renderNow();
+        }
+      }
+
+      function getDefaultStartForDate(dayDate){
+        const dayStart=startOfDayTs(dayDate);
+        const dayEnd=endOfDayTs(dayDate);
+        const now=Date.now();
+        if(now >= dayStart && now < dayEnd){
+          return ceilToQuarter(now);
+        }
+        const base=new Date(dayStart);
+        base.setHours(9,0,0,0);
+        return base.getTime();
+      }
+
+      function openNewBlockForDay(dayDate){
+        openNewBlock(getDefaultStartForDate(dayDate));
+      }
+
+      function formatWeekItemTime(block, dayStart, dayEnd){
+        const clippedStart=Math.max(block.start, dayStart);
+        const clippedEnd=Math.min(block.end, dayEnd);
+        return `${fmtTime(clippedStart)}–${fmtTime(clippedEnd)} · ${durationText(block.end-block.start)}`;
+      }
+
+      function dayExplicitBlocks(dayDate){
+        const start=startOfDayTs(dayDate);
+        const end=endOfDayTs(dayDate);
+        return state.blocks
+          .filter(b=>intervalsOverlap(b.start,b.end,start,end))
+          .sort((a,b)=>a.start-b.start);
+      }
+
+      function renderWeekView(){
+        if(!weekBoard || !weekLabelEl) return;
+
+        weekCursor=getWeekStart(weekCursor);
+        weekLabelEl.textContent = formatWeekRangeLabel(weekCursor);
+        weekBoard.innerHTML = "";
+
+        const todayKey=localDateKey(new Date());
+
+        for(let i=0;i<7;i++){
+          const day=new Date(weekCursor);
+          day.setDate(day.getDate()+i);
+
+          const dayStart=startOfDayTs(day);
+          const dayEnd=endOfDayTs(day);
+          const blocks=dayExplicitBlocks(day);
+
+          const column=document.createElement("div");
+          column.className="week-column";
+          if(localDateKey(day)===todayKey) column.classList.add("today");
+
+          const header=document.createElement("div");
+          header.className="week-column-header";
+          header.innerHTML = `
+            <div class="week-day-label">${shortWeekday(day)}</div>
+            <div class="week-day-date">${shortDateLabel(day)}</div>
+          `;
+
+          const body=document.createElement("div");
+          body.className="week-column-body";
+
+          if(!blocks.length){
+            const empty=document.createElement("div");
+            empty.className="week-empty";
+            empty.textContent="Aucun bloc.";
+            body.appendChild(empty);
+          }
+
+          blocks.forEach(block=>{
+            const item=document.createElement("button");
+            item.type="button";
+            item.className="week-item";
+            item.style.borderLeftColor = block.color || "#23272d";
+            item.innerHTML = `
+              <div class="week-item-title"></div>
+              <div class="week-item-time">${formatWeekItemTime(block, dayStart, dayEnd)}</div>
+              <div class="week-item-meta"></div>
+            `;
+            item.querySelector(".week-item-title").textContent = block.name || "Bloc";
+            const meta=item.querySelector(".week-item-meta");
+            meta.textContent = block.address && block.address !== "Aucune"
+              ? block.address
+              : (block.description && block.description !== "Aucune" ? block.description : "");
+            if(!meta.textContent) meta.remove();
+            item.addEventListener("click",()=>openEditBlock(block.id));
+            body.appendChild(item);
+          });
+
+          const add=document.createElement("button");
+          add.type="button";
+          add.className="week-add";
+          add.textContent="+";
+          add.addEventListener("click",()=>openNewBlockForDay(day));
+          body.appendChild(add);
+
+          column.append(header,body);
+          weekBoard.appendChild(column);
+        }
+      }
+
+
       function render(){
         renderLabels();
         renderBlocks();
@@ -1361,6 +1737,8 @@
         renderWindow();
         renderStats();
         renderScoreboard();
+        renderWeekView();
+        updateViewUI();
         renderNow();
       }
 
@@ -1932,8 +2310,28 @@
         btn.addEventListener("click",()=>el(btn.dataset.close).close());
       });
 
-      el("addBtn").onclick=()=>openNewBlock();
+      el("addBtn").onclick=()=>{
+        if(currentView==="weeks") openNewBlockForDay(new Date());
+        else openNewBlock();
+      };
       el("rulesBtn").onclick=openNewRule;
+      timelineViewBtn.onclick=()=>setView("timeline");
+      weeksViewBtn.onclick=()=>setView("weeks");
+      el("prevWeekBtn").onclick=()=>{
+        weekCursor.setDate(weekCursor.getDate()-7);
+        renderWeekView();
+        setView("weeks");
+      };
+      el("currentWeekBtn").onclick=()=>{
+        weekCursor=getWeekStart(new Date());
+        renderWeekView();
+        setView("weeks");
+      };
+      el("nextWeekBtn").onclick=()=>{
+        weekCursor.setDate(weekCursor.getDate()+7);
+        renderWeekView();
+        setView("weeks");
+      };
       el("cloudBtn").onclick=()=>{
         populateCloudDialog();
         cloudDialog.showModal();
@@ -2663,7 +3061,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=5.6").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=6").catch(() => {});
       });
     }
   </script>
