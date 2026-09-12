@@ -765,6 +765,51 @@
     .priority-item-title{font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .priority-item-meta{color:var(--muted);font-size:11px;margin-top:3px}
     .priority-date{flex:0 0 auto;color:var(--muted);font-size:11px;font-weight:700}
+
+    .drop-preview{
+      position:absolute;
+      top:53px;
+      height:80px;
+      border-radius:12px;
+      background:rgba(31,122,236,.18);
+      border:2px solid var(--accent);
+      z-index:20;
+      pointer-events:none;
+      display:none;
+      overflow:hidden;
+      padding:10px 12px;
+      color:var(--text);
+      box-shadow:0 6px 18px rgba(31,122,236,.18);
+    }
+
+    .drop-preview.invalid{
+      background:rgba(200,63,73,.15);
+      border-color:var(--danger);
+      box-shadow:0 6px 18px rgba(200,63,73,.14);
+    }
+
+    .drop-preview-title{
+      font-size:12px;
+      font-weight:800;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .drop-preview-time{
+      margin-top:4px;
+      font-size:11px;
+      font-weight:700;
+      white-space:nowrap;
+    }
+
+    .drop-preview-hint{
+      margin-top:3px;
+      font-size:10px;
+      opacity:.72;
+      white-space:nowrap;
+    }
+
     .timeline.priority-drag-over .rule{box-shadow:inset 0 0 0 2px var(--accent);background-color:var(--accent-soft)}
     .week-item.floating{background:#f8f9fb;border-style:dashed}
     .week-item.floating .week-item-time{font-weight:700;color:var(--text)}
@@ -941,6 +986,11 @@
           <div class="rule"></div>
           <div class="empty-overlay" id="emptyOverlay"></div>
           <div id="blocks"></div>
+          <div class="drop-preview" id="dropPreview">
+            <div class="drop-preview-title" id="dropPreviewTitle"></div>
+            <div class="drop-preview-time" id="dropPreviewTime"></div>
+            <div class="drop-preview-hint" id="dropPreviewHint">Relâche pour placer</div>
+          </div>
           <div class="now-marker" id="nowMarker"><div class="now-dot"></div></div>
           <div class="footer-scale">
             <span>début</span>
@@ -1268,6 +1318,10 @@
       const weekLabelEl = el("weekLabel");
       const prioritySection = el("prioritySection");
       const priorityList = el("priorityList");
+      const dropPreview = el("dropPreview");
+      const dropPreviewTitle = el("dropPreviewTitle");
+      const dropPreviewTime = el("dropPreviewTime");
+      const dropPreviewHint = el("dropPreviewHint");
 
       let anchor = getAnchor();
       let selectedBlockId = null;
@@ -1277,6 +1331,9 @@
       let lastBlockTap = {id:null, time:0};
       let currentView = "timeline";
       let weekCursor = getWeekStart(new Date());
+      let activePriorityDragId = null;
+      let priorityDropCandidate = null;
+      let suppressPriorityClickUntil = 0;
       let supabaseClient = null;
       let cloudUser = null;
       let authSubscription = null;
@@ -1843,10 +1900,31 @@
           item.querySelector(".priority-item-title").textContent=block.name || "Bloc";
           item.querySelector(".priority-date").textContent=floatingBlockDateLabel(block.plannedDate);
           item.addEventListener("dragstart",e=>{
+            activePriorityDragId=block.id;
+            suppressPriorityClickUntil=Date.now()+800;
             e.dataTransfer.effectAllowed="move";
             e.dataTransfer.setData("text/plain",block.id);
+            if(e.dataTransfer.setDragImage){
+              const ghost=document.createElement("div");
+              ghost.style.width="1px";
+              ghost.style.height="1px";
+              document.body.appendChild(ghost);
+              e.dataTransfer.setDragImage(ghost,0,0);
+              setTimeout(()=>ghost.remove(),0);
+            }
           });
-          item.addEventListener("click",()=>openEditBlock(block.id));
+
+          item.addEventListener("dragend",()=>{
+            activePriorityDragId=null;
+            priorityDropCandidate=null;
+            suppressPriorityClickUntil=Date.now()+350;
+            hideDropPreview();
+          });
+
+          item.addEventListener("click",()=>{
+            if(Date.now()<suppressPriorityClickUntil) return;
+            openEditBlock(block.id);
+          });
           priorityList.appendChild(item);
         });
       }
@@ -1868,6 +1946,11 @@
         block.end=end;
         block.plannedDate=localDateKey(new Date(start));
         block.updatedAt=Date.now();
+
+        // A drag/drop should never leave this block as the active edit target.
+        selectedBlockId=null;
+        lastBlockTap={id:null,time:0};
+
         saveState();
         render();
         showToast("Bloc placé dans la timeline");
@@ -2192,8 +2275,13 @@
           color:"#23272d"
         });
         setBlockSchedulingMode(forceHasTime);
+
+        // Always reset the dialog to creation/edit mode.
+        // Without this, the previous block's read-only card can remain visible.
+        setBlockDialogMode("edit");
         el("cancelBlockEditBtn").textContent="Annuler";
-        blockDialog.showModal();
+
+        if(!blockDialog.open) blockDialog.showModal();
       }
 
       function openEditBlock(id){
@@ -2535,6 +2623,8 @@
       });
 
       el("addBtn").onclick=()=>{
+        selectedBlockId=null;
+        lastBlockTap={id:null,time:0};
         if(currentView==="weeks") openNewBlockForDay(new Date());
         else openNewBlock();
       };
@@ -2574,25 +2664,78 @@
       });
 
 
+
+      function hideDropPreview(){
+        if(dropPreview) dropPreview.style.display="none";
+        timeline.classList.remove("priority-drag-over");
+        priorityDropCandidate=null;
+      }
+
+      function computePriorityDropCandidate(blockId,clientX){
+        const block=state.blocks.find(b=>String(b.id)===String(blockId));
+        if(!block || !block.floating) return null;
+
+        const rect=timeline.getBoundingClientRect();
+        const rawX=clientX-rect.left;
+        const maxStartSlot=Math.max(
+          0,
+          TOTAL_SLOTS-Math.ceil(Math.max(15,Number(block.durationMinutes)||15)/SLOT_MIN)
+        );
+        const slot=Math.max(0,Math.min(maxStartSlot,Math.round(rawX/SLOT_PX)));
+        const start=anchor.getTime()+slot*SLOT_MS;
+        const duration=Math.max(15,Number(block.durationMinutes)||15)*60000;
+        const end=start+duration;
+        const invalid=hasConflict(start,end,block.id);
+
+        return {block,slot,start,end,invalid};
+      }
+
+      function showDropPreview(candidate){
+        if(!candidate || !dropPreview) return;
+        const widthSlots=(candidate.end-candidate.start)/SLOT_MS;
+        dropPreview.style.left=`${candidate.slot*SLOT_PX}px`;
+        dropPreview.style.width=`${Math.max(SLOT_PX,widthSlots*SLOT_PX)}px`;
+        dropPreview.style.display="block";
+        dropPreview.classList.toggle("invalid",candidate.invalid);
+        dropPreviewTitle.textContent=candidate.block.name || "Bloc";
+        dropPreviewTime.textContent=`${fmtTime(candidate.start)} → ${fmtTime(candidate.end)}`;
+        dropPreviewHint.textContent=candidate.invalid
+          ? "Créneau occupé"
+          : "Relâche pour placer";
+        timeline.classList.add("priority-drag-over");
+      }
+
       timeline.addEventListener("dragover",(e)=>{
         e.preventDefault();
         if(e.dataTransfer) e.dataTransfer.dropEffect="move";
-        timeline.classList.add("priority-drag-over");
+        const blockId=activePriorityDragId || e.dataTransfer?.getData("text/plain");
+        if(!blockId) return;
+        priorityDropCandidate=computePriorityDropCandidate(blockId,e.clientX);
+        showDropPreview(priorityDropCandidate);
       });
 
-      timeline.addEventListener("dragleave",()=>{
-        timeline.classList.remove("priority-drag-over");
+      timeline.addEventListener("dragleave",(e)=>{
+        const related=e.relatedTarget;
+        if(related && timeline.contains(related)) return;
+        hideDropPreview();
       });
 
       timeline.addEventListener("drop",(e)=>{
         e.preventDefault();
-        timeline.classList.remove("priority-drag-over");
-        const blockId=e.dataTransfer?.getData("text/plain");
-        if(!blockId) return;
-        const rect=timeline.getBoundingClientRect();
-        const x=Math.max(0,Math.min(TOTAL_SLOTS*SLOT_PX,e.clientX-rect.left));
-        const slot=Math.max(0,Math.min(TOTAL_SLOTS-1,Math.round(x/SLOT_PX)));
-        placeFloatingBlockAt(blockId,anchor.getTime()+slot*SLOT_MS);
+        const blockId=activePriorityDragId || e.dataTransfer?.getData("text/plain");
+        const candidate=priorityDropCandidate || computePriorityDropCandidate(blockId,e.clientX);
+        hideDropPreview();
+
+        if(!blockId || !candidate) return;
+        suppressPriorityClickUntil=Date.now()+800;
+
+        if(candidate.invalid){
+          showToast("Impossible : ce créneau chevauche déjà un autre bloc.");
+          return;
+        }
+
+        placeFloatingBlockAt(blockId,candidate.start);
+        activePriorityDragId=null;
       });
 
       function onBlockPointerDown(e){
@@ -3313,7 +3456,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=6.1").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=6.2").catch(() => {});
       });
     }
   </script>
