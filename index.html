@@ -1908,6 +1908,17 @@
           item.querySelector(".priority-item-title").textContent=block.name || "Bloc";
           item.querySelector(".priority-date").textContent=floatingBlockDateLabel(block.plannedDate);
           item.addEventListener("dragstart",e=>{
+            // Completely isolate "priority drag" from the normal timeline
+            // pointer-drag system. A stale dragState was causing the final
+            // mouseup to be interpreted as moving an existing timeline block.
+            if(dragState?.el){
+              try{
+                dragState.el.removeEventListener("pointermove",onBlockPointerMove);
+              }catch{}
+            }
+            dragState=null;
+            lastBlockTap={id:null,time:0};
+
             activePriorityDragId=block.id;
             suppressPriorityClickUntil=Date.now()+800;
             e.dataTransfer.effectAllowed="move";
@@ -1925,6 +1936,8 @@
           item.addEventListener("dragend",()=>{
             activePriorityDragId=null;
             priorityDropCandidate=null;
+            dragState=null;
+            lastBlockTap={id:null,time:0};
             suppressPriorityClickUntil=Date.now()+350;
             hideDropPreview();
           });
@@ -2742,11 +2755,14 @@
           return;
         }
 
+        dragState=null;
+        lastBlockTap={id:null,time:0};
         placeFloatingBlockAt(blockId,candidate.start);
         activePriorityDragId=null;
       });
 
       function onBlockPointerDown(e){
+        if(activePriorityDragId) return;
         if(e.button !== 0) return;
         e.preventDefault();
         e.stopPropagation();
@@ -2779,6 +2795,10 @@
       }
 
       function onBlockPointerMove(e){
+        if(activePriorityDragId){
+          dragState=null;
+          return;
+        }
         if(!dragState) return;
         const deltaSlots=Math.round((e.clientX-dragState.startX)/SLOT_PX);
         const delta=deltaSlots*SLOT_MS;
@@ -2806,6 +2826,15 @@
       }
 
       function onBlockPointerUp(e){
+        if(activePriorityDragId){
+          if(dragState?.el){
+            try{
+              dragState.el.removeEventListener("pointermove",onBlockPointerMove);
+            }catch{}
+          }
+          dragState=null;
+          return;
+        }
         if(!dragState) return;
         const ds=dragState;
         ds.el.removeEventListener("pointermove",onBlockPointerMove);
@@ -2839,7 +2868,7 @@
         lastBlockTap={id:null,time:0};
 
         if(hasConflict(ds.previewStart,ds.previewEnd,ds.id)){
-          showToast("Impossible : chevauchement");
+          showToast("Déplacement impossible : ce bloc chevauche un autre créneau.");
           dragState=null;
           render();
           return;
@@ -3464,7 +3493,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=6.3").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=6.4").catch(() => {});
       });
     }
   </script>
