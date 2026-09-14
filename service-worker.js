@@ -1,4 +1,4 @@
-const CACHE_NAME = "16h-pwa-v6-2";
+const CACHE_NAME = "16h-pwa-v6-3";
 const APP_ASSETS = [
   "./manifest.webmanifest",
   "./icon-180.png",

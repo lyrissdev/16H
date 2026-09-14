@@ -1571,6 +1571,12 @@
       function hasConflict(start,end,excludeBlockId=null){
         for (const b of state.blocks){
           if (b.id === excludeBlockId) continue;
+
+          // A floating block has a technical timestamp only so it can be
+          // stored/synchronised. It must NOT reserve any real time until
+          // the user actually places it on the timeline.
+          if (b.floating) continue;
+
           if (intervalsOverlap(start,end,b.start,b.end)) return true;
         }
         for (const r of getRecurringInstances(start - 24*3600000, end + 24*3600000)){
@@ -1613,6 +1619,8 @@
         });
 
         for(const b of state.blocks){
+          if(b.floating) continue;
+
           let entry=null;
 
           if(b.typeId && typeMap.has(String(b.typeId))){
@@ -1937,7 +1945,7 @@
         const end=start+Math.max(15,Number(block.durationMinutes)||15)*60000;
 
         if(hasConflict(start,end,block.id)){
-          showToast("Impossible : ce créneau chevauche déjà un autre bloc.");
+          showToast("Créneau occupé par un bloc horaire ou une règle quotidienne.");
           return;
         }
 
@@ -2730,7 +2738,7 @@
         suppressPriorityClickUntil=Date.now()+800;
 
         if(candidate.invalid){
-          showToast("Impossible : ce créneau chevauche déjà un autre bloc.");
+          showToast("Créneau occupé par un bloc horaire ou une règle quotidienne.");
           return;
         }
 
@@ -3456,7 +3464,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=6.2").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=6.3").catch(() => {});
       });
     }
   </script>
