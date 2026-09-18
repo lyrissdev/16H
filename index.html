@@ -272,6 +272,26 @@
       border-color:var(--text);
     }
 
+
+    .focus-page{display:none}
+    .focus-shell{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr);gap:18px}
+    .focus-card{background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:24px;min-width:0}
+    .focus-eyebrow{color:var(--muted);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+    .focus-title{font-size:36px;line-height:1.04;font-weight:850;letter-spacing:-.035em;margin:0 0 12px;overflow-wrap:anywhere}
+    .focus-description{color:var(--text);font-size:18px;line-height:1.45;white-space:pre-wrap;margin-top:12px}
+    .focus-address{color:var(--muted);font-size:14px;margin-top:10px;overflow-wrap:anywhere}
+    .focus-time-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:18px}
+    .focus-pill{display:inline-flex;align-items:center;gap:6px;padding:9px 12px;border-radius:999px;background:#f1f3f6;color:var(--text);font-size:13px;font-weight:750}
+    .focus-countdown{font-size:46px;line-height:1;font-weight:900;letter-spacing:-.045em;margin-top:24px}
+    .focus-countdown-label{color:var(--muted);font-size:13px;margin-top:6px}
+    .focus-next-title{font-size:22px;font-weight:850;letter-spacing:-.025em;margin:0 0 8px;overflow-wrap:anywhere}
+    .focus-next-time{color:var(--muted);font-size:14px;margin-top:5px}
+    .focus-free{font-size:32px;font-weight:850;letter-spacing:-.035em;line-height:1.12;margin:0 0 10px}
+    .focus-free-sub{color:var(--muted);font-size:15px;line-height:1.5}
+    .focus-actions{display:flex;justify-content:flex-end;margin-top:18px}
+    .plan-lock-btn{background:#17191c;color:white;border-color:#17191c}
+    @media (max-width:800px){.focus-shell{grid-template-columns:1fr}.focus-title{font-size:30px}.focus-countdown{font-size:38px}}
+
     .cloud-btn{
       display:inline-flex;
       align-items:center;
@@ -969,8 +989,20 @@
       <div class="actions">
         <button class="btn" id="recenterBtn">Recentrer maintenant</button>
         <button class="btn" id="rulesBtn">Nouvelle règle quotidienne</button>
+        <button class="btn plan-lock-btn" id="finishPlanningBtn">Terminer ma planification</button>
+        <button class="btn" id="editDayBtn" style="display:none">Modifier la journée</button>
         <button class="btn cloud-btn" id="cloudBtn"><span class="cloud-dot" id="cloudDot"></span><span id="cloudLabel">Cloud</span></button>
         <button class="btn primary" id="addBtn">+ Ajouter un bloc</button>
+      </div>
+    </div>
+
+    <div id="focusPage" class="focus-page">
+      <div class="focus-shell">
+        <section class="focus-card" id="focusCurrentCard"></section>
+        <section class="focus-card" id="focusNextCard"></section>
+      </div>
+      <div class="focus-actions">
+        <button class="btn" id="editDayInlineBtn" type="button">Modifier la journée</button>
       </div>
     </div>
 
@@ -1309,6 +1341,9 @@
       const ruleDialog = el("ruleDialog");
       const ruleForm = el("ruleForm");
       const cloudDialog = el("cloudDialog");
+      const focusPage=el("focusPage");
+      const focusCurrentCard=el("focusCurrentCard");
+      const focusNextCard=el("focusNextCard");
       const timelinePage = el("timelinePage");
       const weeksPage = el("weeksPage");
       const timelineViewBtn = el("timelineViewBtn");
@@ -1345,6 +1380,7 @@
       let syncMeta = loadSyncMeta();
       if(!Array.isArray(state.blockTypes)) state.blockTypes=DEFAULT_BLOCK_TYPES.map(t=>({...t,updatedAt:1}));
       if(!Array.isArray(state.ruleOverrides)) state.ruleOverrides=[];
+      if(!Array.isArray(state.dayStates)) state.dayStates=[];
       if (!state.rules.length) {
         state.rules.push({
           id: "default-sleep",
@@ -1381,6 +1417,7 @@
             updatedAt:Number(b.updatedAt)||now
           })) : [];
           const rules = Array.isArray(raw.rules) ? raw.rules.map(r => ({...r, updatedAt:Number(r.updatedAt)||now})) : [];
+          const dayStates = Array.isArray(raw.dayStates) ? raw.dayStates.map(s => ({...s,locked:!!s.locked,lockedAt:Number(s.lockedAt)||0,updatedAt:Number(s.updatedAt)||now})) : [];
           const ruleOverrides = Array.isArray(raw.ruleOverrides) ? raw.ruleOverrides.map(o => ({
             ...o,
             updatedAt:Number(o.updatedAt)||now
@@ -1402,12 +1439,13 @@
             if(!typeMap.has(t.id)) typeMap.set(t.id,{...t,updatedAt:1});
           });
 
-          return {blocks, rules, ruleOverrides, blockTypes:[...typeMap.values()]};
+          return {blocks, rules, ruleOverrides, dayStates, blockTypes:[...typeMap.values()]};
         }catch{
           return {
             blocks:[],
             rules:[],
             ruleOverrides:[],
+            dayStates:[],
             blockTypes:DEFAULT_BLOCK_TYPES.map(t=>({...t,updatedAt:1}))
           };
         }
@@ -1420,10 +1458,11 @@
             deletedBlocks:Array.isArray(raw.deletedBlocks) ? raw.deletedBlocks : [],
             deletedRules:Array.isArray(raw.deletedRules) ? raw.deletedRules : [],
             deletedTypes:Array.isArray(raw.deletedTypes) ? raw.deletedTypes : [],
-            deletedOverrides:Array.isArray(raw.deletedOverrides) ? raw.deletedOverrides : []
+            deletedOverrides:Array.isArray(raw.deletedOverrides) ? raw.deletedOverrides : [],
+            deletedDayStates:Array.isArray(raw.deletedDayStates) ? raw.deletedDayStates : []
           };
         }catch{
-          return {deletedBlocks:[],deletedRules:[],deletedTypes:[],deletedOverrides:[]};
+          return {deletedBlocks:[],deletedRules:[],deletedTypes:[],deletedOverrides:[],deletedDayStates:[]};
         }
       }
 
@@ -1443,7 +1482,9 @@
             ? "deletedRules"
             : kind === "override"
               ? "deletedOverrides"
-              : "deletedTypes";
+              : kind === "daystate"
+                ? "deletedDayStates"
+                : "deletedTypes";
         syncMeta[key] = syncMeta[key].filter(x => x.id !== id);
         syncMeta[key].push({id,updatedAt});
         saveSyncMeta();
@@ -1740,8 +1781,8 @@
 
       function updateViewUI(){
         const isTimeline=currentView==="timeline";
-        if(timelinePage) timelinePage.style.display=isTimeline ? "block" : "none";
         if(weeksPage) weeksPage.style.display=isTimeline ? "none" : "block";
+        if(!isTimeline){if(timelinePage)timelinePage.style.display="none";if(focusPage)focusPage.style.display="none";}
         if(timelineViewBtn) timelineViewBtn.classList.toggle("active", isTimeline);
         if(weeksViewBtn) weeksViewBtn.classList.toggle("active", !isTimeline);
         if(topSubtitle){
@@ -1977,6 +2018,57 @@
         showToast("Bloc placé dans la timeline");
       }
 
+
+      function currentDayKey(){return localDateKey(new Date());}
+      function getDayState(dateKey=currentDayKey()){return state.dayStates.find(s=>s.dateKey===dateKey)||null;}
+      function isTodayLocked(){return !!getDayState()?.locked;}
+      function setTodayLocked(locked){
+        const dateKey=currentDayKey(); const now=Date.now();
+        let s=state.dayStates.find(x=>x.dateKey===dateKey);
+        if(!s){s={id:`day-${dateKey}`,dateKey,locked:false,lockedAt:0,updatedAt:now};state.dayStates.push(s);}
+        s.locked=!!locked; s.lockedAt=locked?now:(s.lockedAt||0); s.updatedAt=now; saveState(); render();
+      }
+      function formatCountdown(ms){ms=Math.max(0,ms);const total=Math.ceil(ms/60000);const h=Math.floor(total/60),m=total%60;if(h&&m)return `${h} h ${m} min`;if(h)return `${h} h`;return `${m} min`;}
+      function focusTimelineItems(){
+        const now=Date.now(), end=now+48*3600000;
+        const explicit=state.blocks.filter(b=>!b.floating&&b.end>now&&b.start<end).map(b=>({...b,recurring:false}));
+        const recurring=getRecurringInstances(now-12*3600000,end).filter(r=>r.end>now).map(r=>({...r,description:"",address:""}));
+        return [...explicit,...recurring].sort((a,b)=>a.start-b.start);
+      }
+      function renderFocusMode(){
+        if(!focusPage||!focusCurrentCard||!focusNextCard)return;
+        const now=Date.now(), items=focusTimelineItems();
+        const current=items.find(i=>i.start<=now&&i.end>now)||null;
+        const next=items.find(i=>i.start>now)||null;
+        if(current){
+          focusCurrentCard.innerHTML=`<div class="focus-eyebrow">Maintenant</div><h2 class="focus-title"></h2>${current.description&&current.description!=="Aucune"?'<div class="focus-description"></div>':''}${current.address&&current.address!=="Aucune"?'<div class="focus-address"></div>':''}<div class="focus-time-row"><div class="focus-pill">${fmtTime(current.start)} → ${fmtTime(current.end)}</div></div><div class="focus-countdown">${formatCountdown(current.end-now)}</div><div class="focus-countdown-label">restant sur cette tâche</div>`;
+          focusCurrentCard.querySelector('.focus-title').textContent=current.name||'Tâche';
+          const d=focusCurrentCard.querySelector('.focus-description');if(d)d.textContent=current.description;
+          const a=focusCurrentCard.querySelector('.focus-address');if(a)a.textContent=current.address;
+        }else if(next){
+          focusCurrentCard.innerHTML=`<div class="focus-eyebrow">Maintenant</div><div class="focus-free">Tu es tranquille.</div><div class="focus-free-sub">Rien n’est prévu pour le moment.</div><div class="focus-countdown">${formatCountdown(next.start-now)}</div><div class="focus-countdown-label">avant la prochaine tâche</div>`;
+        }else{
+          focusCurrentCard.innerHTML=`<div class="focus-eyebrow">Maintenant</div><div class="focus-free">Plus rien de prévu.</div><div class="focus-free-sub">Tu n’as aucun autre bloc horaire dans les prochaines 48 heures.</div>`;
+        }
+        if(next){
+          focusNextCard.innerHTML=`<div class="focus-eyebrow">Ensuite</div><div class="focus-next-title"></div>${next.description&&next.description!=="Aucune"?'<div class="focus-description" style="font-size:15px"></div>':''}<div class="focus-next-time">${fmtDateTime(next.start)} → ${fmtTime(next.end)}</div><div class="focus-countdown" style="font-size:32px">${formatCountdown(next.start-now)}</div><div class="focus-countdown-label">avant le début</div>`;
+          focusNextCard.querySelector('.focus-next-title').textContent=next.name||'Tâche'; const d=focusNextCard.querySelector('.focus-description');if(d)d.textContent=next.description;
+        }else focusNextCard.innerHTML=`<div class="focus-eyebrow">Ensuite</div><div class="focus-next-title">Rien de prévu</div><div class="focus-next-time">Aucune prochaine tâche trouvée dans les 48 heures.</div>`;
+      }
+      function updatePlanningUI(){
+        const locked=isTodayLocked(), timelineMode=currentView==='timeline';
+        if(focusPage)focusPage.style.display=(timelineMode&&locked)?'block':'none';
+        if(timelinePage)timelinePage.style.display=(timelineMode&&!locked)?'block':'none';
+        const finish=el('finishPlanningBtn'),edit=el('editDayBtn'),add=el('addBtn'),recenter=el('recenterBtn'),rules=el('rulesBtn');
+        if(finish)finish.style.display=(timelineMode&&!locked)?'':'none';
+        if(edit)edit.style.display=(timelineMode&&locked)?'':'none';
+        if(add)add.style.display=(timelineMode&&!locked)?'':(currentView==='weeks'?'':'none');
+        if(recenter)recenter.style.display=(timelineMode&&!locked)?'':'none';
+        if(rules)rules.style.display=(timelineMode&&!locked)?'':'none';
+        if(timelineViewBtn)timelineViewBtn.textContent=locked?'AUJOURD’HUI':'16 HEURES';
+        renderFocusMode();
+      }
+
       function render(){
         renderLabels();
         renderBlocks();
@@ -1987,6 +2079,7 @@
         renderWeekView();
         renderPriorities();
         updateViewUI();
+        updatePlanningUI();
         renderNow();
       }
 
@@ -2643,6 +2736,17 @@
         btn.addEventListener("click",()=>el(btn.dataset.close).close());
       });
 
+
+      el("finishPlanningBtn").addEventListener("click",()=>{
+        const today=currentDayKey();
+        const floatingToday=state.blocks.filter(b=>b.floating&&b.plannedDate===today);
+        if(floatingToday.length){const ok=confirm(`${floatingToday.length} priorité(s) d’aujourd’hui ne sont pas encore placées. Terminer la planification quand même ?`);if(!ok)return;}
+        setTodayLocked(true);showToast("Planification terminée");
+      });
+      function unlockToday(){setTodayLocked(false);showToast("Journée déverrouillée");}
+      el("editDayBtn").addEventListener("click",unlockToday);
+      el("editDayInlineBtn").addEventListener("click",unlockToday);
+
       el("addBtn").onclick=()=>{
         selectedBlockId=null;
         lastBlockTap={id:null,time:0};
@@ -3121,6 +3225,10 @@
 
 
 
+
+      function localDayStateToRow(s,userId,deleted=false,deletedAt=null){return {user_id:userId,id:String(s.id||`day-${s.dateKey}`),date_key:s.dateKey,locked:!!s.locked,locked_at_ms:Number(s.lockedAt)||0,updated_ms:Number(deletedAt??s.updatedAt??Date.now()),deleted:!!deleted};}
+      function rowToLocalDayState(r){return {id:r.id,dateKey:r.date_key,locked:!!r.locked,lockedAt:Number(r.locked_at_ms)||0,updatedAt:Number(r.updated_ms)||0};}
+
       function localOverrideToRow(o,userId,deleted=false,deletedAt=null){
         return {
           user_id:userId,
@@ -3259,7 +3367,9 @@
                     ? {id,name:cloud.name,start:cloud.start_time,end:cloud.end_time,enabled:cloud.enabled,color:cloud.color}
                     : kind==="override"
                       ? {id,ruleId:cloud.rule_id,dateKey:cloud.date_key,start:cloud.start_time,end:cloud.end_time,color:cloud.color}
-                      : {id,name:cloud.name,address:cloud.address,description:cloud.description,durationMinutes:Number(cloud.duration_minutes)||15};
+                      : kind==="daystate"
+                        ? {id,dateKey:cloud.date_key,locked:!!cloud.locked,lockedAt:Number(cloud.locked_at_ms)||0}
+                        : {id,name:cloud.name,address:cloud.address,description:cloud.description,durationMinutes:Number(cloud.duration_minutes)||15};
                 upserts.push(toRow(base,userId,true,winner.updatedAt));
               }else{
                 resolvedTombstones.add(id);
@@ -3316,20 +3426,15 @@
             toRow:localTypeToRow,
             fromRow:rowToLocalType
           });
-          const overridesResult=await syncCollection({
-            table:"timeline_rule_overrides",
-            items:state.ruleOverrides,
-            tombstones:syncMeta.deletedOverrides,
-            kind:"override",
-            toRow:localOverrideToRow,
-            fromRow:rowToLocalOverride
-          });
+          const overridesResult=await syncCollection({table:"timeline_rule_overrides",items:state.ruleOverrides,tombstones:syncMeta.deletedOverrides,kind:"override",toRow:localOverrideToRow,fromRow:rowToLocalOverride});
+          const dayStatesResult=await syncCollection({table:"timeline_day_states",items:state.dayStates,tombstones:syncMeta.deletedDayStates,kind:"daystate",toRow:localDayStateToRow,fromRow:rowToLocalDayState});
 
           suppressCloudSchedule=true;
           state.blocks=blocksResult.merged;
           state.rules=rulesResult.merged;
           state.blockTypes=typesResult.merged;
           state.ruleOverrides=overridesResult.merged;
+          state.dayStates=dayStatesResult.merged;
           DEFAULT_BLOCK_TYPES.forEach(t=>{
             if(!state.blockTypes.some(x=>String(x.id)===String(t.id))){
               state.blockTypes.push({...t,updatedAt:1});
@@ -3339,6 +3444,7 @@
           syncMeta.deletedRules=syncMeta.deletedRules.filter(t=>!rulesResult.resolvedTombstones.has(String(t.id)));
           syncMeta.deletedTypes=syncMeta.deletedTypes.filter(t=>!typesResult.resolvedTombstones.has(String(t.id)));
           syncMeta.deletedOverrides=syncMeta.deletedOverrides.filter(t=>!overridesResult.resolvedTombstones.has(String(t.id)));
+          syncMeta.deletedDayStates=syncMeta.deletedDayStates.filter(t=>!dayStatesResult.resolvedTombstones.has(String(t.id)));
           saveState(false);
           saveSyncMeta();
           suppressCloudSchedule=false;
@@ -3485,6 +3591,7 @@
         } else {
           renderNow();
           renderScoreboard();
+          renderFocusMode();
         }
       },30000);
     })();
@@ -3493,7 +3600,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=6.4").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=7").catch(() => {});
       });
     }
   </script>
