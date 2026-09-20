@@ -834,6 +834,228 @@
     .week-item.floating{background:#f8f9fb;border-style:dashed}
     .week-item.floating .week-item-time{font-weight:700;color:var(--text)}
 
+
+    .deep-tasks-field{
+      display:none;
+      grid-column:1 / -1;
+    }
+
+    .deep-tasks-box{
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:#f8f9fb;
+      padding:12px;
+    }
+
+    .deep-tasks-head{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:10px;
+    }
+
+    .deep-tasks-title{
+      font-size:13px;
+      font-weight:800;
+    }
+
+    .deep-tasks-help{
+      color:var(--muted);
+      font-size:11px;
+      margin-top:3px;
+      line-height:1.4;
+    }
+
+    .deep-task-editor-list{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+
+    .deep-task-editor-row{
+      display:grid;
+      grid-template-columns:28px minmax(0,1fr) 105px auto;
+      gap:8px;
+      align-items:center;
+      padding:8px;
+      border:1px solid var(--line);
+      border-radius:11px;
+      background:white;
+    }
+
+    .deep-task-editor-row.dragging{
+      opacity:.48;
+    }
+
+    .deep-task-rank{
+      color:var(--muted);
+      font-size:12px;
+      font-weight:800;
+      text-align:center;
+      cursor:grab;
+      user-select:none;
+    }
+
+    .deep-task-rank:active{cursor:grabbing}
+
+    .deep-task-editor-row input,
+    .deep-task-editor-row select{
+      width:100%;
+      min-width:0;
+      padding:8px 9px;
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:white;
+      color:var(--text);
+    }
+
+    .deep-task-row-actions{
+      display:flex;
+      align-items:center;
+      gap:5px;
+    }
+
+    .deep-task-icon-btn{
+      width:32px;
+      height:32px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:8px;
+      background:#f1f3f6;
+      color:var(--text);
+      font-size:13px;
+    }
+
+    .deep-task-icon-btn.danger{
+      color:var(--danger);
+      background:#fff0f1;
+    }
+
+    .deep-task-add{
+      width:100%;
+      margin-top:9px;
+      border:1px dashed var(--line-strong);
+      background:#f1f3f6;
+      border-radius:10px;
+      padding:9px 10px;
+      font-size:13px;
+      font-weight:750;
+    }
+
+    .focus-task-panel{
+      margin-top:20px;
+      padding-top:18px;
+      border-top:1px solid var(--line);
+    }
+
+    .focus-task-label{
+      color:var(--muted);
+      font-size:12px;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:.07em;
+      margin-bottom:7px;
+    }
+
+    .focus-task-current{
+      font-size:24px;
+      line-height:1.15;
+      font-weight:850;
+      letter-spacing:-.025em;
+      margin-bottom:8px;
+    }
+
+    .focus-task-duration{
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .focus-task-countdown{
+      font-size:38px;
+      line-height:1;
+      font-weight:900;
+      letter-spacing:-.04em;
+      margin-top:14px;
+    }
+
+    .focus-task-overdue{
+      color:var(--danger);
+      font-size:12px;
+      font-weight:700;
+      margin-top:5px;
+    }
+
+    .focus-task-list{
+      display:flex;
+      flex-direction:column;
+      gap:7px;
+      margin-top:16px;
+    }
+
+    .focus-task-list-row{
+      display:grid;
+      grid-template-columns:24px minmax(0,1fr) auto;
+      gap:8px;
+      align-items:center;
+      padding:9px 10px;
+      border-radius:10px;
+      background:#f7f8fa;
+      color:var(--text);
+      font-size:13px;
+    }
+
+    .focus-task-list-row.done{
+      opacity:.52;
+      text-decoration:line-through;
+    }
+
+    .focus-task-list-row.active{
+      background:#eef4ff;
+      box-shadow:inset 0 0 0 1px #bfd5ff;
+    }
+
+    .focus-task-list-rank{
+      color:var(--muted);
+      font-size:11px;
+      font-weight:800;
+    }
+
+    .focus-task-list-duration{
+      color:var(--muted);
+      font-size:11px;
+      white-space:nowrap;
+    }
+
+    .focus-complete-task{
+      width:100%;
+      margin-top:14px;
+      padding:12px 14px;
+      border-radius:11px;
+      background:var(--text);
+      color:white;
+      font-weight:800;
+    }
+
+    .focus-complete-task:disabled{
+      opacity:.4;
+      cursor:default;
+    }
+
+    @media (max-width:800px){
+      .deep-task-editor-row{
+        grid-template-columns:28px minmax(0,1fr);
+      }
+      .deep-task-editor-row select,
+      .deep-task-row-actions{
+        grid-column:2;
+      }
+      .deep-task-row-actions{
+        justify-content:flex-end;
+      }
+    }
+
     .field textarea,
     .field select{
       width:100%;
@@ -1155,6 +1377,18 @@
               <label>Description</label>
               <textarea id="blockDescription" maxlength="1000" placeholder="Aucune"></textarea>
             </div>
+            <div class="field full deep-tasks-field" id="deepTasksField">
+              <div class="deep-tasks-box">
+                <div class="deep-tasks-head">
+                  <div>
+                    <div class="deep-tasks-title">Tâches du Deep Work</div>
+                    <div class="deep-tasks-help">Définis l’ordre de priorité et la durée de chaque tâche. Tu peux les déplacer par glisser-déposer.</div>
+                  </div>
+                </div>
+                <div class="deep-task-editor-list" id="deepTaskEditorList"></div>
+                <button class="deep-task-add" id="addDeepTaskBtn" type="button">+ Ajouter une tâche</button>
+              </div>
+            </div>
             <div class="field" id="blockStartField">
               <label>Début</label>
               <input id="blockStart" type="datetime-local" step="900" />
@@ -1360,6 +1594,7 @@
 
       let anchor = getAnchor();
       let selectedBlockId = null;
+      let editingDeepTasks = [];
       let editingRuleId = null;
       let editingOverride = null;
       let dragState = null;
@@ -1414,6 +1649,13 @@
             floating:!!b.floating,
             plannedDate:b.plannedDate || (b.start ? localDateKey(new Date(b.start)) : localDateKey(new Date())),
             durationMinutes:Math.max(15,Number(b.durationMinutes)||Math.round(((Number(b.end)||0)-(Number(b.start)||0))/60000)||15),
+            tasks:Array.isArray(b.tasks) ? b.tasks.map((t,idx)=>({
+              id:t.id || `task-${idx}-${now}`,
+              name:t.name || "",
+              durationMinutes:Math.max(5,Number(t.durationMinutes)||15),
+              completedAt:Number(t.completedAt)||0,
+              startedAt:Number(t.startedAt)||0
+            })) : [],
             updatedAt:Number(b.updatedAt)||now
           })) : [];
           const rules = Array.isArray(raw.rules) ? raw.rules.map(r => ({...r, updatedAt:Number(r.updatedAt)||now})) : [];
@@ -2041,10 +2283,70 @@
         const current=items.find(i=>i.start<=now&&i.end>now)||null;
         const next=items.find(i=>i.start>now)||null;
         if(current){
-          focusCurrentCard.innerHTML=`<div class="focus-eyebrow">Maintenant</div><h2 class="focus-title"></h2>${current.description&&current.description!=="Aucune"?'<div class="focus-description"></div>':''}${current.address&&current.address!=="Aucune"?'<div class="focus-address"></div>':''}<div class="focus-time-row"><div class="focus-pill">${fmtTime(current.start)} → ${fmtTime(current.end)}</div></div><div class="focus-countdown">${formatCountdown(current.end-now)}</div><div class="focus-countdown-label">restant sur cette tâche</div>`;
-          focusCurrentCard.querySelector('.focus-title').textContent=current.name||'Tâche';
-          const d=focusCurrentCard.querySelector('.focus-description');if(d)d.textContent=current.description;
-          const a=focusCurrentCard.querySelector('.focus-address');if(a)a.textContent=current.address;
+          const isDeep=isDeepWorkType(current.typeId,current.name) && Array.isArray(current.tasks) && current.tasks.length>0;
+          if(isDeep){
+            const storedBlock=state.blocks.find(b=>String(b.id)===String(current.id));
+            if(storedBlock && initializeDeepTaskIfNeeded(storedBlock)){
+              current.tasks=storedBlock.tasks;
+            }
+            const task=activeDeepTask(storedBlock || current);
+            const tasks=(storedBlock || current).tasks || [];
+
+            focusCurrentCard.innerHTML=`
+              <div class="focus-eyebrow">Maintenant · Deep Work</div>
+              <h2 class="focus-title"></h2>
+              ${current.description&&current.description!=="Aucune"?'<div class="focus-description"></div>':''}
+              ${current.address&&current.address!=="Aucune"?'<div class="focus-address"></div>':''}
+              <div class="focus-time-row"><div class="focus-pill">${fmtTime(current.start)} → ${fmtTime(current.end)}</div></div>
+              <div class="focus-task-panel">
+                ${task ? `
+                  <div class="focus-task-label">Tâche prioritaire</div>
+                  <div class="focus-task-current"></div>
+                  <div class="focus-task-duration">Durée prévue : ${durationText(task.durationMinutes*60000)}</div>
+                  <div class="focus-task-countdown"></div>
+                  <div class="focus-countdown-label">restant pour cette tâche</div>
+                  <div class="focus-task-overdue" style="display:none"></div>
+                  <button class="focus-complete-task" type="button">✓ Valider la tâche</button>
+                ` : `
+                  <div class="focus-task-label">Deep Work</div>
+                  <div class="focus-task-current">Toutes les tâches sont terminées ✓</div>
+                `}
+                <div class="focus-task-list"></div>
+              </div>
+            `;
+
+            focusCurrentCard.querySelector(".focus-title").textContent=current.name||"Deep Work";
+            const d=focusCurrentCard.querySelector(".focus-description"); if(d)d.textContent=current.description;
+            const a=focusCurrentCard.querySelector(".focus-address"); if(a)a.textContent=current.address;
+
+            if(task){
+              focusCurrentCard.querySelector(".focus-task-current").textContent=task.name;
+              const elapsed=Math.max(0,now-(Number(task.startedAt)||now));
+              const remaining=task.durationMinutes*60000-elapsed;
+              const countdown=focusCurrentCard.querySelector(".focus-task-countdown");
+              countdown.textContent=formatCountdown(Math.max(0,remaining));
+              const overdue=focusCurrentCard.querySelector(".focus-task-overdue");
+              if(remaining<0){
+                overdue.style.display="block";
+                overdue.textContent=`Temps prévu dépassé de ${formatCountdown(Math.abs(remaining))}`;
+              }
+              focusCurrentCard.querySelector(".focus-complete-task").addEventListener("click",()=>completeCurrentDeepTask(current.id));
+            }
+
+            const list=focusCurrentCard.querySelector(".focus-task-list");
+            tasks.forEach((t,index)=>{
+              const row=document.createElement("div");
+              row.className="focus-task-list-row"+(t.completedAt?" done":(!t.completedAt && task && t.id===task.id?" active":""));
+              row.innerHTML=`<div class="focus-task-list-rank">${index+1}.</div><div></div><div class="focus-task-list-duration">${durationText(t.durationMinutes*60000)}</div>`;
+              row.children[1].textContent=t.name;
+              list.appendChild(row);
+            });
+          }else{
+            focusCurrentCard.innerHTML=`<div class="focus-eyebrow">Maintenant</div><h2 class="focus-title"></h2>${current.description&&current.description!=="Aucune"?'<div class="focus-description"></div>':''}${current.address&&current.address!=="Aucune"?'<div class="focus-address"></div>':''}<div class="focus-time-row"><div class="focus-pill">${fmtTime(current.start)} → ${fmtTime(current.end)}</div></div><div class="focus-countdown">${formatCountdown(current.end-now)}</div><div class="focus-countdown-label">restant sur cette tâche</div>`;
+            focusCurrentCard.querySelector('.focus-title').textContent=current.name||'Tâche';
+            const d=focusCurrentCard.querySelector('.focus-description');if(d)d.textContent=current.description;
+            const a=focusCurrentCard.querySelector('.focus-address');if(a)a.textContent=current.address;
+          }
         }else if(next){
           focusCurrentCard.innerHTML=`<div class="focus-eyebrow">Maintenant</div><div class="focus-free">Tu es tranquille.</div><div class="focus-free-sub">Rien n’est prévu pour le moment.</div><div class="focus-countdown">${formatCountdown(next.start-now)}</div><div class="focus-countdown-label">avant la prochaine tâche</div>`;
         }else{
@@ -2302,6 +2604,203 @@
       }
 
 
+
+      function isDeepWorkType(typeId,name=""){
+        if(String(typeId||"")==="preset-deep-work") return true;
+        const type=state.blockTypes.find(t=>String(t.id)===String(typeId));
+        const label=String(type?.name || name || "").trim().toLocaleUpperCase("fr");
+        return label==="DEEP WORK SESSION";
+      }
+
+      function makeDeepTask(name="",durationMinutes=15){
+        return {
+          id:`task-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          name,
+          durationMinutes:Math.max(5,Number(durationMinutes)||15),
+          completedAt:0,
+          startedAt:0
+        };
+      }
+
+      function fillDeepTaskDurationSelect(select,value=15){
+        select.innerHTML="";
+        for(let minutes=5;minutes<=240;minutes+=5){
+          const opt=document.createElement("option");
+          opt.value=String(minutes);
+          opt.textContent=durationText(minutes*60000);
+          select.appendChild(opt);
+        }
+        select.value=String(Math.max(5,Number(value)||15));
+      }
+
+      function updateDeepTaskEditorFromDom(){
+        if(!deepTaskEditorList) return;
+        const rows=[...deepTaskEditorList.querySelectorAll(".deep-task-editor-row")];
+        editingDeepTasks=rows.map(row=>{
+          const old=editingDeepTasks.find(t=>String(t.id)===String(row.dataset.taskId)) || makeDeepTask();
+          return {
+            ...old,
+            id:row.dataset.taskId || old.id,
+            name:row.querySelector(".deep-task-name")?.value.trim() || "",
+            durationMinutes:Math.max(5,Number(row.querySelector(".deep-task-duration")?.value)||15)
+          };
+        });
+      }
+
+      function moveDeepTask(taskId,direction){
+        updateDeepTaskEditorFromDom();
+        const index=editingDeepTasks.findIndex(t=>String(t.id)===String(taskId));
+        if(index<0) return;
+        const target=index+direction;
+        if(target<0 || target>=editingDeepTasks.length) return;
+        const [task]=editingDeepTasks.splice(index,1);
+        editingDeepTasks.splice(target,0,task);
+        renderDeepTaskEditor();
+      }
+
+      function renderDeepTaskEditor(){
+        if(!deepTaskEditorList) return;
+        deepTaskEditorList.innerHTML="";
+
+        editingDeepTasks.forEach((task,index)=>{
+          const row=document.createElement("div");
+          row.className="deep-task-editor-row";
+          row.draggable=true;
+          row.dataset.taskId=task.id;
+
+          const rank=document.createElement("div");
+          rank.className="deep-task-rank";
+          rank.textContent=`${index+1}.`;
+
+          const name=document.createElement("input");
+          name.className="deep-task-name";
+          name.type="text";
+          name.maxLength=120;
+          name.placeholder="Nom de la tâche";
+          name.value=task.name || "";
+
+          const duration=document.createElement("select");
+          duration.className="deep-task-duration";
+          fillDeepTaskDurationSelect(duration,task.durationMinutes);
+
+          const actions=document.createElement("div");
+          actions.className="deep-task-row-actions";
+
+          const up=document.createElement("button");
+          up.type="button";
+          up.className="deep-task-icon-btn";
+          up.textContent="↑";
+          up.title="Monter";
+          up.disabled=index===0;
+          up.addEventListener("click",()=>moveDeepTask(task.id,-1));
+
+          const down=document.createElement("button");
+          down.type="button";
+          down.className="deep-task-icon-btn";
+          down.textContent="↓";
+          down.title="Descendre";
+          down.disabled=index===editingDeepTasks.length-1;
+          down.addEventListener("click",()=>moveDeepTask(task.id,1));
+
+          const del=document.createElement("button");
+          del.type="button";
+          del.className="deep-task-icon-btn danger";
+          del.textContent="×";
+          del.title="Supprimer";
+          del.addEventListener("click",()=>{
+            updateDeepTaskEditorFromDom();
+            editingDeepTasks=editingDeepTasks.filter(t=>String(t.id)!==String(task.id));
+            renderDeepTaskEditor();
+          });
+
+          actions.append(up,down,del);
+          row.append(rank,name,duration,actions);
+
+          row.addEventListener("dragstart",e=>{
+            updateDeepTaskEditorFromDom();
+            row.classList.add("dragging");
+            e.dataTransfer.effectAllowed="move";
+            e.dataTransfer.setData("text/deep-task-id",task.id);
+          });
+
+          row.addEventListener("dragend",()=>{
+            row.classList.remove("dragging");
+          });
+
+          row.addEventListener("dragover",e=>{
+            e.preventDefault();
+            e.dataTransfer.dropEffect="move";
+          });
+
+          row.addEventListener("drop",e=>{
+            e.preventDefault();
+            const draggedId=e.dataTransfer.getData("text/deep-task-id");
+            if(!draggedId || draggedId===task.id) return;
+            updateDeepTaskEditorFromDom();
+            const from=editingDeepTasks.findIndex(t=>String(t.id)===String(draggedId));
+            const to=editingDeepTasks.findIndex(t=>String(t.id)===String(task.id));
+            if(from<0 || to<0) return;
+            const [moved]=editingDeepTasks.splice(from,1);
+            editingDeepTasks.splice(to,0,moved);
+            renderDeepTaskEditor();
+          });
+
+          deepTaskEditorList.appendChild(row);
+        });
+      }
+
+      function refreshDeepTasksVisibility(){
+        const typeId=el("blockTypeSelect")?.value;
+        const name=el("blockName")?.value || "";
+        const show=isDeepWorkType(typeId,name);
+        if(deepTasksField) deepTasksField.style.display=show ? "flex" : "none";
+      }
+
+      function normalizeDeepTasksForSave(){
+        updateDeepTaskEditorFromDom();
+        return editingDeepTasks
+          .map(t=>({
+            ...t,
+            name:String(t.name||"").trim(),
+            durationMinutes:Math.max(5,Number(t.durationMinutes)||15)
+          }))
+          .filter(t=>t.name);
+      }
+
+      function activeDeepTask(block){
+        if(!block || !Array.isArray(block.tasks)) return null;
+        return block.tasks.find(t=>!t.completedAt) || null;
+      }
+
+      function initializeDeepTaskIfNeeded(block){
+        if(!block || !isDeepWorkType(block.typeId,block.name) || !Array.isArray(block.tasks)) return false;
+        const active=activeDeepTask(block);
+        if(!active || active.startedAt) return false;
+        active.startedAt=Date.now();
+        block.updatedAt=Date.now();
+        saveState();
+        return true;
+      }
+
+      function completeCurrentDeepTask(blockId){
+        const block=state.blocks.find(b=>String(b.id)===String(blockId));
+        if(!block) return;
+        const active=activeDeepTask(block);
+        if(!active) return;
+
+        const now=Date.now();
+        active.completedAt=now;
+        if(!active.startedAt) active.startedAt=now;
+
+        const next=activeDeepTask(block);
+        if(next && !next.startedAt) next.startedAt=now;
+
+        block.updatedAt=now;
+        saveState();
+        renderFocusMode();
+        showToast(next ? "Tâche validée · suivante" : "Toutes les tâches sont terminées");
+      }
+
       function setBlockSchedulingMode(hasTime){
         el("blockHasTime").checked=!!hasTime;
         el("blockStartField").style.display=hasTime ? "flex" : "none";
@@ -2364,6 +2863,9 @@
         el("blockDate").value=b?.plannedDate || localDateKey(new Date(b.start || Date.now()));
         el("blockDuration").value=String(Math.max(15,Number(b?.durationMinutes)||Math.round((b.end-b.start)/60000)||15));
         el("blockColor").value=b?.color || "#23272d";
+        editingDeepTasks=Array.isArray(b?.tasks) ? b.tasks.map(t=>({...t})) : [];
+        renderDeepTaskEditor();
+        refreshDeepTasksVisibility();
         syncPresetState("block");
       }
 
@@ -2386,6 +2888,7 @@
           plannedDate:plannedDate || localDateKey(new Date(s)),
           durationMinutes:duration,
           floating:!forceHasTime,
+          tasks:[],
           color:"#23272d"
         });
         setBlockSchedulingMode(forceHasTime);
@@ -2475,6 +2978,7 @@
           : null;
         const color=el("blockColor").value || "#23272d";
         const floating=!el("blockHasTime").checked;
+        const tasks=isDeepWorkType(typeId,name) ? normalizeDeepTasksForSave() : [];
         const err=el("blockError");
         let start,end,plannedDate,durationMinutes;
 
@@ -2512,9 +3016,9 @@
         const updatedAt=Date.now();
         if(selectedBlockId){
           const b=state.blocks.find(x=>x.id===selectedBlockId);
-          Object.assign(b,{name,address,description,typeId,start,end,color,floating,plannedDate,durationMinutes,updatedAt});
+          Object.assign(b,{name,address,description,typeId,start,end,color,floating,plannedDate,durationMinutes,tasks,updatedAt});
         }else{
-          state.blocks.push({id:uid(),name,address,description,typeId,start,end,color,floating,plannedDate,durationMinutes,updatedAt});
+          state.blocks.push({id:uid(),name,address,description,typeId,start,end,color,floating,plannedDate,durationMinutes,tasks,updatedAt});
         }
         saveState();
         blockDialog.close();
@@ -2634,6 +3138,14 @@
 
 
 
+      el("addDeepTaskBtn").addEventListener("click",()=>{
+        updateDeepTaskEditorFromDom();
+        editingDeepTasks.push(makeDeepTask("",15));
+        renderDeepTaskEditor();
+      });
+
+      el("blockName").addEventListener("input",refreshDeepTasksVisibility);
+
       el("blockHasTime").addEventListener("change",()=>{
         const hasTime=el("blockHasTime").checked;
         if(hasTime){
@@ -2690,6 +3202,7 @@
           return;
         }
         applyTypeToBlock(value);
+        refreshDeepTasksVisibility();
       });
 
       typeForm.addEventListener("submit",(e)=>{
@@ -3204,6 +3717,7 @@
           is_floating:!!b.floating,
           planned_date:b.plannedDate || localDateKey(new Date(b.start || Date.now())),
           duration_minutes:Math.max(15,Number(b.durationMinutes)||Math.round((b.end-b.start)/60000)||15),
+          tasks_json:Array.isArray(b.tasks) ? b.tasks : [],
           updated_ms:Number(deletedAt ?? b.updatedAt ?? Date.now()),
           deleted:!!deleted
         };
@@ -3292,6 +3806,13 @@
           floating:!!r.is_floating,
           plannedDate:r.planned_date || localDateKey(new Date(Number(r.start_ms)||Date.now())),
           durationMinutes:Math.max(15,Number(r.duration_minutes)||Math.round((Number(r.end_ms)-Number(r.start_ms))/60000)||15),
+          tasks:Array.isArray(r.tasks_json) ? r.tasks_json.map((t,idx)=>({
+            id:t.id || `task-${idx}-${Date.now()}`,
+            name:t.name || "",
+            durationMinutes:Math.max(5,Number(t.durationMinutes)||15),
+            completedAt:Number(t.completedAt)||0,
+            startedAt:Number(t.startedAt)||0
+          })) : [],
           updatedAt:Number(r.updated_ms)||0
         };
       }
@@ -3362,7 +3883,7 @@
             if(winner.deleted){
               if(cloud){
                 const base=kind==="block"
-                  ? {id,name:cloud.name,start:Number(cloud.start_ms)||0,end:Number(cloud.end_ms)||0,color:cloud.color,address:cloud.address,description:cloud.description,typeId:cloud.type_id,floating:!!cloud.is_floating,plannedDate:cloud.planned_date,durationMinutes:Number(cloud.duration_minutes)||15}
+                  ? {id,name:cloud.name,start:Number(cloud.start_ms)||0,end:Number(cloud.end_ms)||0,color:cloud.color,address:cloud.address,description:cloud.description,typeId:cloud.type_id,floating:!!cloud.is_floating,plannedDate:cloud.planned_date,durationMinutes:Number(cloud.duration_minutes)||15,tasks:Array.isArray(cloud.tasks_json)?cloud.tasks_json:[]}
                   : kind==="rule"
                     ? {id,name:cloud.name,start:cloud.start_time,end:cloud.end_time,enabled:cloud.enabled,color:cloud.color}
                     : kind==="override"
@@ -3600,7 +4121,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=7").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=7.1").catch(() => {});
       });
     }
   </script>
