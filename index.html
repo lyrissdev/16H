@@ -1028,6 +1028,30 @@
       white-space:nowrap;
     }
 
+
+    .focus-next-now{
+      width:100%;
+      margin-top:14px;
+      padding:12px 14px;
+      border-radius:11px;
+      background:#f1f3f6;
+      color:var(--text);
+      border:1px solid var(--line);
+      font-weight:800;
+    }
+
+    .focus-next-now:hover{
+      border-color:var(--line-strong);
+      background:#eceff3;
+    }
+
+    .focus-next-now-note{
+      color:var(--muted);
+      font-size:11px;
+      line-height:1.4;
+      margin-top:7px;
+    }
+
     .focus-complete-task{
       width:100%;
       margin-top:14px;
@@ -2277,6 +2301,118 @@
         const recurring=getRecurringInstances(now-12*3600000,end).filter(r=>r.end>now).map(r=>({...r,description:"",address:""}));
         return [...explicit,...recurring].sort((a,b)=>a.start-b.start);
       }
+
+      function getStoredExplicitBlock(item){
+        if(!item || item.recurring) return null;
+        return state.blocks.find(b=>String(b.id)===String(item.id)) || null;
+      }
+
+      function canAdvanceToNextBlock(current,next,now=Date.now()){
+        const currentBlock=getStoredExplicitBlock(current);
+        const nextBlock=getStoredExplicitBlock(next);
+        if(!currentBlock || !nextBlock) return false;
+
+        const transition=ceilToQuarter(now);
+
+        // There is only something to gain if the next block can actually start
+        // earlier than currently planned and the current block can be shortened.
+        if(transition >= nextBlock.start) return false;
+        if(transition >= currentBlock.end) return false;
+        if(transition <= currentBlock.start) return false;
+
+        return true;
+      }
+
+      function advanceToNextBlock(currentId,nextId){
+        const current=state.blocks.find(b=>String(b.id)===String(currentId));
+        const next=state.blocks.find(b=>String(b.id)===String(nextId));
+        if(!current || !next || current.floating || next.floating) return;
+
+        const now=Date.now();
+        const transition=ceilToQuarter(now);
+
+        if(transition >= next.start || transition >= current.end || transition <= current.start){
+          showToast("Le bloc suivant ne peut plus être avancé.");
+          renderFocusMode();
+          return;
+        }
+
+        if(isDeepWorkType(current.typeId,current.name)){
+          const remaining=(current.tasks || []).filter(t=>!t.completedAt);
+          if(remaining.length){
+            const ok=confirm(
+              `${remaining.length} tâche(s) du Deep Work ne sont pas encore validées. Passer quand même au bloc suivant ?`
+            );
+            if(!ok) return;
+          }
+        }
+
+        const nextDuration=Math.max(SLOT_MS,next.end-next.start);
+        const oldCurrentEnd=current.end;
+        const oldNextStart=next.start;
+        const oldNextEnd=next.end;
+
+        current.end=transition;
+        current.durationMinutes=Math.max(15,Math.round((current.end-current.start)/60000));
+        current.updatedAt=Date.now();
+
+        next.start=transition;
+        next.end=transition+nextDuration;
+        next.plannedDate=localDateKey(new Date(transition));
+        next.durationMinutes=Math.max(15,Math.round(nextDuration/60000));
+        next.updatedAt=Date.now();
+
+        // Safety check against every other timed item after applying the move.
+        const conflict=state.blocks.some(b=>{
+          if(b.floating) return false;
+          if(String(b.id)===String(current.id) || String(b.id)===String(next.id)) return false;
+          return intervalsOverlap(next.start,next.end,b.start,b.end);
+        }) || getRecurringInstances(next.start-24*3600000,next.end+24*3600000).some(r=>
+          intervalsOverlap(next.start,next.end,r.start,r.end)
+        );
+
+        if(conflict){
+          current.end=oldCurrentEnd;
+          current.durationMinutes=Math.max(15,Math.round((oldCurrentEnd-current.start)/60000));
+          next.start=oldNextStart;
+          next.end=oldNextEnd;
+          next.plannedDate=localDateKey(new Date(oldNextStart));
+          next.durationMinutes=Math.max(15,Math.round((oldNextEnd-oldNextStart)/60000));
+          showToast("Impossible d’avancer le bloc suivant sur ce créneau.");
+          return;
+        }
+
+        // If the next block is a Deep Work, its first unfinished task starts
+        // when the block actually becomes active.
+        if(isDeepWorkType(next.typeId,next.name) && Array.isArray(next.tasks)){
+          const nextTask=activeDeepTask(next);
+          if(nextTask && !nextTask.startedAt) nextTask.startedAt=transition;
+        }
+
+        selectedBlockId=null;
+        saveState();
+        render();
+        showToast(`Bloc suivant avancé à ${fmtTime(transition)}`);
+      }
+
+      function appendAdvanceButton(current,next){
+        if(!focusCurrentCard || !canAdvanceToNextBlock(current,next)) return;
+
+        const button=document.createElement("button");
+        button.type="button";
+        button.className="focus-next-now";
+        button.textContent="→ Passer au bloc suivant";
+
+        const note=document.createElement("div");
+        note.className="focus-next-now-note";
+        const transition=ceilToQuarter(Date.now());
+        note.textContent=`Le bloc actuel sera raccourci à ${fmtTime(transition)} et le suivant commencera à ${fmtTime(transition)} en conservant sa durée.`;
+
+        button.addEventListener("click",()=>advanceToNextBlock(current.id,next.id));
+
+        focusCurrentCard.append(button,note);
+      }
+
       function renderFocusMode(){
         if(!focusPage||!focusCurrentCard||!focusNextCard)return;
         const now=Date.now(), items=focusTimelineItems();
@@ -2352,6 +2488,10 @@
         }else{
           focusCurrentCard.innerHTML=`<div class="focus-eyebrow">Maintenant</div><div class="focus-free">Plus rien de prévu.</div><div class="focus-free-sub">Tu n’as aucun autre bloc horaire dans les prochaines 48 heures.</div>`;
         }
+        if(current && next){
+          appendAdvanceButton(current,next);
+        }
+
         if(next){
           focusNextCard.innerHTML=`<div class="focus-eyebrow">Ensuite</div><div class="focus-next-title"></div>${next.description&&next.description!=="Aucune"?'<div class="focus-description" style="font-size:15px"></div>':''}<div class="focus-next-time">${fmtDateTime(next.start)} → ${fmtTime(next.end)}</div><div class="focus-countdown" style="font-size:32px">${formatCountdown(next.start-now)}</div><div class="focus-countdown-label">avant le début</div>`;
           focusNextCard.querySelector('.focus-next-title').textContent=next.name||'Tâche'; const d=focusNextCard.querySelector('.focus-description');if(d)d.textContent=next.description;
@@ -4121,7 +4261,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=7.1").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=7.2").catch(() => {});
       });
     }
   </script>
