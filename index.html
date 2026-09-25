@@ -3799,6 +3799,274 @@
       }
 
 
+
+      function getNotificationConfig(){
+        try{
+          const raw=JSON.parse(localStorage.getItem(NOTIFICATION_CONFIG_KEY)||"{}");
+          return {
+            vapidPublicKey:(raw.vapidPublicKey||"").trim(),
+            blockStart:raw.blockStart !== false,
+            nextBlock15:raw.nextBlock15 !== false,
+            deepTaskEnd:raw.deepTaskEnd !== false,
+            overdue:!!raw.overdue
+          };
+        }catch{
+          return {vapidPublicKey:"",blockStart:true,nextBlock15:true,deepTaskEnd:true,overdue:false};
+        }
+      }
+
+      function saveNotificationConfig(config){
+        localStorage.setItem(NOTIFICATION_CONFIG_KEY,JSON.stringify({
+          vapidPublicKey:(config.vapidPublicKey||"").trim(),
+          blockStart:config.blockStart !== false,
+          nextBlock15:config.nextBlock15 !== false,
+          deepTaskEnd:config.deepTaskEnd !== false,
+          overdue:!!config.overdue
+        }));
+      }
+
+      function notificationError(message){
+        const node=el("notificationError");
+        node.textContent=message || "Une erreur est survenue.";
+        node.style.display="block";
+      }
+
+      function clearNotificationError(){
+        const node=el("notificationError");
+        node.textContent="";
+        node.style.display="none";
+      }
+
+      function urlBase64ToUint8Array(base64String){
+        const padding="=".repeat((4-base64String.length%4)%4);
+        const base64=(base64String+padding).replace(/-/g,"+").replace(/_/g,"/");
+        const rawData=atob(base64);
+        return Uint8Array.from([...rawData].map(ch=>ch.charCodeAt(0)));
+      }
+
+      function arrayBufferEquals(a,b){
+        if(!a || !b) return false;
+        const aa=new Uint8Array(a);
+        const bb=b instanceof Uint8Array ? b : new Uint8Array(b);
+        if(aa.length!==bb.length) return false;
+        for(let i=0;i<aa.length;i++) if(aa[i]!==bb[i]) return false;
+        return true;
+      }
+
+      function pushSubscriptionKeys(subscription){
+        const json=subscription.toJSON ? subscription.toJSON() : {};
+        return {
+          p256dh:json?.keys?.p256dh || "",
+          auth:json?.keys?.auth || ""
+        };
+      }
+
+      async function getReadyServiceWorker(){
+        if(!("serviceWorker" in navigator)) throw new Error("Les Service Workers ne sont pas disponibles dans ce navigateur.");
+        if(!window.isSecureContext) throw new Error("Les notifications nécessitent une connexion HTTPS.");
+        return navigator.serviceWorker.ready;
+      }
+
+      async function getCurrentPushSubscription(){
+        if(!("PushManager" in window)) return null;
+        const reg=await getReadyServiceWorker();
+        return reg.pushManager.getSubscription();
+      }
+
+      async function upsertNotificationSettings(enabledOverride=null){
+        clearNotificationError();
+        const cfg={
+          vapidPublicKey:el("vapidPublicKey").value.trim(),
+          blockStart:el("notifyBlockStart").checked,
+          nextBlock15:el("notifyNextBlock").checked,
+          deepTaskEnd:el("notifyDeepTaskEnd").checked,
+          overdue:el("notifyOverdue").checked
+        };
+        saveNotificationConfig(cfg);
+
+        if(!supabaseClient || !cloudUser) throw new Error("Connecte d’abord 16H au Cloud Supabase.");
+        const enabled=enabledOverride===null ? true : !!enabledOverride;
+        const timezone=Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Paris";
+        const {error}=await supabaseClient.from("timeline_notification_settings").upsert({
+          user_id:cloudUser.id,
+          enabled,
+          block_start:cfg.blockStart,
+          next_block_15:cfg.nextBlock15,
+          deep_task_end:cfg.deepTaskEnd,
+          overdue:cfg.overdue,
+          timezone,
+          updated_ms:Date.now()
+        });
+        if(error) throw error;
+        await refreshNotificationStatus();
+      }
+
+      async function enablePushNotifications(){
+        clearNotificationError();
+
+        if(!("Notification" in window)) throw new Error("Ce navigateur ne prend pas en charge les notifications.");
+        if(!("PushManager" in window)) throw new Error("Ce navigateur ne prend pas en charge le Web Push.");
+        if(!supabaseClient || !cloudUser) throw new Error("Connecte d’abord 16H au Cloud Supabase.");
+
+        const vapidPublicKey=el("vapidPublicKey").value.trim();
+        if(!vapidPublicKey) throw new Error("Colle d’abord ta VAPID_PUBLIC_KEY.");
+        let applicationServerKey;
+        try{
+          applicationServerKey=urlBase64ToUint8Array(vapidPublicKey);
+        }catch{
+          throw new Error("La clé VAPID publique n’est pas valide.");
+        }
+
+        const permission=await Notification.requestPermission();
+        if(permission!=="granted"){
+          await refreshNotificationStatus();
+          throw new Error(permission==="denied"
+            ? "Les notifications sont bloquées dans Chrome/macOS. Autorise-les dans les réglages du navigateur ou du Mac."
+            : "Autorisation de notifications non accordée.");
+        }
+
+        const registration=await getReadyServiceWorker();
+        let subscription=await registration.pushManager.getSubscription();
+
+        if(subscription){
+          const currentKey=subscription.options?.applicationServerKey;
+          if(currentKey && !arrayBufferEquals(currentKey,applicationServerKey)){
+            await subscription.unsubscribe();
+            subscription=null;
+          }
+        }
+
+        if(!subscription){
+          subscription=await registration.pushManager.subscribe({
+            userVisibleOnly:true,
+            applicationServerKey
+          });
+        }
+
+        const keys=pushSubscriptionKeys(subscription);
+        if(!subscription.endpoint || !keys.p256dh || !keys.auth){
+          throw new Error("L’abonnement Push créé par le navigateur est incomplet.");
+        }
+
+        const {error}=await supabaseClient.from("timeline_push_subscriptions").upsert({
+          user_id:cloudUser.id,
+          endpoint:subscription.endpoint,
+          p256dh:keys.p256dh,
+          auth:keys.auth,
+          user_agent:navigator.userAgent || "",
+          active:true,
+          updated_ms:Date.now()
+        });
+        if(error) throw error;
+
+        saveNotificationConfig({
+          vapidPublicKey,
+          blockStart:el("notifyBlockStart").checked,
+          nextBlock15:el("notifyNextBlock").checked,
+          deepTaskEnd:el("notifyDeepTaskEnd").checked,
+          overdue:el("notifyOverdue").checked
+        });
+
+        await upsertNotificationSettings(true);
+        await refreshNotificationStatus();
+        showToast("Notifications activées sur ce Mac");
+      }
+
+      async function disablePushNotifications(){
+        clearNotificationError();
+        let subscription=null;
+        try{ subscription=await getCurrentPushSubscription(); }catch{}
+
+        if(supabaseClient && cloudUser && subscription?.endpoint){
+          const {error}=await supabaseClient
+            .from("timeline_push_subscriptions")
+            .update({active:false,updated_ms:Date.now()})
+            .eq("user_id",cloudUser.id)
+            .eq("endpoint",subscription.endpoint);
+          if(error) throw error;
+        }
+
+        if(subscription){
+          try{ await subscription.unsubscribe(); }catch{}
+        }
+
+        if(supabaseClient && cloudUser){
+          const cfg=getNotificationConfig();
+          const timezone=Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Paris";
+          const {error}=await supabaseClient.from("timeline_notification_settings").upsert({
+            user_id:cloudUser.id,
+            enabled:false,
+            block_start:cfg.blockStart,
+            next_block_15:cfg.nextBlock15,
+            deep_task_end:cfg.deepTaskEnd,
+            overdue:cfg.overdue,
+            timezone,
+            updated_ms:Date.now()
+          });
+          if(error) throw error;
+        }
+
+        await refreshNotificationStatus();
+        showToast("Notifications désactivées sur ce Mac");
+      }
+
+      async function refreshNotificationStatus(){
+        const dot=el("notificationDot");
+        const title=el("notificationStatusTitle");
+        const textNode=el("notificationStatusText");
+        const label=el("notificationLabel");
+        if(!dot || !title || !textNode) return;
+
+        dot.className="notification-dot";
+        label.textContent="Notifications";
+
+        if(!("Notification" in window) || !("PushManager" in window) || !("serviceWorker" in navigator)){
+          dot.classList.add("warning");
+          title.textContent="Notifications indisponibles";
+          textNode.textContent="Ce navigateur ne prend pas en charge le Web Push nécessaire à 16H.";
+          return;
+        }
+
+        if(Notification.permission==="denied"){
+          dot.classList.add("warning");
+          title.textContent="Notifications bloquées";
+          textNode.textContent="Chrome ou macOS bloque actuellement les notifications de 16H.";
+          return;
+        }
+
+        let subscription=null;
+        try{
+          subscription=await getCurrentPushSubscription();
+        }catch(err){
+          title.textContent="Notifications non activées";
+          textNode.textContent="Le Service Worker n’est pas encore prêt. Recharge la page puis réessaie.";
+          return;
+        }
+
+        if(Notification.permission==="granted" && subscription){
+          dot.classList.add("enabled");
+          title.textContent="Notifications actives sur ce Mac";
+          textNode.textContent=cloudUser
+            ? "Ce navigateur est abonné. 16H peut recevoir les notifications envoyées par Supabase."
+            : "Ce navigateur est abonné, mais reconnecte le Cloud pour synchroniser les réglages.";
+          return;
+        }
+
+        title.textContent="Notifications non activées";
+        textNode.textContent="Clique sur « Activer sur ce Mac » pour créer l’abonnement Push.";
+      }
+
+      function populateNotificationDialog(){
+        clearNotificationError();
+        const cfg=getNotificationConfig();
+        el("vapidPublicKey").value=cfg.vapidPublicKey || "";
+        el("notifyBlockStart").checked=cfg.blockStart;
+        el("notifyNextBlock").checked=cfg.nextBlock15;
+        el("notifyDeepTaskEnd").checked=cfg.deepTaskEnd;
+        el("notifyOverdue").checked=cfg.overdue;
+        refreshNotificationStatus().catch(()=>{});
+      }
+
       function getCloudConfig(){
         try{
           const raw=JSON.parse(localStorage.getItem(CLOUD_CONFIG_KEY)||"{}");
@@ -3935,6 +4203,7 @@
 
           cloudUser=session?.user || null;
           updateCloudUi();
+          refreshNotificationStatus().catch(()=>{});
           if(cloudUser) scheduleCloudSync(100);
           return session;
         }catch(err){
@@ -3981,6 +4250,7 @@
           const authState=supabaseClient.auth.onAuthStateChange((_event,session)=>{
             cloudUser=session?.user || null;
             updateCloudUi();
+            refreshNotificationStatus().catch(()=>{});
             if(cloudUser) scheduleCloudSync(100);
           });
           authSubscription=authState.data.subscription;
@@ -4419,7 +4689,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=8").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=8.1").catch(() => {});
       });
     }
   </script>
