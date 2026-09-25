@@ -1,0 +1,75 @@
+16H V8 — ACTIVER LES NOTIFICATIONS WEB PUSH
+
+La V8 contient le code client + service worker + tables Supabase + Edge Function.
+Il reste 4 étapes à effectuer une seule fois.
+
+1) MIGRATION SUPABASE
+Dans Supabase > SQL Editor :
+- ouvrir supabase-migration-v8.sql
+- exécuter tout le fichier.
+
+2) GÉNÉRER LES CLÉS VAPID
+Sur ton Mac, dans Terminal :
+
+npx web-push generate-vapid-keys --json
+
+Tu obtiens :
+- publicKey
+- privateKey
+
+IMPORTANT :
+- PUBLIC KEY : elle peut être collée dans 16H.
+- PRIVATE KEY : ne jamais la mettre dans index.html / GitHub.
+
+3) DÉPLOYER L'EDGE FUNCTION
+Le dossier est :
+supabase/functions/send-16h-notifications/index.ts
+
+Avec Supabase CLI configuré sur ton projet :
+
+supabase functions deploy send-16h-notifications --no-verify-jwt
+
+Puis créer les secrets :
+
+supabase secrets set VAPID_PUBLIC_KEY="TA_PUBLIC_KEY"
+supabase secrets set VAPID_PRIVATE_KEY="TA_PRIVATE_KEY"
+supabase secrets set VAPID_SUBJECT="mailto:TON_EMAIL"
+supabase secrets set CRON_SECRET="CHOISIS_UN_SECRET_LONG"
+
+SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont fournis automatiquement à l'Edge Function hébergée.
+
+4) CRON
+Dans Supabase Dashboard > Integrations > Cron :
+- créer un Job nommé : send-16h-notifications
+- fréquence : toutes les minutes
+- type : HTTP / Edge Function
+- méthode : POST
+- cible :
+  https://TON_PROJECT_REF.supabase.co/functions/v1/send-16h-notifications
+- header :
+  x-cron-secret: LE_MEME_CRON_SECRET
+
+La documentation Supabase permet aussi d'invoquer une Edge Function via pg_cron + pg_net.
+
+5) DANS 16H
+- mettre index.html + service-worker.js de la V8 sur GitHub.
+- ouvrir une fois avec ?v=8
+- être connecté au Cloud.
+- cliquer Notifications.
+- coller VAPID_PUBLIC_KEY.
+- choisir les notifications.
+- cliquer "Activer sur ce Mac".
+- accepter la permission du navigateur/macOS.
+
+Les notifications ne commencent qu'après "Terminer ma planification" pour la journée.
+
+NOTIFICATIONS V8
+- début d'un bloc
+- 15 min avant le prochain bloc
+- fin du temps prévu d'une sous-tâche Deep Work
+- option : rappel 10 min après dépassement
+
+DÉPANNAGE
+- Si "Notifications bloquées" : vérifier les permissions du navigateur ET de macOS.
+- Après remplacement du service-worker.js, ouvrir ?v=8 puis recharger.
+- Si une subscription a été créée avec une ancienne VAPID key, Désactiver puis Activer à nouveau.

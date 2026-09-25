@@ -292,6 +292,71 @@
     .plan-lock-btn{background:#17191c;color:white;border-color:#17191c}
     @media (max-width:800px){.focus-shell{grid-template-columns:1fr}.focus-title{font-size:30px}.focus-countdown{font-size:38px}}
 
+
+    .notification-btn{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
+    .notification-dot{
+      width:8px;
+      height:8px;
+      border-radius:999px;
+      background:#9aa1aa;
+      box-shadow:0 0 0 3px rgba(154,161,170,.12);
+    }
+    .notification-dot.enabled{
+      background:#2f9e63;
+      box-shadow:0 0 0 3px rgba(47,158,99,.12);
+    }
+    .notification-dot.warning{
+      background:#d08a16;
+      box-shadow:0 0 0 3px rgba(208,138,22,.12);
+    }
+    .notification-status{
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px 13px;
+      background:#f7f8fa;
+      margin-bottom:14px;
+    }
+    .notification-status strong{
+      display:block;
+      font-size:14px;
+      margin-bottom:4px;
+    }
+    .notification-status span{
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.45;
+    }
+    .notification-setting{
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+      padding:10px 0;
+      border-top:1px solid #edf0f3;
+    }
+    .notification-setting:first-child{border-top:0}
+    .notification-setting input[type="checkbox"]{
+      width:18px;
+      height:18px;
+      margin-top:1px;
+    }
+    .notification-setting-text{
+      min-width:0;
+    }
+    .notification-setting-title{
+      font-size:13px;
+      font-weight:750;
+    }
+    .notification-setting-note{
+      color:var(--muted);
+      font-size:11px;
+      margin-top:3px;
+      line-height:1.4;
+    }
+
     .cloud-btn{
       display:inline-flex;
       align-items:center;
@@ -1237,6 +1302,7 @@
         <button class="btn" id="rulesBtn">Nouvelle règle quotidienne</button>
         <button class="btn plan-lock-btn" id="finishPlanningBtn">Terminer ma planification</button>
         <button class="btn" id="editDayBtn" style="display:none">Modifier la journée</button>
+        <button class="btn notification-btn" id="notificationBtn" type="button"><span class="notification-dot" id="notificationDot"></span><span id="notificationLabel">Notifications</span></button>
         <button class="btn cloud-btn" id="cloudBtn"><span class="cloud-dot" id="cloudDot"></span><span id="cloudLabel">Cloud</span></button>
         <button class="btn primary" id="addBtn">+ Ajouter un bloc</button>
       </div>
@@ -1509,6 +1575,74 @@
     </form>
   </dialog>
 
+
+  <dialog id="notificationDialog">
+    <div class="modal">
+      <h3>Notifications 16H</h3>
+
+      <div class="notification-status">
+        <strong id="notificationStatusTitle">Notifications non activées</strong>
+        <span id="notificationStatusText">Active-les sur ce Mac pour recevoir ton planning même lorsque l’onglet 16H est fermé.</span>
+      </div>
+
+      <div class="cloud-section" style="padding-top:0;margin-top:0;border-top:0">
+        <div class="cloud-section-title">Clé publique VAPID</div>
+        <div class="field full">
+          <input id="vapidPublicKey" type="text" autocomplete="off" placeholder="Colle la VAPID_PUBLIC_KEY ici" />
+        </div>
+        <div class="cloud-note">La clé publique peut rester dans l’app. La clé privée VAPID doit rester uniquement dans Supabase.</div>
+      </div>
+
+      <div class="cloud-section">
+        <div class="cloud-section-title">Ce que 16H doit m’envoyer</div>
+
+        <label class="notification-setting">
+          <input id="notifyBlockStart" type="checkbox" checked />
+          <span class="notification-setting-text">
+            <span class="notification-setting-title">Début d’un bloc</span>
+            <span class="notification-setting-note">Ex. « RÉDACTION SCÉNARIO commence maintenant ».</span>
+          </span>
+        </label>
+
+        <label class="notification-setting">
+          <input id="notifyNextBlock" type="checkbox" checked />
+          <span class="notification-setting-text">
+            <span class="notification-setting-title">15 min avant le prochain bloc</span>
+            <span class="notification-setting-note">Pour anticiper un appel, un trajet ou un changement de tâche.</span>
+          </span>
+        </label>
+
+        <label class="notification-setting">
+          <input id="notifyDeepTaskEnd" type="checkbox" checked />
+          <span class="notification-setting-text">
+            <span class="notification-setting-title">Fin du temps prévu d’une tâche Deep Work</span>
+            <span class="notification-setting-note">Utilise la durée prévue de la sous-tâche active.</span>
+          </span>
+        </label>
+
+        <label class="notification-setting">
+          <input id="notifyOverdue" type="checkbox" />
+          <span class="notification-setting-text">
+            <span class="notification-setting-title">Rappel si une tâche Deep Work dépasse</span>
+            <span class="notification-setting-note">Un rappel supplémentaire 10 minutes après son temps prévu.</span>
+          </span>
+        </label>
+      </div>
+
+      <div class="error" id="notificationError"></div>
+
+      <div class="modal-actions" style="justify-content:flex-start">
+        <button class="btn primary" type="button" id="enableNotificationsBtn">Activer sur ce Mac</button>
+        <button class="btn" type="button" id="saveNotificationSettingsBtn">Enregistrer les réglages</button>
+        <button class="btn danger" type="button" id="disableNotificationsBtn">Désactiver</button>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn primary" type="button" data-close="notificationDialog">Fermer</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="cloudDialog">
     <div class="modal">
       <h3>Synchronisation Supabase</h3>
@@ -1578,6 +1712,7 @@
       const CLOUD_CONFIG_KEY = "timeline16h_supabase_config_v1";
       const SYNC_META_KEY = "timeline16h_sync_meta_v1";
       const SUPABASE_AUTH_STORAGE_KEY = "timeline16h_supabase_auth_v1";
+      const NOTIFICATION_CONFIG_KEY = "timeline16h_notification_config_v1";
       const SLOT_PX = 38;
       const DEFAULT_BLOCK_TYPES = [{"id": "preset-deep-work", "name": "DEEP WORK SESSION", "address": "Aucune", "description": "Définir le projet et les taches", "durationMinutes": 90}, {"id": "preset-cinema", "name": "CINÉMA", "address": "Aucune", "description": "Aucune", "durationMinutes": 120}, {"id": "preset-trajet", "name": "TRAJET", "address": "Aucune", "description": "Définir le moyen de transport", "durationMinutes": 15}, {"id": "preset-repas-prep", "name": "REPAS PREP", "address": "Aucune", "description": "Aucune", "durationMinutes": 15}, {"id": "preset-pause-repas", "name": "PAUSE REPAS", "address": "Aucune", "description": "Aucune", "durationMinutes": 30}, {"id": "preset-marche-digestive", "name": "MARCHE DIGESTIVE", "address": "Aucune", "description": "Aucune", "durationMinutes": 15}, {"id": "preset-lecture", "name": "LECTURE", "address": "Aucune", "description": "Aucune", "durationMinutes": 15}];
       const COLOR_PRESETS = [
@@ -1599,6 +1734,7 @@
       const ruleDialog = el("ruleDialog");
       const ruleForm = el("ruleForm");
       const cloudDialog = el("cloudDialog");
+      const notificationDialog = el("notificationDialog");
       const focusPage=el("focusPage");
       const focusCurrentCard=el("focusCurrentCard");
       const focusNextCard=el("focusNextCard");
@@ -3424,6 +3560,26 @@
         renderWeekView();
         setView("weeks");
       };
+
+      el("notificationBtn").onclick=()=>{
+        populateNotificationDialog();
+        notificationDialog.showModal();
+      };
+
+      el("enableNotificationsBtn").onclick=()=>{
+        enablePushNotifications().catch(err=>notificationError(err?.message || String(err)));
+      };
+
+      el("disableNotificationsBtn").onclick=()=>{
+        disablePushNotifications().catch(err=>notificationError(err?.message || String(err)));
+      };
+
+      el("saveNotificationSettingsBtn").onclick=()=>{
+        upsertNotificationSettings()
+          .then(()=>showToast("Réglages de notifications enregistrés"))
+          .catch(err=>notificationError(err?.message || String(err)));
+      };
+
       el("cloudBtn").onclick=()=>{
         populateCloudDialog();
         cloudDialog.showModal();
@@ -4239,10 +4395,12 @@
           if(blockDialog.open) blockDialog.close();
           if(ruleDialog.open) ruleDialog.close();
           if(cloudDialog.open) cloudDialog.close();
+          if(notificationDialog.open) notificationDialog.close();
         }
       });
 
       render();
+      refreshNotificationStatus().catch(()=>{});
 
       setInterval(()=>{
         const next=getAnchor();
@@ -4261,7 +4419,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=7.2").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=8").catch(() => {});
       });
     }
   </script>
