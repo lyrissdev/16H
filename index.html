@@ -2424,11 +2424,45 @@
       function currentDayKey(){return localDateKey(new Date());}
       function getDayState(dateKey=currentDayKey()){return state.dayStates.find(s=>s.dateKey===dateKey)||null;}
       function isTodayLocked(){return !!getDayState()?.locked;}
+      async function syncDayStateImmediately(dayState){
+        if(!supabaseClient || !cloudUser || !dayState) return;
+        const row={
+          user_id:cloudUser.id,
+          id:String(dayState.id || `day-${dayState.dateKey}`),
+          date_key:dayState.dateKey,
+          locked:!!dayState.locked,
+          locked_at_ms:Number(dayState.lockedAt)||0,
+          updated_ms:Number(dayState.updatedAt)||Date.now(),
+          deleted:false
+        };
+        const {error}=await supabaseClient
+          .from("timeline_day_states")
+          .upsert(row,{onConflict:"user_id,id"});
+        if(error) throw error;
+      }
+
       function setTodayLocked(locked){
         const dateKey=currentDayKey(); const now=Date.now();
         let s=state.dayStates.find(x=>x.dateKey===dateKey);
-        if(!s){s={id:`day-${dateKey}`,dateKey,locked:false,lockedAt:0,updatedAt:now};state.dayStates.push(s);}
-        s.locked=!!locked; s.lockedAt=locked?now:(s.lockedAt||0); s.updatedAt=now; saveState(); render();
+        if(!s){
+          s={id:`day-${dateKey}`,dateKey,locked:false,lockedAt:0,updatedAt:now};
+          state.dayStates.push(s);
+        }
+        s.locked=!!locked;
+        s.lockedAt=locked?now:(s.lockedAt||0);
+        s.updatedAt=now;
+
+        // Save locally immediately, then push this critical state directly to Supabase.
+        // The normal background sync still runs as a fallback.
+        saveState();
+        render();
+
+        syncDayStateImmediately(s)
+          .then(()=>refreshNotificationStatus().catch(()=>{}))
+          .catch(err=>{
+            console.error("Immediate day-state sync failed",err);
+            showToast("Journée enregistrée localement · synchro Cloud en attente");
+          });
       }
       function formatCountdown(ms){ms=Math.max(0,ms);const total=Math.ceil(ms/60000);const h=Math.floor(total/60),m=total%60;if(h&&m)return `${h} h ${m} min`;if(h)return `${h} h`;return `${m} min`;}
       function focusTimelineItems(){
@@ -3529,8 +3563,12 @@
       el("finishPlanningBtn").addEventListener("click",()=>{
         const today=currentDayKey();
         const floatingToday=state.blocks.filter(b=>b.floating&&b.plannedDate===today);
-        if(floatingToday.length){const ok=confirm(`${floatingToday.length} priorité(s) d’aujourd’hui ne sont pas encore placées. Terminer la planification quand même ?`);if(!ok)return;}
-        setTodayLocked(true);showToast("Planification terminée");
+        if(floatingToday.length){
+          const ok=confirm(`${floatingToday.length} priorité(s) d’aujourd’hui ne sont pas encore placées. Terminer la planification quand même ?`);
+          if(!ok)return;
+        }
+        setTodayLocked(true);
+        showToast(cloudUser ? "Planification terminée · synchronisation Cloud" : "Planification terminée · Cloud non connecté");
       });
       function unlockToday(){setTodayLocked(false);showToast("Journée déverrouillée");}
       el("editDayBtn").addEventListener("click",unlockToday);
@@ -4689,7 +4727,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=8.1").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=8.2").catch(() => {});
       });
     }
   </script>
