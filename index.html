@@ -2198,9 +2198,13 @@
       function setView(view){
         currentView = view === "weeks" ? "weeks" : "timeline";
         updateViewUI();
+
         if(currentView === "weeks"){
           renderWeekView();
         }else{
+          // When returning from the weekly view, restore the correct
+          // timeline/focus panel immediately instead of leaving both hidden.
+          updatePlanningUI();
           renderNow();
         }
       }
@@ -4727,7 +4731,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=8.2").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=8.3").catch(() => {});
       });
     }
   </script>
