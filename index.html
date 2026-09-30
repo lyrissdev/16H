@@ -1282,6 +1282,26 @@
       }
     }
 
+  
+    /* V9 — carte mentale du bloc actuel */
+    .focus-mindmap-btn{
+      width:100%;margin-top:18px;border:0;border-radius:16px;padding:15px 18px;
+      background:#17191d;color:#fff;font-weight:800;font-size:15px;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 8px 22px rgba(23,25,29,.12)
+    }
+    .focus-mindmap-btn:hover{transform:translateY(-1px)}
+    .focus-mindmap-btn .brain{font-size:20px}
+    #mindmapOverlay{position:fixed;inset:0;z-index:9999;background:#fcfcfd;display:none}
+    #mindmapOverlay.open{display:block}
+    #mindmapFrame{position:absolute;inset:0 0 58px 0;width:100%;height:calc(100% - 58px);border:0;background:#fcfcfd}
+    .mindmap-hostbar{position:absolute;left:0;right:0;bottom:0;height:58px;background:rgba(255,255,255,.97);
+      border-top:1px solid #e3e6ec;display:flex;align-items:center;gap:12px;padding:8px 14px;z-index:2;backdrop-filter:blur(12px)}
+    .mindmap-back{border:1px solid #dfe3e9;background:#fff;border-radius:12px;height:40px;padding:0 15px;font-weight:800;cursor:pointer}
+    .mindmap-host-title{min-width:0;font-size:13px;color:#6f7785;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .mindmap-host-title strong{color:#17191d}
+    .mindmap-sync-state{margin-left:auto;font-size:12px;color:#7b8492;white-space:nowrap}
+    @media(max-width:680px){.mindmap-sync-state{display:none}.mindmap-hostbar{height:54px}.mindmap-back{height:38px}#mindmapFrame{inset:0 0 54px 0;height:calc(100% - 54px)}}
+
   </style>
 </head>
 <body>
@@ -1401,6 +1421,15 @@
 
   </div>
 
+
+  <div id="mindmapOverlay" aria-hidden="true">
+    <iframe id="mindmapFrame" title="Carte mentale du bloc actuel"></iframe>
+    <div class="mindmap-hostbar">
+      <button class="mindmap-back" id="mindmapBackBtn" type="button">← Retour à 16H</button>
+      <div class="mindmap-host-title">Carte mentale · <strong id="mindmapHostTitle"></strong></div>
+      <div class="mindmap-sync-state" id="mindmapSyncState">Sauvegarde locale active</div>
+    </div>
+  </div>
 
   <dialog id="blockDialog">
     <div class="modal">
@@ -2587,6 +2616,109 @@
         focusCurrentCard.append(button,note);
       }
 
+      let activeMindmapBlockId=null;
+      let activeMindmapTitle="";
+      let mindmapSaveTimer=null;
+      let pendingMindmapDoc=null;
+
+      function mindmapBlockKey(item){
+        if(!item) return null;
+        // Explicit blocks use their stable block id. Recurring rules already use
+        // a stable id containing the rule id + local occurrence date.
+        return String(item.id || "");
+      }
+
+      async function fetchMindmapFromCloud(blockId){
+        if(!supabaseClient || !cloudUser || !blockId) return null;
+        const {data,error}=await supabaseClient
+          .from("timeline_block_mindmaps")
+          .select("mindmap_json,updated_ms")
+          .eq("user_id",cloudUser.id)
+          .eq("block_id",String(blockId))
+          .maybeSingle();
+        if(error){
+          console.warn("16H mindmap cloud load",error);
+          return null;
+        }
+        if(!data?.mindmap_json) return null;
+        const doc={...data.mindmap_json};
+        if(!doc.updatedAt && data.updated_ms) doc.updatedAt=Number(data.updated_ms)||0;
+        return doc;
+      }
+
+      async function saveMindmapToCloud(blockId,doc){
+        if(!supabaseClient || !cloudUser || !blockId || !doc) return;
+        const updated=Number(doc.updatedAt)||Date.now();
+        const {error}=await supabaseClient.from("timeline_block_mindmaps").upsert({
+          user_id:cloudUser.id,
+          block_id:String(blockId),
+          mindmap_json:doc,
+          created_ms:Number(doc.createdAt)||updated,
+          updated_ms:updated
+        },{onConflict:"user_id,block_id"});
+        if(error) throw error;
+      }
+
+      function queueMindmapCloudSave(blockId,doc){
+        pendingMindmapDoc={blockId:String(blockId),doc};
+        clearTimeout(mindmapSaveTimer);
+        const status=el("mindmapSyncState");
+        if(status) status.textContent=cloudUser?"Sauvegarde…":"Sauvegardé sur ce navigateur";
+        mindmapSaveTimer=setTimeout(async()=>{
+          const pending=pendingMindmapDoc;
+          pendingMindmapDoc=null;
+          if(!pending) return;
+          if(!cloudUser || !supabaseClient){
+            if(status) status.textContent="Sauvegardé sur ce navigateur";
+            return;
+          }
+          try{
+            await saveMindmapToCloud(pending.blockId,pending.doc);
+            if(status) status.textContent="Sauvegardé · Cloud";
+          }catch(err){
+            console.error("16H mindmap cloud save",err);
+            if(status) status.textContent="Sauvegardé localement · Cloud en attente";
+          }
+        },900);
+      }
+
+      async function openCurrentMindmap(item){
+        const blockId=mindmapBlockKey(item);
+        if(!blockId) return;
+        activeMindmapBlockId=blockId;
+        activeMindmapTitle=item.name || "Tâche";
+        const overlay=el("mindmapOverlay"), frame=el("mindmapFrame"), title=el("mindmapHostTitle"), status=el("mindmapSyncState");
+        if(title) title.textContent=activeMindmapTitle;
+        if(status) status.textContent=cloudUser?"Chargement…":"Sauvegarde locale active";
+        overlay?.classList.add("open");
+        overlay?.setAttribute("aria-hidden","false");
+        document.body.style.overflow="hidden";
+        const params=new URLSearchParams({blockId, title:activeMindmapTitle, host:"16h"});
+        frame.src=`./mindmap.html?${params.toString()}`;
+      }
+
+      function closeMindmap(){
+        const overlay=el("mindmapOverlay"),frame=el("mindmapFrame");
+        // Ask the editor to flush its latest state before hiding it.
+        try{frame?.contentWindow?.postMessage({type:"16h:mindmap-flush"},location.origin);}catch{}
+        overlay?.classList.remove("open");
+        overlay?.setAttribute("aria-hidden","true");
+        document.body.style.overflow="";
+        activeMindmapBlockId=null;
+        activeMindmapTitle="";
+        if(frame) frame.src="about:blank";
+      }
+
+      function appendMindmapButton(current){
+        if(!focusCurrentCard || !current) return;
+        const button=document.createElement("button");
+        button.type="button";
+        button.className="focus-mindmap-btn";
+        button.innerHTML='<span class="brain">◉</span><span>Ouvrir la carte mentale</span>';
+        button.addEventListener("click",()=>openCurrentMindmap(current));
+        focusCurrentCard.appendChild(button);
+      }
+
       function renderFocusMode(){
         if(!focusPage||!focusCurrentCard||!focusNextCard)return;
         const now=Date.now(), items=focusTimelineItems();
@@ -2661,6 +2793,9 @@
           focusCurrentCard.innerHTML=`<div class="focus-eyebrow">Maintenant</div><div class="focus-free">Tu es tranquille.</div><div class="focus-free-sub">Rien n’est prévu pour le moment.</div><div class="focus-countdown">${formatCountdown(next.start-now)}</div><div class="focus-countdown-label">avant la prochaine tâche</div>`;
         }else{
           focusCurrentCard.innerHTML=`<div class="focus-eyebrow">Maintenant</div><div class="focus-free">Plus rien de prévu.</div><div class="focus-free-sub">Tu n’as aucun autre bloc horaire dans les prochaines 48 heures.</div>`;
+        }
+        if(current){
+          appendMindmapButton(current);
         }
         if(current && next){
           appendAdvanceButton(current,next);
@@ -4700,6 +4835,32 @@
       buildColorPresets("rule");
       updateCloudUi();
       setupSupabaseClient();
+      el("mindmapBackBtn")?.addEventListener("click",closeMindmap);
+      window.addEventListener("message",async event=>{
+        if(event.origin!==location.origin) return;
+        if(event.source!==el("mindmapFrame")?.contentWindow) return;
+        const msg=event.data||{};
+        if(msg.type==="16h:mindmap-ready"){
+          const blockId=String(msg.blockId||"");
+          if(!blockId || blockId!==activeMindmapBlockId) return;
+          const cloudDoc=await fetchMindmapFromCloud(blockId);
+          if(cloudDoc){
+            try{el("mindmapFrame")?.contentWindow?.postMessage({type:"16h:mindmap-load",blockId,doc:cloudDoc},location.origin);}catch{}
+          }
+          const status=el("mindmapSyncState");
+          if(status) status.textContent=cloudUser?"Prêt · Cloud":"Sauvegarde locale active";
+        }
+        if(msg.type==="16h:mindmap-save"){
+          const blockId=String(msg.blockId||"");
+          if(!blockId || !msg.doc) return;
+          queueMindmapCloudSave(blockId,msg.doc);
+        }
+        if(msg.type==="16h:mindmap-close") closeMindmap();
+      });
+      document.addEventListener("keydown",event=>{
+        if(event.key==="Escape" && el("mindmapOverlay")?.classList.contains("open")) closeMindmap();
+      });
+
       setInterval(()=>scheduleCloudSync(0),30000);
 
       window.addEventListener("keydown",(e)=>{
@@ -4731,7 +4892,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=8.3").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=9").catch(() => {});
       });
     }
   </script>
