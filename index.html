@@ -1283,6 +1283,185 @@
     }
 
   
+    /* V9.1 — board journée : rendez-vous + priorités Deep Work */
+    .day-board{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+      gap:18px;
+      margin-top:18px;
+    }
+    .day-board-panel{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow:var(--shadow);
+      padding:22px;
+      min-width:0;
+    }
+    .day-board-head{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:14px;
+      margin-bottom:14px;
+    }
+    .day-board-title{
+      margin:0;
+      font-size:18px;
+      line-height:1.15;
+      font-weight:900;
+      letter-spacing:-.025em;
+    }
+    .day-board-sub{
+      margin-top:5px;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.35;
+    }
+    .day-board-count{
+      flex:0 0 auto;
+      min-width:28px;
+      height:28px;
+      padding:0 9px;
+      border-radius:999px;
+      background:#f1f3f6;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:12px;
+      font-weight:850;
+      color:#4c5562;
+    }
+    .day-board-list{
+      display:flex;
+      flex-direction:column;
+      gap:9px;
+    }
+    .day-board-empty{
+      border:1px dashed #d7dce4;
+      border-radius:13px;
+      padding:15px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.45;
+      background:#fafbfc;
+    }
+    .appointment-row,
+    .project-row{
+      position:relative;
+      display:grid;
+      align-items:center;
+      gap:12px;
+      border:1px solid #e2e6ec;
+      border-radius:14px;
+      padding:13px 14px;
+      background:#fff;
+      overflow:hidden;
+    }
+    .appointment-row{
+      grid-template-columns:72px minmax(0,1fr) auto;
+    }
+    .appointment-row::before,
+    .project-row::before{
+      content:"";
+      position:absolute;
+      left:0;
+      top:0;
+      bottom:0;
+      width:4px;
+      background:#17191d;
+    }
+    .appointment-row.past{
+      opacity:.48;
+    }
+    .appointment-row.current{
+      border-color:#b9c1cc;
+      box-shadow:inset 0 0 0 1px rgba(23,25,29,.04);
+    }
+    .appointment-time{
+      font-weight:900;
+      font-size:14px;
+      letter-spacing:-.015em;
+      white-space:nowrap;
+    }
+    .appointment-name{
+      min-width:0;
+      font-weight:850;
+      font-size:14px;
+      line-height:1.25;
+      overflow-wrap:anywhere;
+    }
+    .appointment-meta{
+      margin-top:3px;
+      color:var(--muted);
+      font-size:11px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .appointment-status{
+      font-size:10px;
+      font-weight:850;
+      text-transform:uppercase;
+      letter-spacing:.05em;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+    .appointment-row.current .appointment-status{
+      color:#17191d;
+    }
+    .project-row{
+      grid-template-columns:42px minmax(0,1fr) auto;
+    }
+    .project-rank{
+      width:31px;
+      height:31px;
+      border-radius:10px;
+      background:#17191d;
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:13px;
+      font-weight:900;
+    }
+    .project-row:nth-child(n+2) .project-rank{
+      background:#eef1f5;
+      color:#303741;
+    }
+    .project-main{
+      min-width:0;
+    }
+    .project-name{
+      font-weight:900;
+      font-size:14px;
+      line-height:1.25;
+      overflow-wrap:anywhere;
+    }
+    .project-time{
+      margin-top:4px;
+      color:var(--muted);
+      font-size:11px;
+    }
+    .project-duration{
+      font-size:12px;
+      font-weight:850;
+      white-space:nowrap;
+      color:#4d5663;
+    }
+    .project-priority-note{
+      margin-top:10px;
+      color:var(--muted);
+      font-size:11px;
+      line-height:1.4;
+    }
+    @media(max-width:800px){
+      .day-board{grid-template-columns:1fr}
+      .appointment-row{grid-template-columns:64px minmax(0,1fr)}
+      .appointment-status{grid-column:2}
+    }
+
+
     /* V9 — carte mentale du bloc actuel */
     .focus-mindmap-btn{
       width:100%;margin-top:18px;border:0;border-radius:16px;padding:15px 18px;
@@ -1332,6 +1511,10 @@
       <div class="focus-shell">
         <section class="focus-card" id="focusCurrentCard"></section>
         <section class="focus-card" id="focusNextCard"></section>
+      </div>
+      <div class="day-board" id="dayBoard">
+        <section class="day-board-panel" id="appointmentsBoard"></section>
+        <section class="day-board-panel" id="projectsBoard"></section>
       </div>
       <div class="focus-actions">
         <button class="btn" id="editDayInlineBtn" type="button">Modifier la journée</button>
@@ -2719,6 +2902,139 @@
         focusCurrentCard.appendChild(button);
       }
 
+
+      function normalizeBoardLabel(value=""){
+        return String(value||"")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g,"")
+          .toUpperCase()
+          .trim();
+      }
+
+      function isAppointmentLike(item){
+        if(!item) return false;
+        const label=normalizeBoardLabel(item.name);
+        // The board is intentionally selective: it surfaces the events that are
+        // usually fixed to an external time rather than every scheduled block.
+        return /\b(CALL|RDV|RENDEZ[\s-]?VOUS|MEETING|VISIO|VISIOCONFERENCE|ENTRETIEN|APPEL|RENCONTRE)\b/.test(label);
+      }
+
+      function todayBoardItems(){
+        const now=new Date();
+        const start=startOfDayTs(now);
+        const end=endOfDayTs(now);
+
+        const explicit=state.blocks
+          .filter(b=>!b.floating && b.start<end && b.end>start)
+          .map(b=>({...b,recurring:false}));
+
+        const recurring=getRecurringInstances(start,end)
+          .map(r=>({...r,description:"",address:"",typeId:r.typeId||""}));
+
+        return [...explicit,...recurring].sort((a,b)=>a.start-b.start);
+      }
+
+      function renderDayBoard(){
+        const appointmentsBoard=el("appointmentsBoard");
+        const projectsBoard=el("projectsBoard");
+        if(!appointmentsBoard || !projectsBoard) return;
+
+        const now=Date.now();
+        const items=todayBoardItems();
+
+        const appointments=items
+          .filter(isAppointmentLike)
+          .sort((a,b)=>a.start-b.start);
+
+        appointmentsBoard.innerHTML=`
+          <div class="day-board-head">
+            <div>
+              <h3 class="day-board-title">Rendez-vous du jour</h3>
+              <div class="day-board-sub">Les horaires fixes à ne pas perdre de vue.</div>
+            </div>
+            <div class="day-board-count">${appointments.length}</div>
+          </div>
+          <div class="day-board-list" id="appointmentsBoardList"></div>
+        `;
+        const appointmentList=appointmentsBoard.querySelector("#appointmentsBoardList");
+
+        if(!appointments.length){
+          appointmentList.innerHTML='<div class="day-board-empty">Aucun CALL, RDV ou rendez-vous détecté aujourd’hui.</div>';
+        }else{
+          appointments.forEach(item=>{
+            const row=document.createElement("div");
+            const isCurrent=item.start<=now && item.end>now;
+            const isPast=item.end<=now;
+            row.className="appointment-row"+(isCurrent?" current":"")+(isPast?" past":"");
+
+            const status=isCurrent?"En cours":(isPast?"Passé":"À venir");
+            const address=(item.address && item.address!=="Aucune") ? item.address : "";
+            row.innerHTML=`
+              <div class="appointment-time">${fmtTime(item.start)}</div>
+              <div>
+                <div class="appointment-name"></div>
+                ${address?'<div class="appointment-meta"></div>':''}
+              </div>
+              <div class="appointment-status">${status}</div>
+            `;
+            row.querySelector(".appointment-name").textContent=item.name||"Rendez-vous";
+            const meta=row.querySelector(".appointment-meta");
+            if(meta) meta.textContent=address;
+            appointmentList.appendChild(row);
+          });
+        }
+
+        const projects=items
+          .filter(item=>!item.recurring && isDeepWorkType(item.typeId,item.name))
+          .map(item=>({
+            ...item,
+            plannedDuration:Math.max(0,Number(item.end)-Number(item.start))
+          }))
+          .sort((a,b)=>{
+            // Primary signal: how much focused time was deliberately allocated.
+            // If two projects have the same duration, the one planned earlier
+            // in the day receives the higher rank.
+            if(b.plannedDuration!==a.plannedDuration) return b.plannedDuration-a.plannedDuration;
+            return a.start-b.start;
+          });
+
+        projectsBoard.innerHTML=`
+          <div class="day-board-head">
+            <div>
+              <h3 class="day-board-title">Priorités projets</h3>
+              <div class="day-board-sub">Tes Deep Work du jour, classés par temps réservé.</div>
+            </div>
+            <div class="day-board-count">${projects.length}</div>
+          </div>
+          <div class="day-board-list" id="projectsBoardList"></div>
+        `;
+        const projectList=projectsBoard.querySelector("#projectsBoardList");
+
+        if(!projects.length){
+          projectList.innerHTML='<div class="day-board-empty">Aucune Deep Work Session planifiée aujourd’hui.</div>';
+        }else{
+          projects.forEach((item,index)=>{
+            const row=document.createElement("div");
+            row.className="project-row";
+            row.innerHTML=`
+              <div class="project-rank">${index+1}</div>
+              <div class="project-main">
+                <div class="project-name"></div>
+                <div class="project-time">${fmtTime(item.start)} → ${fmtTime(item.end)}</div>
+              </div>
+              <div class="project-duration">${durationText(item.plannedDuration)}</div>
+            `;
+            row.querySelector(".project-name").textContent=item.name||"Projet";
+            projectList.appendChild(row);
+          });
+
+          const note=document.createElement("div");
+          note.className="project-priority-note";
+          note.textContent="Classement automatique : durée Deep Work la plus longue d’abord ; à durée égale, le projet prévu le plus tôt passe devant.";
+          projectsBoard.appendChild(note);
+        }
+      }
+
       function renderFocusMode(){
         if(!focusPage||!focusCurrentCard||!focusNextCard)return;
         const now=Date.now(), items=focusTimelineItems();
@@ -2805,6 +3121,8 @@
           focusNextCard.innerHTML=`<div class="focus-eyebrow">Ensuite</div><div class="focus-next-title"></div>${next.description&&next.description!=="Aucune"?'<div class="focus-description" style="font-size:15px"></div>':''}<div class="focus-next-time">${fmtDateTime(next.start)} → ${fmtTime(next.end)}</div><div class="focus-countdown" style="font-size:32px">${formatCountdown(next.start-now)}</div><div class="focus-countdown-label">avant le début</div>`;
           focusNextCard.querySelector('.focus-next-title').textContent=next.name||'Tâche'; const d=focusNextCard.querySelector('.focus-description');if(d)d.textContent=next.description;
         }else focusNextCard.innerHTML=`<div class="focus-eyebrow">Ensuite</div><div class="focus-next-title">Rien de prévu</div><div class="focus-next-time">Aucune prochaine tâche trouvée dans les 48 heures.</div>`;
+
+        renderDayBoard();
       }
       function updatePlanningUI(){
         const locked=isTodayLocked(), timelineMode=currentView==='timeline';
@@ -4892,7 +5210,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=9").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=9.1").catch(() => {});
       });
     }
   </script>
