@@ -1,4 +1,4 @@
-const CACHE_NAME = "16h-pwa-v9.1";
+const CACHE_NAME = "16h-pwa-v9.2";
 const APP_ASSETS = [
   "./mindmap.html",
   "./manifest.webmanifest",

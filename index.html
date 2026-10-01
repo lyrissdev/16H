@@ -1462,6 +1462,48 @@
     }
 
 
+
+    /* V9.2 — accès aux cartes mentales des prochains blocs / rendez-vous */
+    .focus-next-mindmap-btn{
+      width:100%;
+      margin-top:18px;
+      border:1px solid #dfe3e9;
+      border-radius:13px;
+      padding:11px 13px;
+      background:#fff;
+      color:#17191d;
+      font-weight:850;
+      font-size:13px;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:7px;
+    }
+    .focus-next-mindmap-btn:hover{background:#f6f7f9}
+    .appointment-open-mindmap{
+      border:1px solid #dfe3e9;
+      background:#fff;
+      height:30px;
+      padding:0 10px;
+      border-radius:9px;
+      font-size:11px;
+      font-weight:850;
+      cursor:pointer;
+      white-space:nowrap;
+      color:#303741;
+    }
+    .appointment-open-mindmap:hover{background:#f3f5f7}
+    .appointment-row.past .appointment-open-mindmap{
+      display:none;
+    }
+    @media(max-width:800px){
+      .appointment-open-mindmap{
+        grid-column:2;
+        justify-self:start;
+      }
+    }
+
     /* V9 — carte mentale du bloc actuel */
     .focus-mindmap-btn{
       width:100%;margin-top:18px;border:0;border-radius:16px;padding:15px 18px;
@@ -2903,6 +2945,17 @@
       }
 
 
+      function appendNextMindmapButton(item){
+        if(!focusNextCard || !item) return;
+        const button=document.createElement("button");
+        button.type="button";
+        button.className="focus-next-mindmap-btn";
+        button.innerHTML='<span>◉</span><span>Ouvrir sa carte mentale</span>';
+        button.addEventListener("click",()=>openCurrentMindmap(item));
+        focusNextCard.appendChild(button);
+      }
+
+
       function normalizeBoardLabel(value=""){
         return String(value||"")
           .normalize("NFD")
@@ -2980,6 +3033,19 @@
             row.querySelector(".appointment-name").textContent=item.name||"Rendez-vous";
             const meta=row.querySelector(".appointment-meta");
             if(meta) meta.textContent=address;
+
+            if(!isPast){
+              const mindmapButton=document.createElement("button");
+              mindmapButton.type="button";
+              mindmapButton.className="appointment-open-mindmap";
+              mindmapButton.textContent="◉ Carte mentale";
+              mindmapButton.addEventListener("click",(event)=>{
+                event.stopPropagation();
+                openCurrentMindmap(item);
+              });
+              row.appendChild(mindmapButton);
+            }
+
             appointmentList.appendChild(row);
           });
         }
@@ -3119,7 +3185,9 @@
 
         if(next){
           focusNextCard.innerHTML=`<div class="focus-eyebrow">Ensuite</div><div class="focus-next-title"></div>${next.description&&next.description!=="Aucune"?'<div class="focus-description" style="font-size:15px"></div>':''}<div class="focus-next-time">${fmtDateTime(next.start)} → ${fmtTime(next.end)}</div><div class="focus-countdown" style="font-size:32px">${formatCountdown(next.start-now)}</div><div class="focus-countdown-label">avant le début</div>`;
-          focusNextCard.querySelector('.focus-next-title').textContent=next.name||'Tâche'; const d=focusNextCard.querySelector('.focus-description');if(d)d.textContent=next.description;
+          focusNextCard.querySelector('.focus-next-title').textContent=next.name||'Tâche';
+          const d=focusNextCard.querySelector('.focus-description');if(d)d.textContent=next.description;
+          appendNextMindmapButton(next);
         }else focusNextCard.innerHTML=`<div class="focus-eyebrow">Ensuite</div><div class="focus-next-title">Rien de prévu</div><div class="focus-next-time">Aucune prochaine tâche trouvée dans les 48 heures.</div>`;
 
         renderDayBoard();
@@ -5210,7 +5278,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=9.1").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=9.2").catch(() => {});
       });
     }
   </script>
