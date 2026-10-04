@@ -1751,6 +1751,7 @@
         </div>
         <div class="modal-actions">
           <button class="btn" type="button" id="deleteBlockBtn" style="margin-right:auto;color:#c83f49">Supprimer</button>
+          <button class="btn" type="button" id="blockMindmapBtn">◉ Carte mentale</button>
           <button class="btn" type="button" data-close="blockDialog">Fermer</button>
           <button class="btn primary" type="button" id="editBlockBtn">Modifier</button>
         </div>
@@ -4295,6 +4296,15 @@
         setBlockSchedulingMode(hasTime);
       });
 
+
+      el("blockMindmapBtn").addEventListener("click",()=>{
+        if(!selectedBlockId) return;
+        const block=state.blocks.find(b=>String(b.id)===String(selectedBlockId));
+        if(!block) return;
+        try{ blockDialog.close(); }catch{}
+        openCurrentMindmap(block);
+      });
+
       el("editBlockBtn").addEventListener("click",()=>{
         if(!selectedBlockId) return;
         const b=state.blocks.find(x=>x.id===selectedBlockId);
@@ -5614,7 +5624,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=9.5").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=9.6").catch(() => {});
       });
     }
   </script>
