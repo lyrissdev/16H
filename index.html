@@ -1523,6 +1523,65 @@
     .mindmap-sync-state{margin-left:auto;font-size:12px;color:#7b8492;white-space:nowrap}
     @media(max-width:680px){.mindmap-sync-state{display:none}.mindmap-hostbar{height:54px}.mindmap-back{height:38px}#mindmapFrame{inset:0 0 54px 0;height:calc(100% - 54px)}}
 
+
+    /* V9.4 — import planning JSON local */
+    .json-import-intro{
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.5;
+      margin:-4px 0 14px;
+    }
+    .json-import-file{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      margin:10px 0 12px;
+    }
+    .json-import-file input[type="file"]{
+      max-width:100%;
+    }
+    .json-import-textarea{
+      width:100%;
+      min-height:280px;
+      resize:vertical;
+      border:1px solid #dfe3e9;
+      border-radius:13px;
+      padding:12px 13px;
+      font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+      background:#fbfcfd;
+      color:#20242a;
+      outline:none;
+    }
+    .json-import-textarea:focus{
+      border-color:#9aa4b2;
+      box-shadow:0 0 0 3px rgba(31,122,236,.08);
+    }
+    .json-import-status{
+      margin-top:10px;
+      border-radius:11px;
+      padding:10px 12px;
+      font-size:12px;
+      line-height:1.45;
+      background:#f4f6f8;
+      color:#596270;
+      display:none;
+    }
+    .json-import-status.show{display:block}
+    .json-import-status.ok{background:#edf8f1;color:#2f6843}
+    .json-import-status.warn{background:#fff6e5;color:#8a5a00}
+    .json-import-status.error{background:#fff0f1;color:#a7333d}
+    .json-schema-note{
+      margin-top:10px;
+      padding:10px 12px;
+      border:1px solid #e3e7ed;
+      border-radius:11px;
+      background:#fff;
+      color:#68717e;
+      font-size:11px;
+      line-height:1.45;
+    }
+
   </style>
 </head>
 <body>
@@ -1545,6 +1604,7 @@
         <button class="btn" id="editDayBtn" style="display:none">Modifier la journée</button>
         <button class="btn notification-btn" id="notificationBtn" type="button"><span class="notification-dot" id="notificationDot"></span><span id="notificationLabel">Notifications</span></button>
         <button class="btn cloud-btn" id="cloudBtn"><span class="cloud-dot" id="cloudDot"></span><span id="cloudLabel">Cloud</span></button>
+        <button class="btn" id="jsonImportBtn" type="button">Importer JSON</button>
         <button class="btn primary" id="addBtn">+ Ajouter un bloc</button>
       </div>
     </div>
@@ -1897,6 +1957,44 @@
     </div>
   </dialog>
 
+
+  <dialog id="jsonImportDialog">
+    <div class="modal">
+      <h3>Importer un planning JSON</h3>
+      <div class="json-import-intro">
+        L’import ajoute les blocs directement dans le stockage local de 16H.
+        Il fonctionne même lorsque le Cloud est déconnecté et ne supprime aucun bloc existant.
+      </div>
+
+      <div class="json-import-file">
+        <input id="jsonImportFile" type="file" accept=".json,application/json" />
+        <button class="btn" id="jsonLoadExampleBtn" type="button">Charger un exemple</button>
+      </div>
+
+      <textarea
+        id="jsonImportTextarea"
+        class="json-import-textarea"
+        spellcheck="false"
+        placeholder='{"planning":[{"title":"TOURNAGE SCÈNE 8","date":"2026-10-05","start":"10:00","end":"11:30","type":"DEEP WORK SESSION"}]}'
+      ></textarea>
+
+      <div class="json-schema-note">
+        Champs reconnus : <strong>id</strong>, <strong>title</strong> ou <strong>name</strong>,
+        <strong>date</strong> (YYYY-MM-DD), <strong>start</strong>, <strong>end</strong>,
+        <strong>durationMinutes</strong>, <strong>type</strong> ou <strong>typeId</strong>,
+        <strong>address</strong>, <strong>description</strong>, <strong>color</strong>.
+        Le JSON peut être un tableau directement ou un objet contenant <strong>planning</strong> / <strong>blocks</strong>.
+      </div>
+
+      <div class="json-import-status" id="jsonImportStatus"></div>
+
+      <div class="modal-actions">
+        <button class="btn" type="button" data-close="jsonImportDialog">Annuler</button>
+        <button class="btn primary" type="button" id="jsonImportConfirmBtn">Importer le planning</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="cloudDialog">
     <div class="modal">
       <h3>Synchronisation Supabase</h3>
@@ -1989,6 +2087,7 @@
       const ruleForm = el("ruleForm");
       const cloudDialog = el("cloudDialog");
       const notificationDialog = el("notificationDialog");
+      const jsonImportDialog = el("jsonImportDialog");
       const focusPage=el("focusPage");
       const focusCurrentCard=el("focusCurrentCard");
       const focusNextCard=el("focusNextCard");
@@ -2678,6 +2777,196 @@
         showToast("Bloc placé dans la timeline");
       }
 
+
+
+      function setJsonImportStatus(message,kind=""){
+        const box=el("jsonImportStatus");
+        if(!box) return;
+        box.textContent=message || "";
+        box.className="json-import-status" + (message ? " show" : "") + (kind ? ` ${kind}` : "");
+      }
+
+      function slugForImport(value=""){
+        return String(value||"bloc")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g,"")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g,"-")
+          .replace(/^-+|-+$/g,"")
+          .slice(0,48) || "bloc";
+      }
+
+      function parseLocalDateTime(dateKey,timeValue){
+        if(!dateKey || !/^\d{4}-\d{2}-\d{2}$/.test(String(dateKey))) return NaN;
+        if(typeof timeValue==="number" && Number.isFinite(timeValue)) return timeValue;
+        const t=String(timeValue||"").trim();
+        if(/^\d{13}$/.test(t)) return Number(t);
+        if(/^\d{10}$/.test(t)) return Number(t)*1000;
+        if(/^\d{1,2}:\d{2}$/.test(t)){
+          const [hh,mm]=t.split(":").map(Number);
+          const [y,m,d]=dateKey.split("-").map(Number);
+          return new Date(y,m-1,d,hh,mm,0,0).getTime();
+        }
+        const parsed=Date.parse(t);
+        return Number.isFinite(parsed) ? parsed : NaN;
+      }
+
+      function resolveImportedType(raw){
+        const requestedId=String(raw.typeId||"").trim();
+        if(requestedId && state.blockTypes.some(t=>t.id===requestedId)) return requestedId;
+
+        const requestedName=String(raw.type||raw.typeName||"").trim().toLowerCase();
+        if(requestedName){
+          const found=state.blockTypes.find(t=>String(t.name||"").trim().toLowerCase()===requestedName);
+          if(found) return found.id;
+        }
+        return null;
+      }
+
+      function extractImportedPlanning(parsed){
+        if(Array.isArray(parsed)) return parsed;
+        if(parsed && Array.isArray(parsed.planning)) return parsed.planning;
+        if(parsed && Array.isArray(parsed.blocks)) return parsed.blocks;
+        throw new Error("Le JSON doit être un tableau, ou contenir un tableau « planning » ou « blocks ».");
+      }
+
+      function normalizeImportedBlock(raw,index){
+        if(!raw || typeof raw!=="object") throw new Error(`Entrée ${index+1} : format invalide.`);
+
+        const name=String(raw.name ?? raw.title ?? "").trim();
+        if(!name) throw new Error(`Entrée ${index+1} : titre manquant.`);
+
+        const dateKey=String(raw.date ?? raw.plannedDate ?? "").trim();
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)){
+          throw new Error(`Entrée ${index+1} (${name}) : date invalide. Utilise YYYY-MM-DD.`);
+        }
+
+        let start=parseLocalDateTime(dateKey,raw.start ?? raw.startTime ?? raw.start_at);
+        if(!Number.isFinite(start)){
+          throw new Error(`Entrée ${index+1} (${name}) : heure de début invalide.`);
+        }
+
+        let end=parseLocalDateTime(dateKey,raw.end ?? raw.endTime ?? raw.end_at);
+        const durationRaw=Number(raw.durationMinutes ?? raw.duration_minutes);
+        if(!Number.isFinite(end)){
+          const duration=Number.isFinite(durationRaw) && durationRaw>0 ? durationRaw : 90;
+          end=start + duration*60000;
+        }
+        if(end<=start) throw new Error(`Entrée ${index+1} (${name}) : la fin doit être après le début.`);
+
+        const durationMinutes=Math.max(1,Math.round((end-start)/60000));
+        const typeId=resolveImportedType(raw);
+        const requestedColor=String(raw.color||"").trim();
+        const type=typeId ? state.blockTypes.find(t=>t.id===typeId) : null;
+        const color=requestedColor || type?.color || "#d97706";
+        const address=String(raw.address ?? type?.address ?? "Aucune").trim() || "Aucune";
+        const description=String(raw.description ?? type?.description ?? "Aucune").trim() || "Aucune";
+
+        const deterministicId=`json-${dateKey}-${String(raw.start ?? raw.startTime ?? "").replace(/[^0-9]/g,"")}-${slugForImport(name)}`;
+        const id=String(raw.id||deterministicId);
+
+        return {
+          id,
+          name,
+          start,
+          end,
+          color,
+          address,
+          description,
+          typeId,
+          floating:false,
+          plannedDate:dateKey,
+          durationMinutes,
+          tasks:Array.isArray(raw.tasks) ? raw.tasks : [],
+          updatedAt:Date.now()+index
+        };
+      }
+
+      function blockOverlapsExisting(candidate,ignoreId=null){
+        return state.blocks.some(b=>{
+          if(b.floating || b.id===ignoreId) return false;
+          return overlaps(Number(candidate.start),Number(candidate.end),Number(b.start),Number(b.end));
+        });
+      }
+
+      function importPlanningJsonText(text){
+        let parsed;
+        try{
+          parsed=JSON.parse(text);
+        }catch{
+          throw new Error("Le JSON n’est pas valide.");
+        }
+
+        const entries=extractImportedPlanning(parsed);
+        if(!entries.length) throw new Error("Le planning JSON est vide.");
+
+        const normalized=entries.map(normalizeImportedBlock);
+        let added=0, updated=0, skipped=0;
+        const skippedNames=[];
+
+        for(const incoming of normalized){
+          const existingIndex=state.blocks.findIndex(b=>b.id===incoming.id);
+
+          if(existingIndex>=0){
+            const existing=state.blocks[existingIndex];
+            // Preserve Deep Work task progress unless the JSON explicitly provides tasks.
+            const incomingRaw=entries[normalized.indexOf(incoming)] || {};
+            const tasks=Array.isArray(incomingRaw.tasks) ? incoming.tasks : (Array.isArray(existing.tasks) ? existing.tasks : []);
+            const merged={...existing,...incoming,tasks};
+            if(blockOverlapsExisting(merged,existing.id)){
+              skipped++;
+              skippedNames.push(incoming.name);
+              continue;
+            }
+            state.blocks[existingIndex]=merged;
+            updated++;
+            continue;
+          }
+
+          if(blockOverlapsExisting(incoming)){
+            skipped++;
+            skippedNames.push(incoming.name);
+            continue;
+          }
+
+          state.blocks.push(incoming);
+          added++;
+        }
+
+        // Deliberately local-only: JSON import must never trigger Cloud sync on its own.
+        saveState(false);
+        render();
+
+        return {added,updated,skipped,skippedNames,total:entries.length};
+      }
+
+      function examplePlanningJson(){
+        return JSON.stringify({
+          planning:[
+            {
+              id:"shoot-2026-10-05-scene-8",
+              title:"TOURNAGE SCÈNE 8",
+              date:"2026-10-05",
+              start:"10:00",
+              end:"11:30",
+              type:"DEEP WORK SESSION",
+              color:"#d97706",
+              address:"79 Rue Louis Becker, 69100 Villeurbanne",
+              description:"GUINGUETTE"
+            },
+            {
+              id:"shoot-2026-10-05-lunch",
+              title:"PAUSE REPAS",
+              date:"2026-10-05",
+              start:"13:00",
+              end:"15:00",
+              type:"PAUSE REPAS",
+              color:"#5b6472",
+              description:"Pause déjeuner — tournage"
+            }
+          ]
+        },null,2);
+      }
 
       function currentDayKey(){return localDateKey(new Date());}
       function getDayState(dateKey=currentDayKey()){return state.dayStates.find(s=>s.dateKey===dateKey)||null;}
@@ -4124,6 +4413,48 @@
         setView("weeks");
       };
 
+
+      el("jsonImportBtn").onclick=()=>{
+        setJsonImportStatus("");
+        el("jsonImportFile").value="";
+        jsonImportDialog.showModal();
+      };
+
+      el("jsonLoadExampleBtn").onclick=()=>{
+        el("jsonImportTextarea").value=examplePlanningJson();
+        setJsonImportStatus("Exemple chargé. Tu peux le modifier avant l’import.","ok");
+      };
+
+      el("jsonImportFile").addEventListener("change",async(event)=>{
+        const file=event.target.files?.[0];
+        if(!file) return;
+        try{
+          const text=await file.text();
+          el("jsonImportTextarea").value=text;
+          setJsonImportStatus(`Fichier chargé : ${file.name}`,"ok");
+        }catch(err){
+          setJsonImportStatus("Impossible de lire ce fichier JSON.","error");
+        }
+      });
+
+      el("jsonImportConfirmBtn").onclick=()=>{
+        try{
+          const text=el("jsonImportTextarea").value.trim();
+          if(!text) throw new Error("Colle un JSON ou sélectionne un fichier.");
+          const result=importPlanningJsonText(text);
+          const base=`Import terminé : ${result.added} ajouté(s), ${result.updated} mis à jour`;
+          if(result.skipped){
+            const names=result.skippedNames.slice(0,4).join(", ");
+            setJsonImportStatus(`${base}, ${result.skipped} ignoré(s) car ils chevauchent des blocs existants${names?` (${names})`:""}.`,"warn");
+          }else{
+            setJsonImportStatus(`${base}. Aucun bloc local existant n’a été supprimé.`,"ok");
+          }
+          showToast("Planning JSON importé localement");
+        }catch(err){
+          setJsonImportStatus(err?.message || String(err),"error");
+        }
+      };
+
       el("notificationBtn").onclick=()=>{
         populateNotificationDialog();
         notificationDialog.showModal();
@@ -5278,7 +5609,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=9.3").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=9.4").catch(() => {});
       });
     }
   </script>
