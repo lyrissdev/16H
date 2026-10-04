@@ -2885,7 +2885,12 @@
       function blockOverlapsExisting(candidate,ignoreId=null){
         return state.blocks.some(b=>{
           if(b.floating || b.id===ignoreId) return false;
-          return overlaps(Number(candidate.start),Number(candidate.end),Number(b.start),Number(b.end));
+          return intervalsOverlap(
+            Number(candidate.start),
+            Number(candidate.end),
+            Number(b.start),
+            Number(b.end)
+          );
         });
       }
 
@@ -5609,7 +5614,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=9.4").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=9.5").catch(() => {});
       });
     }
   </script>
