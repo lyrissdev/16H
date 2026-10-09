@@ -1582,6 +1582,71 @@
       line-height:1.45;
     }
 
+
+    /* V10 — projets long terme */
+    .projects-page{display:none}
+    .projects-panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+    .projects-toolbar{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:18px 20px;border-bottom:1px solid var(--line)}
+    .projects-toolbar h2{margin:0;font-size:24px;letter-spacing:-.03em}
+    .projects-toolbar-sub{margin-top:5px;color:var(--muted);font-size:13px}
+    .projects-toolbar-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .projects-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:18px}
+    .project-card{border:1px solid #e0e4ea;border-radius:16px;background:#fff;overflow:hidden}
+    .project-card-head{padding:16px 17px 14px;border-left:7px solid var(--project-color,#23272d)}
+    .project-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .project-name{font-size:20px;font-weight:900;letter-spacing:-.025em;line-height:1.15}
+    .project-dates{margin-top:5px;color:var(--muted);font-size:12px}
+    .project-progress-row{display:flex;align-items:center;gap:10px;margin-top:13px}
+    .project-progress-track{height:8px;background:#edf0f4;border-radius:99px;overflow:hidden;flex:1}
+    .project-progress-fill{height:100%;background:var(--project-color,#23272d);border-radius:99px}
+    .project-progress-label{font-size:12px;font-weight:800;color:#535d69;min-width:40px;text-align:right}
+    .project-card-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:13px}
+    .mini-btn{border:1px solid #dfe3e9;background:#fff;border-radius:9px;padding:7px 9px;font-size:11px;font-weight:800;cursor:pointer}
+    .mini-btn:hover{background:#f5f6f8}
+    .mini-btn.primary{background:#17191d;color:#fff;border-color:#17191d}
+    .subprojects{padding:0 16px 16px;display:flex;flex-direction:column;gap:10px}
+    .subproject{border:1px solid #e4e7ec;border-radius:13px;padding:12px;background:#fafbfc}
+    .subproject-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    .subproject-name{font-weight:900;font-size:14px}
+    .subproject-priority{font-size:10px;font-weight:850;text-transform:uppercase;letter-spacing:.05em;color:#68717e}
+    .project-task-list{display:flex;flex-direction:column;gap:7px;margin-top:10px}
+    .project-task{display:grid;grid-template-columns:24px minmax(0,1fr) auto auto;gap:8px;align-items:center;background:#fff;border:1px solid #e5e8ed;border-radius:10px;padding:8px 9px}
+    .project-task.done{opacity:.5}
+    .project-task.done .project-task-name{text-decoration:line-through}
+    .task-check{width:20px;height:20px;border-radius:6px;border:1px solid #cfd5dd;background:#fff;cursor:pointer}
+    .task-check.checked{background:#17191d;color:#fff}
+    .project-task-name{font-size:12px;font-weight:800;line-height:1.25}
+    .project-task-meta{font-size:10px;color:var(--muted);margin-top:2px}
+    .task-plan-btn{border:1px solid #dfe3e9;background:#fff;border-radius:8px;padding:6px 8px;font-size:10px;font-weight:850;cursor:pointer;white-space:nowrap}
+    .task-plan-btn.planned{background:#eef1f5;color:#68717e}
+    .project-empty{padding:40px 24px;text-align:center;color:var(--muted)}
+    .week-project-focus{padding:16px 18px;border-bottom:1px solid var(--line);background:#fbfcfd}
+    .week-project-focus-title{font-size:13px;font-weight:900;margin-bottom:10px}
+    .week-project-chips{display:flex;gap:8px;flex-wrap:wrap}
+    .week-project-chip{border:1px solid #dde2e8;background:#fff;border-radius:12px;padding:9px 11px;min-width:180px;border-left:5px solid var(--project-color,#23272d)}
+    .week-project-chip strong{display:block;font-size:12px}
+    .week-project-chip span{display:block;color:var(--muted);font-size:10px;margin-top:3px}
+    .day-project-planner{margin-top:16px;background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:17px}
+    .day-project-planner-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:11px}
+    .day-project-planner-title{font-size:16px;font-weight:900}
+    .day-project-planner-sub{font-size:12px;color:var(--muted);margin-top:3px}
+    .day-project-task-list{display:flex;gap:8px;flex-wrap:wrap}
+    .day-project-task{border:1px solid #e1e5ea;border-left:5px solid var(--project-color,#23272d);background:#fff;border-radius:11px;padding:9px 10px;min-width:190px;max-width:300px}
+    .day-project-task strong{font-size:12px;display:block}
+    .day-project-task span{font-size:10px;color:var(--muted);display:block;margin-top:3px}
+    .meal-nudge{display:none;margin:0 0 16px;border:1px solid #eadfbd;background:#fff9e9;border-radius:14px;padding:12px 14px;font-size:13px;color:#6e5618}
+    .meal-nudge.show{display:block}
+    .meal-nudge strong{color:#4f3b0d}
+    .block-project-link{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .project-legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .project-legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:#606976}
+    .project-legend-dot{width:10px;height:10px;border-radius:50%}
+    .project-modal-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+    @media(max-width:900px){
+      .projects-grid{grid-template-columns:1fr}
+      .block-project-link{grid-template-columns:1fr}
+    }
+
   </style>
 </head>
 <body>
@@ -1593,12 +1658,13 @@
           <div class="view-switch">
             <button class="view-switch-btn active" id="timelineViewBtn" type="button">16 HEURES</button>
             <button class="view-switch-btn" id="weeksViewBtn" type="button">SEMAINES</button>
+            <button class="view-switch-btn" id="projectsViewBtn" type="button">PROJETS</button>
           </div>
         </div>
         <div class="subtitle" id="topSubtitle">Une carte simple des 16 prochaines heures.</div>
       </div>
       <div class="actions">
-        <button class="btn" id="recenterBtn">Recentrer maintenant</button>
+        <button class="btn" id="recenterBtn">Revenir au réveil</button>
         <button class="btn" id="rulesBtn">Nouvelle règle quotidienne</button>
         <button class="btn plan-lock-btn" id="finishPlanningBtn">Terminer ma planification</button>
         <button class="btn" id="editDayBtn" style="display:none">Modifier la journée</button>
@@ -1610,6 +1676,7 @@
     </div>
 
     <div id="focusPage" class="focus-page">
+      <div class="meal-nudge" id="focusMealNudge"></div>
       <div class="focus-shell">
         <section class="focus-card" id="focusCurrentCard"></section>
         <section class="focus-card" id="focusNextCard"></section>
@@ -1624,6 +1691,7 @@
     </div>
 
     <div id="timelinePage">
+    <div class="meal-nudge" id="mealNudge"></div>
     <section class="panel">
       <div class="timeline-toolbar">
         <div class="window-label" id="windowLabel"></div>
@@ -1647,6 +1715,17 @@
           </div>
         </div>
       </div>
+    </section>
+
+    <section class="day-project-planner" id="dayProjectPlanner">
+      <div class="day-project-planner-head">
+        <div>
+          <div class="day-project-planner-title">Sous-projets à avancer aujourd’hui</div>
+          <div class="day-project-planner-sub">16H remonte automatiquement les tâches importantes de tes projets actifs.</div>
+        </div>
+        <button class="btn" id="autoPrepareProjectTasksBtn" type="button">Préparer 3 tâches</button>
+      </div>
+      <div class="day-project-task-list" id="dayProjectTaskList"></div>
     </section>
 
     <section class="priority-section" id="prioritySection" hidden>
@@ -1676,7 +1755,7 @@
     <section class="scoreboard">
       <div class="scoreboard-head">
         <div>
-          <h2>Score des blocs</h2>
+          <h2>Temps investi par type</h2>
           <div class="scoreboard-subtitle" id="scoreboardSubtitle"></div>
         </div>
       </div>
@@ -1698,9 +1777,30 @@
             <button class="btn" id="nextWeekBtn" type="button">Semaine suivante →</button>
           </div>
         </div>
+        <div class="week-project-focus">
+          <div class="week-project-focus-title">Projets & sous-projets importants cette semaine</div>
+          <div class="week-project-chips" id="weekProjectFocus"></div>
+        </div>
         <div class="week-scroll">
           <div class="week-board" id="weekBoard"></div>
         </div>
+      </section>
+    </div>
+
+    <div id="projectsPage" class="projects-page">
+      <section class="projects-panel">
+        <div class="projects-toolbar">
+          <div>
+            <h2>Projets long terme</h2>
+            <div class="projects-toolbar-sub">Projet → sous-projets → tâches. Les tâches deviennent ensuite des blocs de temps dans 16H.</div>
+            <div class="project-legend" id="projectLegend"></div>
+          </div>
+          <div class="projects-toolbar-actions">
+            <button class="btn" id="editMealWindowsBtn" type="button">Repères repas</button>
+            <button class="btn primary" id="newProjectBtn" type="button">+ Nouveau projet</button>
+          </div>
+        </div>
+        <div class="projects-grid" id="projectsGrid"></div>
       </section>
     </div>
 
@@ -1763,6 +1863,18 @@
             <div class="field full" id="blockTypeField">
               <label>Type de bloc</label>
               <select id="blockTypeSelect"></select>
+            </div>
+            <div class="field full" id="blockProjectLinkField">
+              <div class="block-project-link">
+                <div class="field">
+                  <label>Projet</label>
+                  <select id="blockProjectSelect"></select>
+                </div>
+                <div class="field">
+                  <label>Sous-projet</label>
+                  <select id="blockSubprojectSelect"></select>
+                </div>
+              </div>
             </div>
             <div class="field full">
               <div class="schedule-toggle">
@@ -1996,6 +2108,36 @@
     </div>
   </dialog>
 
+
+  <dialog id="projectDialog">
+    <form class="modal" id="projectForm">
+      <h3 id="projectDialogTitle">Nouveau projet</h3>
+      <div class="form-grid">
+        <div class="field full">
+          <label>Nom du projet</label>
+          <input id="projectNameInput" required maxlength="120" placeholder="Ex. Projection Dressed To"/>
+        </div>
+        <div class="field">
+          <label>Date de début</label>
+          <input id="projectStartInput" type="date" required/>
+        </div>
+        <div class="field">
+          <label>Date de fin</label>
+          <input id="projectEndInput" type="date" required/>
+        </div>
+        <div class="field full">
+          <label>Couleur du projet</label>
+          <input id="projectColorInput" type="color" value="#7c5cff"/>
+        </div>
+      </div>
+      <div class="error" id="projectError"></div>
+      <div class="modal-actions">
+        <button class="btn" type="button" data-close="projectDialog">Annuler</button>
+        <button class="btn primary" type="submit">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="cloudDialog">
     <div class="modal">
       <h3>Synchronisation Supabase</h3>
@@ -2067,7 +2209,12 @@
       const SUPABASE_AUTH_STORAGE_KEY = "timeline16h_supabase_auth_v1";
       const NOTIFICATION_CONFIG_KEY = "timeline16h_notification_config_v1";
       const SLOT_PX = 38;
-      const DEFAULT_BLOCK_TYPES = [{"id": "preset-deep-work", "name": "DEEP WORK SESSION", "address": "Aucune", "description": "Définir le projet et les taches", "durationMinutes": 90}, {"id": "preset-cinema", "name": "CINÉMA", "address": "Aucune", "description": "Aucune", "durationMinutes": 120}, {"id": "preset-trajet", "name": "TRAJET", "address": "Aucune", "description": "Définir le moyen de transport", "durationMinutes": 15}, {"id": "preset-repas-prep", "name": "REPAS PREP", "address": "Aucune", "description": "Aucune", "durationMinutes": 15}, {"id": "preset-pause-repas", "name": "PAUSE REPAS", "address": "Aucune", "description": "Aucune", "durationMinutes": 30}, {"id": "preset-marche-digestive", "name": "MARCHE DIGESTIVE", "address": "Aucune", "description": "Aucune", "durationMinutes": 15}, {"id": "preset-lecture", "name": "LECTURE", "address": "Aucune", "description": "Aucune", "durationMinutes": 15}];
+      const DEFAULT_BLOCK_TYPES = [
+        {"id":"preset-rdv-cafe","name":"RDV CAFÉ","address":"À définir","description":"Rendez-vous fixé","durationMinutes":60},
+        {"id":"preset-call","name":"CALL","address":"Aucune","description":"Appel / visio","durationMinutes":60},
+        {"id":"preset-solo-work","name":"SESSION ORDINATEUR","address":"Aucune","description":"Travail seul et concentré","durationMinutes":90},
+        {"id":"preset-group-work","name":"TRAVAIL EN GROUPE","address":"À définir","description":"Session de travail collaborative","durationMinutes":90}
+      ];
       const COLOR_PRESETS = [
         "#23272d", "#5b6472", "#1f7aec", "#199da2",
         "#7c5cff", "#c05b8e", "#d97706", "#3f8f5f",
@@ -2094,8 +2241,10 @@
       const focusNextCard=el("focusNextCard");
       const timelinePage = el("timelinePage");
       const weeksPage = el("weeksPage");
+      const projectsPage = el("projectsPage");
       const timelineViewBtn = el("timelineViewBtn");
       const weeksViewBtn = el("weeksViewBtn");
+      const projectsViewBtn = el("projectsViewBtn");
       const topSubtitle = el("topSubtitle");
       const weekBoard = el("weekBoard");
       const weekLabelEl = el("weekLabel");
@@ -2106,7 +2255,7 @@
       const dropPreviewTime = el("dropPreviewTime");
       const dropPreviewHint = el("dropPreviewHint");
 
-      let anchor = getAnchor();
+      let anchor = null;
       let selectedBlockId = null;
       let editingDeepTasks = [];
       let editingRuleId = null;
@@ -2114,6 +2263,7 @@
       let dragState = null;
       let lastBlockTap = {id:null, time:0};
       let currentView = "timeline";
+      let editingProjectId = null;
       let weekCursor = getWeekStart(new Date());
       let activePriorityDragId = null;
       let priorityDropCandidate = null;
@@ -2127,9 +2277,27 @@
 
       let state = loadState();
       let syncMeta = loadSyncMeta();
-      if(!Array.isArray(state.blockTypes)) state.blockTypes=DEFAULT_BLOCK_TYPES.map(t=>({...t,updatedAt:1}));
+      if(!Array.isArray(state.projects)) state.projects=[];
+      if(!state.guidanceRules) state.guidanceRules={lunch:{start:"12:00",end:"14:00"},dinner:{start:"19:00",end:"21:00"}};
+      if(!Array.isArray(state.blockTypes)) state.blockTypes=[];
       if(!Array.isArray(state.ruleOverrides)) state.ruleOverrides=[];
       if(!Array.isArray(state.dayStates)) state.dayStates=[];
+
+      // V10: conserver uniquement les 4 catégories qui servent à avancer / honorer des rendez-vous.
+      const allowedTypeIds=new Set(DEFAULT_BLOCK_TYPES.map(t=>t.id));
+      state.blockTypes=DEFAULT_BLOCK_TYPES.map(def=>({
+        ...def,
+        ...(state.blockTypes.find(t=>String(t.id)===String(def.id))||{}),
+        id:def.id,
+        name:def.name
+      }));
+      state.blocks.forEach(b=>{
+        if(String(b.typeId)==="preset-deep-work") b.typeId="preset-solo-work";
+        const label=String(b.name||"").toUpperCase();
+        if(label.includes("CALL") || label.includes("APPEL")) b.typeId="preset-call";
+        else if(label.includes("RDV") || label.includes("RENDEZ")) b.typeId="preset-rdv-cafe";
+      });
+
       if (!state.rules.length) {
         state.rules.push({
           id: "default-sleep",
@@ -2142,13 +2310,26 @@
         });
         saveState(false);
       }
+      anchor=getAnchor(new Date());
+      saveState(false);
 
       function uid(){
         return (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
       }
 
       function getAnchor(now = new Date()){
-        return new Date(Math.ceil(now.getTime() / SLOT_MS) * SLOT_MS);
+        const d=new Date(now);
+        const dateKey=localDateKey(d);
+        const sleepRule=(state?.rules||[]).find(r=>String(r.id)==="default-sleep" || String(r.name||"").toLocaleUpperCase("fr").includes("SOMMEIL"));
+        if(!sleepRule) {
+          const fallback=new Date(d); fallback.setHours(8,0,0,0); return fallback;
+        }
+        const override=(state?.ruleOverrides||[]).find(o=>String(o.ruleId)===String(sleepRule.id) && o.dateKey===dateKey);
+        const endTime=override?.end || sleepRule.end || "08:00";
+        const [h,m]=String(endTime).split(":").map(Number);
+        const wake=new Date(d);
+        wake.setHours(Number.isFinite(h)?h:8,Number.isFinite(m)?m:0,0,0);
+        return wake;
       }
 
       function loadState(){
@@ -2185,6 +2366,29 @@
             durationMinutes:Math.max(15,Number(t.durationMinutes)||15),
             updatedAt:Number(t.updatedAt)||now
           })) : [];
+          const projects = Array.isArray(raw.projects) ? raw.projects.map(p=>({
+            id:p.id || uid(),
+            name:p.name || "Projet",
+            startDate:p.startDate || localDateKey(new Date()),
+            endDate:p.endDate || localDateKey(new Date()),
+            color:p.color || "#7c5cff",
+            updatedAt:Number(p.updatedAt)||now,
+            subprojects:Array.isArray(p.subprojects) ? p.subprojects.map((sp,spi)=>({
+              id:sp.id || `sp-${spi}-${now}`,
+              name:sp.name || "Sous-projet",
+              priority:Math.max(1,Math.min(5,Number(sp.priority)||3)),
+              tasks:Array.isArray(sp.tasks) ? sp.tasks.map((t,ti)=>({
+                id:t.id || `pt-${ti}-${now}`,
+                name:t.name || "Tâche",
+                durationMinutes:Math.max(15,Number(t.durationMinutes)||60),
+                workMode:t.workMode==="group" ? "group" : "solo",
+                done:!!t.done
+              })) : []
+            })) : []
+          })) : [];
+          const guidanceRules = raw.guidanceRules && typeof raw.guidanceRules==="object"
+            ? raw.guidanceRules
+            : {lunch:{start:"12:00",end:"14:00"},dinner:{start:"19:00",end:"21:00"}};
 
           if(rules.length === 1 && rules[0].name === "Sommeil" && rules[0].start === "00:00" && rules[0].end === "08:00"){
             rules[0].id = "default-sleep";
@@ -2195,14 +2399,16 @@
             if(!typeMap.has(t.id)) typeMap.set(t.id,{...t,updatedAt:1});
           });
 
-          return {blocks, rules, ruleOverrides, dayStates, blockTypes:[...typeMap.values()]};
+          return {blocks, rules, ruleOverrides, dayStates, blockTypes:[...typeMap.values()], projects, guidanceRules};
         }catch{
           return {
             blocks:[],
             rules:[],
             ruleOverrides:[],
             dayStates:[],
-            blockTypes:DEFAULT_BLOCK_TYPES.map(t=>({...t,updatedAt:1}))
+            blockTypes:DEFAULT_BLOCK_TYPES.map(t=>({...t,updatedAt:1})),
+            projects:[],
+            guidanceRules:{lunch:{start:"12:00",end:"14:00"},dinner:{start:"19:00",end:"21:00"}}
           };
         }
       }
@@ -2537,30 +2743,358 @@
 
       function updateViewUI(){
         const isTimeline=currentView==="timeline";
-        if(weeksPage) weeksPage.style.display=isTimeline ? "none" : "block";
-        if(!isTimeline){if(timelinePage)timelinePage.style.display="none";if(focusPage)focusPage.style.display="none";}
-        if(timelineViewBtn) timelineViewBtn.classList.toggle("active", isTimeline);
-        if(weeksViewBtn) weeksViewBtn.classList.toggle("active", !isTimeline);
+        const isWeeks=currentView==="weeks";
+        const isProjects=currentView==="projects";
+
+        if(weeksPage) weeksPage.style.display=isWeeks ? "block" : "none";
+        if(projectsPage) projectsPage.style.display=isProjects ? "block" : "none";
+        if(!isTimeline){
+          if(timelinePage) timelinePage.style.display="none";
+          if(focusPage) focusPage.style.display="none";
+        }
+
+        if(timelineViewBtn) timelineViewBtn.classList.toggle("active",isTimeline);
+        if(weeksViewBtn) weeksViewBtn.classList.toggle("active",isWeeks);
+        if(projectsViewBtn) projectsViewBtn.classList.toggle("active",isProjects);
+
         if(topSubtitle){
           topSubtitle.textContent=isTimeline
-            ? "Une carte simple des 16 prochaines heures."
-            : "Tous les blocs de la semaine actuelle, du lundi au dimanche.";
+            ? "Ta journée fixe de 16 h, à partir de ton réveil."
+            : isWeeks
+              ? "Les projets et blocs importants de ta semaine."
+              : "Pilote tes projets, sous-projets et tâches à long terme.";
         }
         if(el("recenterBtn")) el("recenterBtn").style.display=isTimeline ? "" : "none";
       }
 
       function setView(view){
-        currentView = view === "weeks" ? "weeks" : "timeline";
+        currentView=["timeline","weeks","projects"].includes(view) ? view : "timeline";
         updateViewUI();
-
-        if(currentView === "weeks"){
+        if(currentView==="weeks"){
           renderWeekView();
+          renderWeekProjectFocus();
+        }else if(currentView==="projects"){
+          renderProjectsView();
         }else{
-          // When returning from the weekly view, restore the correct
-          // timeline/focus panel immediately instead of leaving both hidden.
+          anchor=getAnchor(new Date());
           updatePlanningUI();
           renderNow();
+          renderMealGuidance();
+          renderProjectDayPlanner();
         }
+      }
+
+
+      function projectProgress(project){
+        const tasks=(project.subprojects||[]).flatMap(sp=>sp.tasks||[]);
+        if(!tasks.length) return 0;
+        return Math.round(tasks.filter(t=>t.done).length/tasks.length*100);
+      }
+
+      function projectById(id){
+        return (state.projects||[]).find(p=>String(p.id)===String(id)) || null;
+      }
+
+      function subprojectById(project,id){
+        return project?.subprojects?.find(sp=>String(sp.id)===String(id)) || null;
+      }
+
+      function taskScheduledForDate(taskId,dateKey){
+        return state.blocks.some(b=>String(b.projectTaskId||"")===String(taskId) && b.plannedDate===dateKey);
+      }
+
+      function activeProjectsForDate(dateKey){
+        return (state.projects||[]).filter(p=>(!p.startDate || p.startDate<=dateKey) && (!p.endDate || p.endDate>=dateKey));
+      }
+
+      function renderProjectLegend(){
+        const box=el("projectLegend");
+        if(!box) return;
+        box.innerHTML="";
+        (state.projects||[]).forEach(p=>{
+          const item=document.createElement("div");
+          item.className="project-legend-item";
+          item.innerHTML=`<span class="project-legend-dot"></span><span></span>`;
+          item.querySelector(".project-legend-dot").style.background=p.color||"#7c5cff";
+          item.querySelector("span:last-child").textContent=p.name;
+          box.appendChild(item);
+        });
+      }
+
+      function openProjectEditor(projectId=null){
+        editingProjectId=projectId;
+        const project=projectId ? projectById(projectId) : null;
+        el("projectDialogTitle").textContent=project ? "Modifier le projet" : "Nouveau projet";
+        el("projectError").style.display="none";
+        el("projectNameInput").value=project?.name || "";
+        el("projectStartInput").value=project?.startDate || localDateKey(new Date());
+        const end=new Date(); end.setMonth(end.getMonth()+1);
+        el("projectEndInput").value=project?.endDate || localDateKey(end);
+        el("projectColorInput").value=project?.color || "#7c5cff";
+        el("projectDialog").showModal();
+      }
+
+      function addSubproject(projectId){
+        const project=projectById(projectId);
+        if(!project) return;
+        const name=prompt("Nom du sous-projet :");
+        if(!name?.trim()) return;
+        const raw=prompt("Priorité de 1 à 5 (5 = très importante) :","3");
+        const priority=Math.max(1,Math.min(5,Number(raw)||3));
+        project.subprojects.push({id:uid(),name:name.trim(),priority,tasks:[]});
+        project.updatedAt=Date.now();
+        saveState(false);
+        renderProjectsView(); renderProjectDayPlanner(); renderWeekProjectFocus();
+      }
+
+      function addProjectTask(projectId,subprojectId){
+        const project=projectById(projectId), sp=subprojectById(project,subprojectId);
+        if(!sp) return;
+        const name=prompt("Nom de la tâche :");
+        if(!name?.trim()) return;
+        const duration=Math.max(15,Math.round((Number(prompt("Durée prévue en minutes :","60"))||60)/15)*15);
+        const mode=(prompt("Mode de travail : solo ou groupe ?","solo")||"solo").trim().toLowerCase()==="groupe" ? "group" : "solo";
+        sp.tasks.push({id:uid(),name:name.trim(),durationMinutes:duration,workMode:mode,done:false});
+        project.updatedAt=Date.now();
+        saveState(false);
+        renderProjectsView(); renderProjectDayPlanner(); renderWeekProjectFocus();
+      }
+
+      function toggleProjectTask(projectId,subprojectId,taskId){
+        const project=projectById(projectId), sp=subprojectById(project,subprojectId);
+        const task=sp?.tasks?.find(t=>String(t.id)===String(taskId));
+        if(!task) return;
+        task.done=!task.done;
+        project.updatedAt=Date.now();
+        saveState(false);
+        renderProjectsView(); renderProjectDayPlanner(); renderWeekProjectFocus();
+      }
+
+      function scheduleProjectTask(projectId,subprojectId,taskId,dateKey=localDateKey(new Date())){
+        const project=projectById(projectId), sp=subprojectById(project,subprojectId);
+        const task=sp?.tasks?.find(t=>String(t.id)===String(taskId));
+        if(!project || !sp || !task || task.done) return;
+        if(taskScheduledForDate(task.id,dateKey)){
+          showToast("Cette tâche est déjà prévue ce jour");
+          return;
+        }
+        const typeId=task.workMode==="group" ? "preset-group-work" : "preset-solo-work";
+        const synthetic=syntheticTimesForFloating(dateKey,task.durationMinutes);
+        state.blocks.push({
+          id:`project-task-${task.id}-${dateKey}`,
+          name:task.name,
+          address:"Aucune",
+          description:`${project.name} · ${sp.name}`,
+          typeId,
+          start:synthetic.start,
+          end:synthetic.end,
+          color:project.color||"#7c5cff",
+          floating:true,
+          plannedDate:dateKey,
+          durationMinutes:task.durationMinutes,
+          tasks:[],
+          projectId:project.id,
+          subprojectId:sp.id,
+          projectTaskId:task.id,
+          updatedAt:Date.now()
+        });
+        saveState(false);
+        render();
+        showToast("Tâche ajoutée à aujourd’hui");
+      }
+
+      function recommendedProjectTasks(dateKey=localDateKey(new Date())){
+        const out=[];
+        activeProjectsForDate(dateKey).forEach(project=>{
+          (project.subprojects||[]).forEach(sp=>{
+            (sp.tasks||[]).filter(t=>!t.done).forEach(task=>{
+              if(!taskScheduledForDate(task.id,dateKey)){
+                out.push({project,sp,task});
+              }
+            });
+          });
+        });
+        out.sort((a,b)=>{
+          if((b.sp.priority||3)!==(a.sp.priority||3)) return (b.sp.priority||3)-(a.sp.priority||3);
+          if(a.project.endDate!==b.project.endDate) return String(a.project.endDate).localeCompare(String(b.project.endDate));
+          return (b.task.durationMinutes||60)-(a.task.durationMinutes||60);
+        });
+        return out;
+      }
+
+      function renderProjectDayPlanner(){
+        const list=el("dayProjectTaskList"), section=el("dayProjectPlanner");
+        if(!list || !section) return;
+        const recs=recommendedProjectTasks().slice(0,6);
+        list.innerHTML="";
+        section.style.display=(currentView==="timeline" && !isTodayLocked()) ? "block" : "none";
+        if(!recs.length){
+          list.innerHTML='<div class="week-empty">Aucune tâche de projet à remonter aujourd’hui.</div>';
+          return;
+        }
+        recs.forEach(({project,sp,task})=>{
+          const card=document.createElement("div");
+          card.className="day-project-task";
+          card.style.setProperty("--project-color",project.color||"#7c5cff");
+          card.innerHTML=`<strong></strong><span></span><button class="mini-btn primary" type="button">Ajouter à aujourd’hui</button>`;
+          card.querySelector("strong").textContent=task.name;
+          card.querySelector("span").textContent=`${project.name} · ${sp.name} · ${task.durationMinutes} min`;
+          card.querySelector("button").onclick=()=>scheduleProjectTask(project.id,sp.id,task.id);
+          list.appendChild(card);
+        });
+      }
+
+      function renderProjectsView(){
+        const grid=el("projectsGrid");
+        if(!grid) return;
+        renderProjectLegend();
+        grid.innerHTML="";
+        if(!(state.projects||[]).length){
+          grid.innerHTML='<div class="project-empty">Aucun projet pour le moment. Crée ton premier projet, puis découpe-le en sous-projets et tâches.</div>';
+          return;
+        }
+        [...state.projects].sort((a,b)=>String(a.endDate).localeCompare(String(b.endDate))).forEach(project=>{
+          const card=document.createElement("article");
+          card.className="project-card";
+          card.style.setProperty("--project-color",project.color||"#7c5cff");
+          const progress=projectProgress(project);
+          card.innerHTML=`
+            <div class="project-card-head">
+              <div class="project-card-top">
+                <div>
+                  <div class="project-name"></div>
+                  <div class="project-dates">${project.startDate} → ${project.endDate}</div>
+                </div>
+                <button class="mini-btn" data-action="edit">Modifier</button>
+              </div>
+              <div class="project-progress-row">
+                <div class="project-progress-track"><div class="project-progress-fill" style="width:${progress}%"></div></div>
+                <div class="project-progress-label">${progress}%</div>
+              </div>
+              <div class="project-card-actions">
+                <button class="mini-btn primary" data-action="sub">+ Sous-projet</button>
+              </div>
+            </div>
+            <div class="subprojects"></div>`;
+          card.querySelector(".project-name").textContent=project.name;
+          card.querySelector('[data-action="edit"]').onclick=()=>openProjectEditor(project.id);
+          card.querySelector('[data-action="sub"]').onclick=()=>addSubproject(project.id);
+          const subBox=card.querySelector(".subprojects");
+
+          (project.subprojects||[]).sort((a,b)=>(b.priority||3)-(a.priority||3)).forEach(sp=>{
+            const spEl=document.createElement("div");
+            spEl.className="subproject";
+            spEl.innerHTML=`
+              <div class="subproject-head">
+                <div>
+                  <div class="subproject-name"></div>
+                  <div class="subproject-priority">Priorité ${sp.priority||3}/5</div>
+                </div>
+                <button class="mini-btn" type="button">+ Tâche</button>
+              </div>
+              <div class="project-task-list"></div>`;
+            spEl.querySelector(".subproject-name").textContent=sp.name;
+            spEl.querySelector("button").onclick=()=>addProjectTask(project.id,sp.id);
+            const taskList=spEl.querySelector(".project-task-list");
+            (sp.tasks||[]).forEach(task=>{
+              const row=document.createElement("div");
+              row.className="project-task"+(task.done?" done":"");
+              const planned=taskScheduledForDate(task.id,localDateKey(new Date()));
+              row.innerHTML=`
+                <button class="task-check ${task.done?"checked":""}" type="button">${task.done?"✓":""}</button>
+                <div><div class="project-task-name"></div><div class="project-task-meta">${task.durationMinutes} min · ${task.workMode==="group"?"groupe":"solo"}</div></div>
+                <button class="task-plan-btn ${planned?"planned":""}" type="button">${planned?"Prévue":"Aujourd’hui"}</button>
+              `;
+              row.querySelector(".project-task-name").textContent=task.name;
+              row.querySelector(".task-check").onclick=()=>toggleProjectTask(project.id,sp.id,task.id);
+              row.querySelector(".task-plan-btn").onclick=()=>scheduleProjectTask(project.id,sp.id,task.id);
+              taskList.appendChild(row);
+            });
+            subBox.appendChild(spEl);
+          });
+
+          grid.appendChild(card);
+        });
+      }
+
+      function renderWeekProjectFocus(){
+        const box=el("weekProjectFocus");
+        if(!box) return;
+        box.innerHTML="";
+        const weekStartKey=localDateKey(weekCursor);
+        const end=new Date(weekCursor); end.setDate(end.getDate()+6);
+        const weekEndKey=localDateKey(end);
+
+        const projects=(state.projects||[]).filter(p=>(!p.endDate || p.endDate>=weekStartKey) && (!p.startDate || p.startDate<=weekEndKey));
+        if(!projects.length){
+          box.innerHTML='<div class="week-empty">Aucun projet actif sur cette semaine.</div>';
+          return;
+        }
+        projects.forEach(project=>{
+          const top=[...(project.subprojects||[])].sort((a,b)=>(b.priority||3)-(a.priority||3)).slice(0,2);
+          const chip=document.createElement("div");
+          chip.className="week-project-chip";
+          chip.style.setProperty("--project-color",project.color||"#7c5cff");
+          chip.innerHTML="<strong></strong><span></span>";
+          chip.querySelector("strong").textContent=project.name;
+          chip.querySelector("span").textContent=top.length ? top.map(x=>x.name).join(" · ") : "Aucun sous-projet";
+          box.appendChild(chip);
+        });
+      }
+
+      function refreshProjectLinkFields(projectId=null,subprojectId=null){
+        const pSelect=el("blockProjectSelect"), sSelect=el("blockSubprojectSelect");
+        if(!pSelect || !sSelect) return;
+        pSelect.innerHTML='<option value="">Aucun projet</option>';
+        (state.projects||[]).forEach(p=>{
+          const opt=document.createElement("option"); opt.value=p.id; opt.textContent=p.name; pSelect.appendChild(opt);
+        });
+        if(projectId) pSelect.value=String(projectId);
+        sSelect.innerHTML='<option value="">Aucun sous-projet</option>';
+        const project=projectById(pSelect.value);
+        (project?.subprojects||[]).forEach(sp=>{
+          const opt=document.createElement("option"); opt.value=sp.id; opt.textContent=sp.name; sSelect.appendChild(opt);
+        });
+        if(subprojectId) sSelect.value=String(subprojectId);
+      }
+
+      function minutesSinceMidnight(time){
+        const [h,m]=String(time||"00:00").split(":").map(Number);
+        return (h||0)*60+(m||0);
+      }
+
+      function renderMealGuidance(){
+        const now=new Date();
+        const min=now.getHours()*60+now.getMinutes();
+        const rules=state.guidanceRules||{};
+        let message="";
+        const lunch=rules.lunch||{start:"12:00",end:"14:00"};
+        const dinner=rules.dinner||{start:"19:00",end:"21:00"};
+        if(min>=minutesSinceMidnight(lunch.start) && min<minutesSinceMidnight(lunch.end)){
+          message=`<strong>Fenêtre déjeuner.</strong> Tu es dans ton repère ${lunch.start}–${lunch.end}. Aucun bloc repas n’est nécessaire : pense simplement à manger.`;
+        }else if(min>=minutesSinceMidnight(dinner.start) && min<minutesSinceMidnight(dinner.end)){
+          message=`<strong>Fenêtre dîner.</strong> Tu es dans ton repère ${dinner.start}–${dinner.end}. Garde ce créneau souple pour manger.`;
+        }
+        [el("mealNudge"),el("focusMealNudge")].forEach(box=>{
+          if(!box) return;
+          box.innerHTML=message;
+          box.classList.toggle("show",!!message);
+        });
+      }
+
+      function editMealWindows(){
+        const lunchStart=prompt("Déjeuner — début :",state.guidanceRules?.lunch?.start||"12:00");
+        if(!lunchStart) return;
+        const lunchEnd=prompt("Déjeuner — fin :",state.guidanceRules?.lunch?.end||"14:00");
+        if(!lunchEnd) return;
+        const dinnerStart=prompt("Dîner — début :",state.guidanceRules?.dinner?.start||"19:00");
+        if(!dinnerStart) return;
+        const dinnerEnd=prompt("Dîner — fin :",state.guidanceRules?.dinner?.end||"21:00");
+        if(!dinnerEnd) return;
+        state.guidanceRules={lunch:{start:lunchStart,end:lunchEnd},dinner:{start:dinnerStart,end:dinnerEnd}};
+        saveState(false);
+        renderMealGuidance();
+        showToast("Repères repas mis à jour");
       }
 
       function getDefaultStartForDate(dayDate){
@@ -2590,7 +3124,7 @@
         const end=endOfDayTs(dayDate);
         const key=localDateKey(dayDate);
         return state.blocks
-          .filter(b=>b.floating ? b.plannedDate===key : intervalsOverlap(b.start,b.end,start,end))
+          .filter(b=>isFocusBlock(b) && (b.floating ? b.plannedDate===key : intervalsOverlap(b.start,b.end,start,end)))
           .sort((a,b)=>{
             if(a.floating!==b.floating) return a.floating ? -1 : 1;
             return (a.start||0)-(b.start||0);
@@ -2603,6 +3137,7 @@
         weekCursor=getWeekStart(weekCursor);
         weekLabelEl.textContent = formatWeekRangeLabel(weekCursor);
         weekBoard.innerHTML = "";
+        renderWeekProjectFocus();
 
         const todayKey=localDateKey(new Date());
 
@@ -3264,7 +3799,7 @@
         const label=normalizeBoardLabel(item.name);
         // The board is intentionally selective: it surfaces the events that are
         // usually fixed to an external time rather than every scheduled block.
-        return /\b(CALL|RDV|RENDEZ[\s-]?VOUS|MEETING|VISIO|VISIOCONFERENCE|ENTRETIEN|APPEL|RENCONTRE)\b/.test(label);
+        return /\b(CALL|RDV|RENDEZ[\s-]?VOUS|MEETING|VISIO|VISIOCONFERENCE|ENTRETIEN|APPEL|RENCONTRE|CAFÉ|CAFE)\b/.test(label);
       }
 
       function todayBoardItems(){
@@ -3346,7 +3881,7 @@
         }
 
         const projects=items
-          .filter(item=>!item.recurring && isDeepWorkType(item.typeId,item.name))
+          .filter(item=>!item.recurring && (item.projectId || isDeepWorkType(item.typeId,item.name)))
           .map(item=>({
             ...item,
             plannedDuration:Math.max(0,Number(item.end)-Number(item.start))
@@ -3510,6 +4045,10 @@
         renderScoreboard();
         renderWeekView();
         renderPriorities();
+        renderProjectDayPlanner();
+        renderProjectsView();
+        renderWeekProjectFocus();
+        renderMealGuidance();
         updateViewUI();
         updatePlanningUI();
         renderNow();
@@ -3517,7 +4056,7 @@
 
       function renderWindow(){
         const end = anchor.getTime()+WINDOW_MS;
-        windowLabel.textContent = `${fmtDateTime(anchor.getTime())} → ${fmtDateTime(end)}`;
+        windowLabel.textContent = `Journée · ${fmtTime(anchor.getTime())} → ${fmtTime(end)} · départ au réveil`;
       }
 
       function renderLabels(){
@@ -3548,7 +4087,7 @@
         const start = anchor.getTime();
         const end = start + WINDOW_MS;
         const explicit = state.blocks
-          .filter(b => !b.floating && intervalsOverlap(b.start,b.end,start,end))
+          .filter(b => !b.floating && isFocusBlock(b) && intervalsOverlap(b.start,b.end,start,end))
           .map(b=>({...b, recurring:false}));
         const recurring = getRecurringInstances(start,end);
         return [...recurring, ...explicit].sort((a,b)=>a.start-b.start);
@@ -3736,10 +4275,20 @@
 
 
       function isDeepWorkType(typeId,name=""){
-        if(String(typeId||"")==="preset-deep-work") return true;
-        const type=state.blockTypes.find(t=>String(t.id)===String(typeId));
+        const id=String(typeId||"");
+        if(id==="preset-solo-work" || id==="preset-group-work" || id==="preset-deep-work") return true;
+        const type=state.blockTypes.find(t=>String(t.id)===id);
         const label=String(type?.name || name || "").trim().toLocaleUpperCase("fr");
-        return label==="DEEP WORK SESSION";
+        return label==="SESSION ORDINATEUR" || label==="TRAVAIL EN GROUPE" || label==="DEEP WORK SESSION";
+      }
+
+      function isFocusBlock(block){
+        if(!block || block.recurring) return true;
+        const id=String(block.typeId||"");
+        if(["preset-rdv-cafe","preset-call","preset-solo-work","preset-group-work","preset-deep-work"].includes(id)) return true;
+        if(block.projectId) return true;
+        const label=String(block.name||"").toLocaleUpperCase("fr");
+        return /\b(CALL|APPEL|RDV|RENDEZ|MEETING|VISIO)\b/.test(label);
       }
 
       function makeDeepTask(name="",durationMinutes=15){
@@ -3979,6 +4528,7 @@
 
       function fillBlockEditFields(b){
         refreshBlockTypeSelect(b?.typeId || null);
+        refreshProjectLinkFields(b?.projectId || null,b?.subprojectId || null);
         fillDurationOptions();
         if(b?.typeId && state.blockTypes.some(t=>String(t.id)===String(b.typeId))){
           el("blockTypeSelect").value=String(b.typeId);
@@ -4106,7 +4656,10 @@
         const typeId=el("blockTypeSelect").value && el("blockTypeSelect").value!=="__new__"
           ? el("blockTypeSelect").value
           : null;
-        const color=el("blockColor").value || "#23272d";
+        const projectId=el("blockProjectSelect")?.value || null;
+        const subprojectId=el("blockSubprojectSelect")?.value || null;
+        const linkedProject=projectById(projectId);
+        const color=linkedProject?.color || el("blockColor").value || "#23272d";
         const floating=!el("blockHasTime").checked;
         const tasks=isDeepWorkType(typeId,name) ? normalizeDeepTasksForSave() : [];
         const err=el("blockError");
@@ -4146,9 +4699,9 @@
         const updatedAt=Date.now();
         if(selectedBlockId){
           const b=state.blocks.find(x=>x.id===selectedBlockId);
-          Object.assign(b,{name,address,description,typeId,start,end,color,floating,plannedDate,durationMinutes,tasks,updatedAt});
+          Object.assign(b,{name,address,description,typeId,start,end,color,floating,plannedDate,durationMinutes,tasks,projectId,subprojectId,updatedAt});
         }else{
-          state.blocks.push({id:uid(),name,address,description,typeId,start,end,color,floating,plannedDate,durationMinutes,tasks,updatedAt});
+          state.blocks.push({id:uid(),name,address,description,typeId,start,end,color,floating,plannedDate,durationMinutes,tasks,projectId,subprojectId,updatedAt});
         }
         saveState();
         blockDialog.close();
@@ -4412,6 +4965,7 @@
       el("rulesBtn").onclick=openNewRule;
       timelineViewBtn.onclick=()=>setView("timeline");
       weeksViewBtn.onclick=()=>setView("weeks");
+      projectsViewBtn.onclick=()=>setView("projects");
       el("prevWeekBtn").onclick=()=>{
         weekCursor.setDate(weekCursor.getDate()-7);
         renderWeekView();
@@ -4470,6 +5024,50 @@
         }
       };
 
+
+      projectsViewBtn.onclick=()=>setView("projects");
+      el("newProjectBtn").onclick=()=>openProjectEditor();
+      el("editMealWindowsBtn").onclick=()=>editMealWindows();
+
+      el("projectForm").addEventListener("submit",(e)=>{
+        e.preventDefault();
+        const name=el("projectNameInput").value.trim();
+        const startDate=el("projectStartInput").value;
+        const endDate=el("projectEndInput").value;
+        const color=el("projectColorInput").value || "#7c5cff";
+        const err=el("projectError");
+        if(!name || !startDate || !endDate){
+          return showFormError(err,"Remplis le nom et les dates du projet.");
+        }
+        if(endDate<startDate){
+          return showFormError(err,"La date de fin doit être après la date de début.");
+        }
+        if(editingProjectId){
+          const project=projectById(editingProjectId);
+          Object.assign(project,{name,startDate,endDate,color,updatedAt:Date.now()});
+        }else{
+          state.projects.push({id:uid(),name,startDate,endDate,color,subprojects:[],updatedAt:Date.now()});
+        }
+        saveState(false);
+        el("projectDialog").close();
+        renderProjectsView(); renderProjectDayPlanner(); renderWeekProjectFocus();
+        showToast("Projet enregistré");
+      });
+
+      el("autoPrepareProjectTasksBtn").onclick=()=>{
+        const recs=recommendedProjectTasks().slice(0,3);
+        if(!recs.length){showToast("Aucune tâche de projet à préparer");return;}
+        recs.forEach(({project,sp,task})=>scheduleProjectTask(project.id,sp.id,task.id));
+        render();
+      };
+
+      el("blockProjectSelect").addEventListener("change",()=>{
+        const pid=el("blockProjectSelect").value;
+        refreshProjectLinkFields(pid,null);
+        const project=projectById(pid);
+        if(project) el("blockColor").value=project.color || el("blockColor").value;
+      });
+
       el("notificationBtn").onclick=()=>{
         populateNotificationDialog();
         notificationDialog.showModal();
@@ -4494,7 +5092,7 @@
         cloudDialog.showModal();
       };
       el("recenterBtn").onclick=()=>{
-        anchor=getAnchor();
+        anchor=getAnchor(new Date());
         render();
         el("timelineScroll").scrollLeft=0;
       };
@@ -5624,7 +6222,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=9.6").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=10").catch(() => {});
       });
     }
   </script>
