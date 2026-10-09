@@ -1672,6 +1672,55 @@
     .task-modal-grid .full{grid-column:1/-1}
     @media(max-width:700px){.task-modal-grid{grid-template-columns:1fr}}
 
+
+    /* V10.2 — sélection couleur uniquement via presets */
+    #projectPresetColors{margin-top:2px}
+    #projectPresetColors .preset-color-swatch{
+      width:42px;
+      height:42px;
+      transition:transform .12s ease, box-shadow .12s ease;
+    }
+    #projectPresetColors .preset-color-swatch:hover{
+      transform:translateY(-1px) scale(1.04);
+    }
+
+
+    /* V10.3 — choix d'ajout depuis la semaine */
+    .week-add-choice-grid{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:10px;
+      margin-top:12px;
+    }
+    .week-add-choice{
+      border:1px solid #dfe3e9;
+      border-radius:14px;
+      background:#fff;
+      padding:16px 14px;
+      text-align:left;
+      cursor:pointer;
+      min-height:118px;
+    }
+    .week-add-choice:hover{background:#f7f8fa;border-color:#cbd2dc}
+    .week-add-choice strong{display:block;font-size:15px;margin-bottom:6px}
+    .week-add-choice span{display:block;font-size:12px;color:var(--muted);line-height:1.4}
+    .week-project-task-picker{display:none;margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+    .week-project-task-picker.show{display:block}
+    .week-project-task-picker-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}
+    .week-task-options{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow:auto}
+    .week-task-option{
+      width:100%;border:1px solid #e1e5ea;background:#fff;border-radius:12px;
+      padding:11px 12px;text-align:left;cursor:pointer;border-left:5px solid var(--project-color,#23272d)
+    }
+    .week-task-option:hover{background:#f7f8fa}
+    .week-task-option strong{display:block;font-size:13px}
+    .week-task-option span{display:block;font-size:11px;color:var(--muted);margin-top:4px}
+    .week-choice-date{font-size:12px;color:var(--muted);margin-top:4px}
+    .danger-btn{color:#c83f49;border-color:#f0c8cc;background:#fff}
+    @media(max-width:700px){
+      .week-add-choice-grid{grid-template-columns:1fr}
+    }
+
   </style>
 </head>
 <body>
@@ -2157,7 +2206,7 @@
         <div class="field full">
           <label>Couleur du projet</label>
           <div class="preset-color-row" id="projectPresetColors"></div>
-          <input id="projectColorInput" type="color" value="#7c5cff" style="margin-top:10px"/>
+          <input id="projectColorInput" type="hidden" value="#7c5cff"/>
         </div>
       </div>
       <div class="error" id="projectError"></div>
@@ -2239,10 +2288,49 @@
       </div>
       <div class="error" id="projectTaskError"></div>
       <div class="modal-actions">
+        <button class="btn danger-btn" id="deleteProjectTaskBtn" type="button" style="margin-right:auto;display:none">Supprimer la tâche</button>
         <button class="btn" type="button" data-close="projectTaskDialog">Annuler</button>
         <button class="btn primary" type="submit">Enregistrer</button>
       </div>
     </form>
+  </dialog>
+
+
+  <dialog id="weekAddChoiceDialog">
+    <div class="modal">
+      <h3>Ajouter à la journée</h3>
+      <div class="week-choice-date" id="weekChoiceDateLabel"></div>
+
+      <div class="week-add-choice-grid">
+        <button class="week-add-choice" id="weekChoiceProject" type="button">
+          <strong>Projet</strong>
+          <span>Choisir une tâche existante d’un projet ou sous-projet à avancer ce jour-là.</span>
+        </button>
+        <button class="week-add-choice" id="weekChoiceAppointment" type="button">
+          <strong>Rendez-vous</strong>
+          <span>Créer un RDV Café, un appel ou une visio avec une heure précise.</span>
+        </button>
+        <button class="week-add-choice" id="weekChoiceOther" type="button">
+          <strong>Autre</strong>
+          <span>Créer un bloc personnalisé, sans le relier à un projet existant.</span>
+        </button>
+      </div>
+
+      <div class="week-project-task-picker" id="weekProjectTaskPicker">
+        <div class="week-project-task-picker-head">
+          <div>
+            <strong>Tâches de projet proposées</strong>
+            <div class="week-choice-date">Classées par deadline du sous-projet puis priorité.</div>
+          </div>
+          <button class="btn" type="button" id="weekBackToChoicesBtn">Retour</button>
+        </div>
+        <div class="week-task-options" id="weekTaskOptions"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn" type="button" data-close="weekAddChoiceDialog">Fermer</button>
+      </div>
+    </div>
   </dialog>
 
   <dialog id="cloudDialog">
@@ -2373,6 +2461,7 @@
       let editingProjectId = null;
       let editingSubprojectCtx = null;
       let editingProjectTaskCtx = null;
+      let weekAddTargetDate = null;
       const PROJECT_COLORS=["#17191d","#68717e","#2f80ed","#20a4a8","#7c5cff","#c0568b","#d97706","#439766","#c14949","#7b8493"];
 
       let weekCursor = getWeekStart(new Date());
@@ -2998,6 +3087,7 @@
         el("projectTaskDurationInput").value=String(task?.durationMinutes || 60);
         el("projectTaskModeInput").value=task?.workMode || "solo";
         el("projectTaskError").style.display="none";
+        el("deleteProjectTaskBtn").style.display=task ? "" : "none";
         el("projectTaskDialog").showModal();
       }
 
@@ -3319,7 +3409,80 @@
       }
 
       function openNewBlockForDay(dayDate){
-        openNewBlock(getDefaultStartForDate(dayDate), false, localDateKey(dayDate));
+        openWeekAddChoice(dayDate);
+      }
+
+      function openWeekAddChoice(dayDate){
+        weekAddTargetDate=new Date(dayDate);
+        const label=el("weekChoiceDateLabel");
+        if(label) label.textContent=`${shortWeekday(dayDate)} ${shortDateLabel(dayDate)}`;
+        el("weekProjectTaskPicker").classList.remove("show");
+        el("weekTaskOptions").innerHTML="";
+        if(!el("weekAddChoiceDialog").open) el("weekAddChoiceDialog").showModal();
+      }
+
+      function openWeekProjectTaskPicker(){
+        if(!weekAddTargetDate) return;
+        const dateKey=localDateKey(weekAddTargetDate);
+        const box=el("weekTaskOptions");
+        const picker=el("weekProjectTaskPicker");
+        box.innerHTML="";
+        const recs=recommendedProjectTasks(dateKey);
+
+        if(!recs.length){
+          box.innerHTML='<div class="week-empty">Aucune tâche de projet disponible pour cette date.</div>';
+        }else{
+          recs.forEach(({project,sp,task})=>{
+            const button=document.createElement("button");
+            button.type="button";
+            button.className="week-task-option";
+            button.style.setProperty("--project-color",project.color||"#23272d");
+            button.innerHTML='<strong></strong><span></span>';
+            button.querySelector("strong").textContent=task.name;
+            const deadline=sp.deadline || project.endDate || "";
+            button.querySelector("span").textContent=
+              `${project.name} · ${sp.name}${deadline?` · deadline ${deadline}`:""} · ${task.durationMinutes} min`;
+            button.onclick=()=>{
+              scheduleProjectTask(project.id,sp.id,task.id,dateKey);
+              el("weekAddChoiceDialog").close();
+              renderWeekView();
+            };
+            box.appendChild(button);
+          });
+        }
+        picker.classList.add("show");
+      }
+
+      function openWeekAppointmentBlock(){
+        if(!weekAddTargetDate) return;
+        const dateKey=localDateKey(weekAddTargetDate);
+        const start=getDefaultStartForDate(weekAddTargetDate);
+        el("weekAddChoiceDialog").close();
+        openNewBlock(start,true,dateKey);
+        el("blockTypeSelect").value="preset-rdv-cafe";
+        applyTypeToBlock("preset-rdv-cafe");
+        refreshProjectLinkFields(null,null);
+        el("blockProjectSelect").value="";
+        el("blockSubprojectSelect").value="";
+      }
+
+      function openWeekCustomBlock(){
+        if(!weekAddTargetDate) return;
+        const dateKey=localDateKey(weekAddTargetDate);
+        const start=getDefaultStartForDate(weekAddTargetDate);
+        el("weekAddChoiceDialog").close();
+        openNewBlock(start,false,dateKey);
+        const defaultType=state.blockTypes.find(t=>String(t.id)==="preset-solo-work") || state.blockTypes[0];
+        if(defaultType){
+          el("blockTypeSelect").value=String(defaultType.id);
+          applyTypeToBlock(defaultType.id);
+        }
+        refreshProjectLinkFields(null,null);
+        el("blockProjectSelect").value="";
+        el("blockSubprojectSelect").value="";
+        el("blockName").value="";
+        el("blockDescription").value="";
+        el("blockAddress").value="Aucune";
       }
 
       function formatWeekItemTime(block, dayStart, dayEnd){
@@ -5312,14 +5475,48 @@
         showToast("Tâche enregistrée");
       });
 
+
+      el("deleteProjectTaskBtn").onclick=()=>{
+        const ctx=editingProjectTaskCtx;
+        if(!ctx?.taskId) return;
+        const project=projectById(ctx.projectId);
+        const sp=project ? subprojectById(project,ctx.subprojectId) : null;
+        const task=sp?.tasks?.find(t=>String(t.id)===String(ctx.taskId));
+        if(!project || !sp || !task) return;
+
+        const linkedBlocks=state.blocks.filter(b=>String(b.projectTaskId||"")===String(task.id));
+        let removeBlocks=false;
+        if(linkedBlocks.length){
+          removeBlocks=confirm(
+            `« ${task.name} » est déjà liée à ${linkedBlocks.length} bloc(s) de temps.\n\nOK = supprimer la tâche ET ses blocs liés.\nAnnuler = ne rien supprimer.`
+          );
+          if(!removeBlocks) return;
+        }else if(!confirm(`Supprimer définitivement la tâche « ${task.name} » ?`)){
+          return;
+        }
+
+        sp.tasks=sp.tasks.filter(t=>String(t.id)!==String(task.id));
+        if(removeBlocks){
+          state.blocks=state.blocks.filter(b=>String(b.projectTaskId||"")!==String(task.id));
+        }
+        project.updatedAt=Date.now();
+        saveState(false);
+        el("projectTaskDialog").close();
+        render();
+        showToast(linkedBlocks.length ? "Tâche et blocs liés supprimés" : "Tâche supprimée");
+      };
+
+      el("weekChoiceProject").onclick=()=>openWeekProjectTaskPicker();
+      el("weekChoiceAppointment").onclick=()=>openWeekAppointmentBlock();
+      el("weekChoiceOther").onclick=()=>openWeekCustomBlock();
+      el("weekBackToChoicesBtn").onclick=()=>el("weekProjectTaskPicker").classList.remove("show");
+
       el("autoPrepareProjectTasksBtn").onclick=()=>{
         const recs=recommendedProjectTasks().slice(0,3);
         if(!recs.length){showToast("Aucune tâche de projet à préparer");return;}
         recs.forEach(({project,sp,task})=>scheduleProjectTask(project.id,sp.id,task.id));
         render();
       };
-
-      el("projectColorInput").addEventListener("input",()=>renderProjectPresetColors(el("projectColorInput").value));
 
       el("blockProjectSelect").addEventListener("change",()=>{
         const pid=el("blockProjectSelect").value;
@@ -6482,7 +6679,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=10.1").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=10.3").catch(() => {});
       });
     }
   </script>
