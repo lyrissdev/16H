@@ -1721,6 +1721,62 @@
       .week-add-choice-grid{grid-template-columns:1fr}
     }
 
+
+    /* V10.4 — import de projets JSON */
+    .project-import-intro{
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.5;
+      margin:-4px 0 14px;
+    }
+    .project-import-file{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      margin:10px 0 12px;
+    }
+    .project-import-textarea{
+      width:100%;
+      min-height:320px;
+      resize:vertical;
+      border:1px solid #dfe3e9;
+      border-radius:13px;
+      padding:12px 13px;
+      font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+      background:#fbfcfd;
+      color:#20242a;
+      outline:none;
+    }
+    .project-import-textarea:focus{
+      border-color:#9aa4b2;
+      box-shadow:0 0 0 3px rgba(31,122,236,.08);
+    }
+    .project-import-status{
+      margin-top:10px;
+      border-radius:11px;
+      padding:10px 12px;
+      font-size:12px;
+      line-height:1.45;
+      background:#f4f6f8;
+      color:#596270;
+      display:none;
+    }
+    .project-import-status.show{display:block}
+    .project-import-status.ok{background:#edf8f1;color:#2f6843}
+    .project-import-status.warn{background:#fff6e5;color:#8a5a00}
+    .project-import-status.error{background:#fff0f1;color:#a7333d}
+    .project-import-schema{
+      margin-top:10px;
+      padding:10px 12px;
+      border:1px solid #e3e7ed;
+      border-radius:11px;
+      background:#fff;
+      color:#68717e;
+      font-size:11px;
+      line-height:1.45;
+    }
+
   </style>
 </head>
 <body>
@@ -1871,6 +1927,7 @@
           </div>
           <div class="projects-toolbar-actions">
             <button class="btn" id="editMealWindowsBtn" type="button">Repères repas</button>
+            <button class="btn" id="importProjectJsonBtn" type="button">Importer projet JSON</button>
             <button class="btn primary" id="newProjectBtn" type="button">+ Nouveau projet</button>
           </div>
         </div>
@@ -2182,6 +2239,44 @@
     </div>
   </dialog>
 
+
+
+  <dialog id="projectImportDialog">
+    <div class="modal">
+      <h3>Importer un projet JSON</h3>
+      <div class="project-import-intro">
+        Importe un projet complet avec ses sous-projets, deadlines et tâches.
+        L’import est local-first et n’écrase pas les autres projets.
+      </div>
+
+      <div class="project-import-file">
+        <input id="projectImportFile" type="file" accept=".json,application/json"/>
+        <button class="btn" id="projectImportExampleBtn" type="button">Charger un exemple</button>
+      </div>
+
+      <textarea
+        id="projectImportTextarea"
+        class="project-import-textarea"
+        spellcheck="false"
+        placeholder='{"project":{"name":"Mon projet","startDate":"2026-10-09","endDate":"2026-11-30","color":"#7c5cff","subprojects":[]}}'
+      ></textarea>
+
+      <div class="project-import-schema">
+        Formats acceptés : un objet <strong>project</strong>, un tableau <strong>projects</strong>,
+        un projet direct, ou un tableau direct. Chaque sous-projet peut contenir
+        <strong>deadline</strong>, <strong>priority</strong>, <strong>description</strong> et <strong>tasks</strong>.
+        Une tâche accepte <strong>name</strong>, <strong>description</strong>,
+        <strong>durationMinutes</strong>, <strong>workMode</strong> (solo/group) et <strong>done</strong>.
+      </div>
+
+      <div class="project-import-status" id="projectImportStatus"></div>
+
+      <div class="modal-actions">
+        <button class="btn" type="button" data-close="projectImportDialog">Annuler</button>
+        <button class="btn primary" type="button" id="projectImportConfirmBtn">Importer le projet</button>
+      </div>
+    </div>
+  </dialog>
 
   <dialog id="projectDialog">
     <form class="modal" id="projectForm">
@@ -2988,6 +3083,179 @@
         }
       }
 
+
+
+      function setProjectImportStatus(message,kind=""){
+        const box=el("projectImportStatus");
+        if(!box) return;
+        box.textContent=message || "";
+        box.className="project-import-status" + (message ? " show" : "") + (kind ? ` ${kind}` : "");
+      }
+
+      function projectImportSlug(value=""){
+        return String(value||"item")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g,"")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g,"-")
+          .replace(/^-+|-+$/g,"")
+          .slice(0,56) || "item";
+      }
+
+      function extractProjectImportPayload(parsed){
+        if(Array.isArray(parsed)) return parsed;
+        if(parsed && Array.isArray(parsed.projects)) return parsed.projects;
+        if(parsed && parsed.project && typeof parsed.project==="object") return [parsed.project];
+        if(parsed && typeof parsed==="object" && (parsed.name || parsed.title)) return [parsed];
+        throw new Error("Le JSON doit contenir un projet, « project », « projects », ou un tableau de projets.");
+      }
+
+      function normalizeImportedProjectTask(raw,projectId,subprojectId,index){
+        if(!raw || typeof raw!=="object") throw new Error(`Tâche ${index+1} invalide.`);
+        const name=String(raw.name ?? raw.title ?? "").trim();
+        if(!name) throw new Error(`Tâche ${index+1} : nom manquant.`);
+        const durationMinutes=Math.max(15,Math.round((Number(raw.durationMinutes ?? raw.duration_minutes)||60)/15)*15);
+        return {
+          id:String(raw.id || `task-${projectImportSlug(projectId)}-${projectImportSlug(subprojectId)}-${projectImportSlug(name)}`),
+          name,
+          description:String(raw.description||"").trim(),
+          durationMinutes,
+          workMode:String(raw.workMode||raw.mode||"solo").toLowerCase()==="group" ? "group" : "solo",
+          done:!!raw.done
+        };
+      }
+
+      function normalizeImportedSubproject(raw,projectId,index){
+        if(!raw || typeof raw!=="object") throw new Error(`Sous-projet ${index+1} invalide.`);
+        const name=String(raw.name ?? raw.title ?? "").trim();
+        if(!name) throw new Error(`Sous-projet ${index+1} : nom manquant.`);
+        const id=String(raw.id || `sp-${projectImportSlug(projectId)}-${projectImportSlug(name)}`);
+        const deadline=String(raw.deadline||"").trim();
+        if(deadline && !/^\d{4}-\d{2}-\d{2}$/.test(deadline)){
+          throw new Error(`Sous-projet « ${name} » : deadline invalide (YYYY-MM-DD attendu).`);
+        }
+        const priority=Math.max(1,Math.min(5,Number(raw.priority)||3));
+        const tasks=Array.isArray(raw.tasks)
+          ? raw.tasks.map((task,ti)=>normalizeImportedProjectTask(task,projectId,id,ti))
+          : [];
+        return {
+          id,
+          name,
+          description:String(raw.description||"").trim(),
+          deadline,
+          priority,
+          tasks
+        };
+      }
+
+      function normalizeImportedProject(raw,index){
+        if(!raw || typeof raw!=="object") throw new Error(`Projet ${index+1} invalide.`);
+        const name=String(raw.name ?? raw.title ?? "").trim();
+        if(!name) throw new Error(`Projet ${index+1} : nom manquant.`);
+        const startDate=String(raw.startDate ?? raw.start_date ?? "").trim();
+        const endDate=String(raw.endDate ?? raw.end_date ?? "").trim();
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) throw new Error(`Projet « ${name} » : startDate invalide.`);
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(endDate)) throw new Error(`Projet « ${name} » : endDate invalide.`);
+        if(endDate<startDate) throw new Error(`Projet « ${name} » : la date de fin précède la date de début.`);
+        const id=String(raw.id || `project-${projectImportSlug(name)}`);
+        const color=String(raw.color||"#7c5cff").trim() || "#7c5cff";
+        const subprojects=Array.isArray(raw.subprojects)
+          ? raw.subprojects.map((sp,si)=>normalizeImportedSubproject(sp,id,si))
+          : [];
+        return {
+          id,
+          name,
+          description:String(raw.description||"").trim(),
+          startDate,
+          endDate,
+          color,
+          subprojects,
+          updatedAt:Date.now()+index
+        };
+      }
+
+      function mergeImportedProject(existing,incoming){
+        const oldSubMap=new Map((existing.subprojects||[]).map(sp=>[String(sp.id),sp]));
+        const mergedSubs=incoming.subprojects.map(sp=>{
+          const old=oldSubMap.get(String(sp.id));
+          if(!old) return sp;
+          const oldTaskMap=new Map((old.tasks||[]).map(t=>[String(t.id),t]));
+          const mergedTasks=sp.tasks.map(t=>{
+            const oldTask=oldTaskMap.get(String(t.id));
+            return oldTask ? {...oldTask,...t,done:typeof t.done==="boolean"?t.done:!!oldTask.done} : t;
+          });
+          // Conserver les tâches locales non mentionnées par le JSON.
+          (old.tasks||[]).forEach(t=>{
+            if(!mergedTasks.some(x=>String(x.id)===String(t.id))) mergedTasks.push(t);
+          });
+          return {...old,...sp,tasks:mergedTasks};
+        });
+        // Conserver les sous-projets locaux non mentionnés.
+        (existing.subprojects||[]).forEach(sp=>{
+          if(!mergedSubs.some(x=>String(x.id)===String(sp.id))) mergedSubs.push(sp);
+        });
+        return {...existing,...incoming,subprojects:mergedSubs,updatedAt:Date.now()};
+      }
+
+      function importProjectsJsonText(text){
+        let parsed;
+        try{ parsed=JSON.parse(text); }
+        catch{ throw new Error("Le JSON n’est pas valide."); }
+
+        const rawProjects=extractProjectImportPayload(parsed);
+        if(!rawProjects.length) throw new Error("Le JSON ne contient aucun projet.");
+        const incoming=rawProjects.map(normalizeImportedProject);
+
+        let added=0,updated=0;
+        incoming.forEach(project=>{
+          const idx=state.projects.findIndex(p=>String(p.id)===String(project.id));
+          if(idx>=0){
+            state.projects[idx]=mergeImportedProject(state.projects[idx],project);
+            updated++;
+          }else{
+            state.projects.push(project);
+            added++;
+          }
+        });
+
+        saveState(false);
+        renderProjectsView();
+        renderProjectDayPlanner();
+        renderWeekProjectFocus();
+        return {added,updated,total:incoming.length};
+      }
+
+      function projectImportExampleJson(){
+        return JSON.stringify({
+          project:{
+            id:"project-exemple",
+            name:"Projet exemple",
+            description:"Description générale du projet.",
+            startDate:"2026-10-09",
+            endDate:"2026-11-30",
+            color:"#7c5cff",
+            subprojects:[
+              {
+                id:"sp-exemple-1",
+                name:"Sous-projet prioritaire",
+                description:"Objectif du sous-projet.",
+                deadline:"2026-10-20",
+                priority:5,
+                tasks:[
+                  {
+                    id:"task-exemple-1",
+                    name:"Première tâche",
+                    description:"Action concrète à accomplir.",
+                    durationMinutes:90,
+                    workMode:"solo",
+                    done:false
+                  }
+                ]
+              }
+            ]
+          }
+        },null,2);
+      }
 
       function projectProgress(project){
         const tasks=(project.subprojects||[]).flatMap(sp=>sp.tasks||[]);
@@ -5398,6 +5666,43 @@
 
 
       projectsViewBtn.onclick=()=>setView("projects");
+      el("importProjectJsonBtn").onclick=()=>{
+        setProjectImportStatus("");
+        el("projectImportFile").value="";
+        el("projectImportDialog").showModal();
+      };
+
+      el("projectImportExampleBtn").onclick=()=>{
+        el("projectImportTextarea").value=projectImportExampleJson();
+        setProjectImportStatus("Exemple chargé. Tu peux le modifier avant l’import.","ok");
+      };
+
+      el("projectImportFile").addEventListener("change",async(event)=>{
+        const file=event.target.files?.[0];
+        if(!file) return;
+        try{
+          el("projectImportTextarea").value=await file.text();
+          setProjectImportStatus(`Fichier chargé : ${file.name}`,"ok");
+        }catch{
+          setProjectImportStatus("Impossible de lire ce fichier JSON.","error");
+        }
+      });
+
+      el("projectImportConfirmBtn").onclick=()=>{
+        try{
+          const text=el("projectImportTextarea").value.trim();
+          if(!text) throw new Error("Sélectionne un fichier JSON ou colle son contenu.");
+          const result=importProjectsJsonText(text);
+          setProjectImportStatus(
+            `Import terminé : ${result.added} projet(s) ajouté(s), ${result.updated} mis à jour.`,
+            "ok"
+          );
+          showToast("Projet JSON importé");
+        }catch(err){
+          setProjectImportStatus(err?.message || String(err),"error");
+        }
+      };
+
       el("newProjectBtn").onclick=()=>openProjectEditor();
       el("editMealWindowsBtn").onclick=()=>editMealWindows();
 
@@ -6679,7 +6984,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=10.3").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=10.4").catch(() => {});
       });
     }
   </script>
