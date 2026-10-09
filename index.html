@@ -1647,6 +1647,31 @@
       .block-project-link{grid-template-columns:1fr}
     }
 
+
+    /* V10.1 — formulaires projet / sous-projet / tâche */
+    .preset-color-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .preset-color-swatch{
+      width:38px;height:38px;border-radius:50%;border:2px solid #fff;
+      box-shadow:0 0 0 1px #d6dbe3;cursor:pointer;padding:0
+    }
+    .preset-color-swatch.active{box-shadow:0 0 0 3px #17191d}
+    .project-form-description{min-height:110px}
+    .project-card-description,.subproject-description{
+      color:var(--muted);font-size:12px;line-height:1.45;margin-top:7px
+    }
+    .subproject-deadline{
+      margin-top:5px;font-size:11px;font-weight:800;color:#5d6570
+    }
+    .subproject-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .priority-pill{
+      display:inline-flex;align-items:center;gap:5px;
+      border-radius:999px;padding:4px 8px;font-size:10px;font-weight:900;
+      background:#fff2df;color:#9a5a00;border:1px solid #f2d5ab
+    }
+    .task-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .task-modal-grid .full{grid-column:1/-1}
+    @media(max-width:700px){.task-modal-grid{grid-template-columns:1fr}}
+
   </style>
 </head>
 <body>
@@ -2117,6 +2142,10 @@
           <label>Nom du projet</label>
           <input id="projectNameInput" required maxlength="120" placeholder="Ex. Projection Dressed To"/>
         </div>
+        <div class="field full">
+          <label>Description</label>
+          <textarea id="projectDescriptionInput" class="project-form-description" placeholder="Objectif du projet, contexte, résultat attendu…"></textarea>
+        </div>
         <div class="field">
           <label>Date de début</label>
           <input id="projectStartInput" type="date" required/>
@@ -2127,12 +2156,90 @@
         </div>
         <div class="field full">
           <label>Couleur du projet</label>
-          <input id="projectColorInput" type="color" value="#7c5cff"/>
+          <div class="preset-color-row" id="projectPresetColors"></div>
+          <input id="projectColorInput" type="color" value="#7c5cff" style="margin-top:10px"/>
         </div>
       </div>
       <div class="error" id="projectError"></div>
       <div class="modal-actions">
         <button class="btn" type="button" data-close="projectDialog">Annuler</button>
+        <button class="btn primary" type="submit">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+
+  <dialog id="subprojectDialog">
+    <form class="modal" id="subprojectForm">
+      <h3 id="subprojectDialogTitle">Nouveau sous-projet</h3>
+      <div class="form-grid">
+        <div class="field full">
+          <label>Nom du sous-projet</label>
+          <input id="subprojectNameInput" required maxlength="120"/>
+        </div>
+        <div class="field full">
+          <label>Description</label>
+          <textarea id="subprojectDescriptionInput" placeholder="Objectif, résultat attendu, contexte…"></textarea>
+        </div>
+        <div class="field">
+          <label>Deadline (optionnelle)</label>
+          <input id="subprojectDeadlineInput" type="date"/>
+        </div>
+        <div class="field">
+          <label>Priorité</label>
+          <select id="subprojectPriorityInput">
+            <option value="5">5 — Très haute</option>
+            <option value="4">4 — Haute</option>
+            <option value="3" selected>3 — Normale</option>
+            <option value="2">2 — Basse</option>
+            <option value="1">1 — Faible</option>
+          </select>
+        </div>
+      </div>
+      <div class="error" id="subprojectError"></div>
+      <div class="modal-actions">
+        <button class="btn" type="button" data-close="subprojectDialog">Annuler</button>
+        <button class="btn primary" type="submit">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="projectTaskDialog">
+    <form class="modal" id="projectTaskForm">
+      <h3 id="projectTaskDialogTitle">Nouvelle tâche</h3>
+      <div class="task-modal-grid">
+        <div class="field full">
+          <label>Nom de la tâche</label>
+          <input id="projectTaskNameInput" required maxlength="140"/>
+        </div>
+        <div class="field full">
+          <label>Description</label>
+          <textarea id="projectTaskDescriptionInput" placeholder="Ce qu’il faut accomplir concrètement…"></textarea>
+        </div>
+        <div class="field">
+          <label>Durée prévue</label>
+          <select id="projectTaskDurationInput">
+            <option value="15">15 min</option>
+            <option value="30">30 min</option>
+            <option value="45">45 min</option>
+            <option value="60" selected>1 h</option>
+            <option value="90">1 h 30</option>
+            <option value="120">2 h</option>
+            <option value="180">3 h</option>
+            <option value="240">4 h</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Mode de travail</label>
+          <select id="projectTaskModeInput">
+            <option value="solo">Session ordinateur</option>
+            <option value="group">Travail en groupe</option>
+          </select>
+        </div>
+      </div>
+      <div class="error" id="projectTaskError"></div>
+      <div class="modal-actions">
+        <button class="btn" type="button" data-close="projectTaskDialog">Annuler</button>
         <button class="btn primary" type="submit">Enregistrer</button>
       </div>
     </form>
@@ -2264,6 +2371,10 @@
       let lastBlockTap = {id:null, time:0};
       let currentView = "timeline";
       let editingProjectId = null;
+      let editingSubprojectCtx = null;
+      let editingProjectTaskCtx = null;
+      const PROJECT_COLORS=["#17191d","#68717e","#2f80ed","#20a4a8","#7c5cff","#c0568b","#d97706","#439766","#c14949","#7b8493"];
+
       let weekCursor = getWeekStart(new Date());
       let activePriorityDragId = null;
       let priorityDropCandidate = null;
@@ -2372,14 +2483,18 @@
             startDate:p.startDate || localDateKey(new Date()),
             endDate:p.endDate || localDateKey(new Date()),
             color:p.color || "#7c5cff",
+            description:p.description || "",
             updatedAt:Number(p.updatedAt)||now,
             subprojects:Array.isArray(p.subprojects) ? p.subprojects.map((sp,spi)=>({
               id:sp.id || `sp-${spi}-${now}`,
               name:sp.name || "Sous-projet",
+              description:sp.description || "",
+              deadline:sp.deadline || "",
               priority:Math.max(1,Math.min(5,Number(sp.priority)||3)),
               tasks:Array.isArray(sp.tasks) ? sp.tasks.map((t,ti)=>({
                 id:t.id || `pt-${ti}-${now}`,
                 name:t.name || "Tâche",
+                description:t.description || "",
                 durationMinutes:Math.max(15,Number(t.durationMinutes)||60),
                 workMode:t.workMode==="group" ? "group" : "solo",
                 done:!!t.done
@@ -2821,43 +2936,73 @@
         });
       }
 
+      function renderProjectPresetColors(selected){
+        const box=el("projectPresetColors");
+        if(!box) return;
+        box.innerHTML="";
+        PROJECT_COLORS.forEach(color=>{
+          const b=document.createElement("button");
+          b.type="button";
+          b.className="preset-color-swatch"+(String(selected).toLowerCase()===color.toLowerCase()?" active":"");
+          b.style.background=color;
+          b.title=color;
+          b.onclick=()=>{
+            el("projectColorInput").value=color;
+            renderProjectPresetColors(color);
+          };
+          box.appendChild(b);
+        });
+      }
+
       function openProjectEditor(projectId=null){
         editingProjectId=projectId;
         const project=projectId ? projectById(projectId) : null;
         el("projectDialogTitle").textContent=project ? "Modifier le projet" : "Nouveau projet";
         el("projectError").style.display="none";
         el("projectNameInput").value=project?.name || "";
+        el("projectDescriptionInput").value=project?.description || "";
         el("projectStartInput").value=project?.startDate || localDateKey(new Date());
         const end=new Date(); end.setMonth(end.getMonth()+1);
         el("projectEndInput").value=project?.endDate || localDateKey(end);
         el("projectColorInput").value=project?.color || "#7c5cff";
+        renderProjectPresetColors(project?.color || "#7c5cff");
         el("projectDialog").showModal();
       }
 
-      function addSubproject(projectId){
+      function openSubprojectEditor(projectId,subprojectId=null){
         const project=projectById(projectId);
         if(!project) return;
-        const name=prompt("Nom du sous-projet :");
-        if(!name?.trim()) return;
-        const raw=prompt("Priorité de 1 à 5 (5 = très importante) :","3");
-        const priority=Math.max(1,Math.min(5,Number(raw)||3));
-        project.subprojects.push({id:uid(),name:name.trim(),priority,tasks:[]});
-        project.updatedAt=Date.now();
-        saveState(false);
-        renderProjectsView(); renderProjectDayPlanner(); renderWeekProjectFocus();
+        const sp=subprojectId ? subprojectById(project,subprojectId) : null;
+        editingSubprojectCtx={projectId,subprojectId};
+        el("subprojectDialogTitle").textContent=sp ? "Modifier le sous-projet" : "Nouveau sous-projet";
+        el("subprojectNameInput").value=sp?.name || "";
+        el("subprojectDescriptionInput").value=sp?.description || "";
+        el("subprojectDeadlineInput").value=sp?.deadline || "";
+        el("subprojectPriorityInput").value=String(sp?.priority || 3);
+        el("subprojectError").style.display="none";
+        el("subprojectDialog").showModal();
+      }
+
+      function addSubproject(projectId){
+        openSubprojectEditor(projectId,null);
+      }
+
+      function openProjectTaskEditor(projectId,subprojectId,taskId=null){
+        const project=projectById(projectId), sp=subprojectById(project,subprojectId);
+        const task=taskId ? sp?.tasks?.find(t=>String(t.id)===String(taskId)) : null;
+        if(!project || !sp) return;
+        editingProjectTaskCtx={projectId,subprojectId,taskId};
+        el("projectTaskDialogTitle").textContent=task ? "Modifier la tâche" : "Nouvelle tâche";
+        el("projectTaskNameInput").value=task?.name || "";
+        el("projectTaskDescriptionInput").value=task?.description || "";
+        el("projectTaskDurationInput").value=String(task?.durationMinutes || 60);
+        el("projectTaskModeInput").value=task?.workMode || "solo";
+        el("projectTaskError").style.display="none";
+        el("projectTaskDialog").showModal();
       }
 
       function addProjectTask(projectId,subprojectId){
-        const project=projectById(projectId), sp=subprojectById(project,subprojectId);
-        if(!sp) return;
-        const name=prompt("Nom de la tâche :");
-        if(!name?.trim()) return;
-        const duration=Math.max(15,Math.round((Number(prompt("Durée prévue en minutes :","60"))||60)/15)*15);
-        const mode=(prompt("Mode de travail : solo ou groupe ?","solo")||"solo").trim().toLowerCase()==="groupe" ? "group" : "solo";
-        sp.tasks.push({id:uid(),name:name.trim(),durationMinutes:duration,workMode:mode,done:false});
-        project.updatedAt=Date.now();
-        saveState(false);
-        renderProjectsView(); renderProjectDayPlanner(); renderWeekProjectFocus();
+        openProjectTaskEditor(projectId,subprojectId,null);
       }
 
       function toggleProjectTask(projectId,subprojectId,taskId){
@@ -2904,22 +3049,71 @@
       }
 
       function recommendedProjectTasks(dateKey=localDateKey(new Date())){
-        const out=[];
-        activeProjectsForDate(dateKey).forEach(project=>{
+        const active=activeProjectsForDate(dateKey);
+        const scheduledTaskIds=new Set(
+          state.blocks
+            .filter(b=>b.plannedDate===dateKey && b.projectTaskId)
+            .map(b=>String(b.projectTaskId))
+        );
+        const scheduledSubprojects=new Set(
+          state.blocks
+            .filter(b=>b.plannedDate===dateKey && b.subprojectId)
+            .map(b=>String(b.subprojectId))
+        );
+        const scheduledProjects=new Set(
+          state.blocks
+            .filter(b=>b.plannedDate===dateKey && b.projectId)
+            .map(b=>String(b.projectId))
+        );
+
+        const candidates=[];
+        active.forEach(project=>{
           (project.subprojects||[]).forEach(sp=>{
-            (sp.tasks||[]).filter(t=>!t.done).forEach(task=>{
-              if(!taskScheduledForDate(task.id,dateKey)){
-                out.push({project,sp,task});
-              }
+            (sp.tasks||[]).filter(t=>!t.done && !scheduledTaskIds.has(String(t.id))).forEach(task=>{
+              const deadline=sp.deadline || project.endDate || "9999-12-31";
+              const sameSubprojectAlreadyToday=scheduledSubprojects.has(String(sp.id));
+              const sameProjectAlreadyToday=scheduledProjects.has(String(project.id));
+              candidates.push({
+                project,sp,task,deadline,
+                sameSubprojectAlreadyToday,
+                sameProjectAlreadyToday
+              });
             });
           });
         });
-        out.sort((a,b)=>{
+
+        candidates.sort((a,b)=>{
+          const d=String(a.deadline).localeCompare(String(b.deadline));
+          if(d!==0) return d;
           if((b.sp.priority||3)!==(a.sp.priority||3)) return (b.sp.priority||3)-(a.sp.priority||3);
-          if(a.project.endDate!==b.project.endDate) return String(a.project.endDate).localeCompare(String(b.project.endDate));
-          return (b.task.durationMinutes||60)-(a.task.durationMinutes||60);
+          if((b.task.durationMinutes||60)!==(a.task.durationMinutes||60)) return (b.task.durationMinutes||60)-(a.task.durationMinutes||60);
+          return a.task.name.localeCompare(b.task.name);
         });
-        return out;
+
+        // Sélection équilibrée :
+        // 1) deadline la plus proche
+        // 2) si un sous-projet a déjà une tâche aujourd'hui, on autorise une 2e tâche,
+        //    mais on favorise aussi les autres projets/sous-projets urgents.
+        const result=[];
+        const usedSubprojects=new Set();
+        const usedProjects=new Set();
+
+        for(const c of candidates){
+          if(result.length>=8) break;
+          const spKey=String(c.sp.id), pKey=String(c.project.id);
+          const diversityBonus=!usedSubprojects.has(spKey) && !usedProjects.has(pKey);
+          if(result.length<3 || diversityBonus || c.sameSubprojectAlreadyToday){
+            result.push(c);
+            usedSubprojects.add(spKey);
+            usedProjects.add(pKey);
+          }
+        }
+
+        for(const c of candidates){
+          if(result.length>=8) break;
+          if(!result.includes(c)) result.push(c);
+        }
+        return result;
       }
 
       function renderProjectDayPlanner(){
@@ -2938,7 +3132,7 @@
           card.style.setProperty("--project-color",project.color||"#7c5cff");
           card.innerHTML=`<strong></strong><span></span><button class="mini-btn primary" type="button">Ajouter à aujourd’hui</button>`;
           card.querySelector("strong").textContent=task.name;
-          card.querySelector("span").textContent=`${project.name} · ${sp.name} · ${task.durationMinutes} min`;
+          card.querySelector("span").textContent=`${project.name} · ${sp.name}${sp.deadline?` · deadline ${sp.deadline}`:""} · priorité ${sp.priority||3}/5 · ${task.durationMinutes} min`;
           card.querySelector("button").onclick=()=>scheduleProjectTask(project.id,sp.id,task.id);
           list.appendChild(card);
         });
@@ -2964,6 +3158,7 @@
                 <div>
                   <div class="project-name"></div>
                   <div class="project-dates">${project.startDate} → ${project.endDate}</div>
+                  ${project.description?'<div class="project-card-description"></div>':''}
                 </div>
                 <button class="mini-btn" data-action="edit">Modifier</button>
               </div>
@@ -2977,6 +3172,8 @@
             </div>
             <div class="subprojects"></div>`;
           card.querySelector(".project-name").textContent=project.name;
+          const projectDesc=card.querySelector(".project-card-description");
+          if(projectDesc) projectDesc.textContent=project.description;
           card.querySelector('[data-action="edit"]').onclick=()=>openProjectEditor(project.id);
           card.querySelector('[data-action="sub"]').onclick=()=>addSubproject(project.id);
           const subBox=card.querySelector(".subprojects");
@@ -2989,12 +3186,22 @@
                 <div>
                   <div class="subproject-name"></div>
                   <div class="subproject-priority">Priorité ${sp.priority||3}/5</div>
+                  ${sp.deadline?'<div class="subproject-deadline"></div>':''}
+                  ${sp.description?'<div class="subproject-description"></div>':''}
                 </div>
-                <button class="mini-btn" type="button">+ Tâche</button>
+                <div class="subproject-actions">
+                  <button class="mini-btn" data-action="edit-sub" type="button">Modifier</button>
+                  <button class="mini-btn primary" data-action="add-task" type="button">+ Tâche</button>
+                </div>
               </div>
               <div class="project-task-list"></div>`;
             spEl.querySelector(".subproject-name").textContent=sp.name;
-            spEl.querySelector("button").onclick=()=>addProjectTask(project.id,sp.id);
+            const dl=spEl.querySelector(".subproject-deadline");
+            if(dl) dl.textContent=`Deadline : ${sp.deadline}`;
+            const sd=spEl.querySelector(".subproject-description");
+            if(sd) sd.textContent=sp.description;
+            spEl.querySelector('[data-action="edit-sub"]').onclick=()=>openSubprojectEditor(project.id,sp.id);
+            spEl.querySelector('[data-action="add-task"]').onclick=()=>addProjectTask(project.id,sp.id);
             const taskList=spEl.querySelector(".project-task-list");
             (sp.tasks||[]).forEach(task=>{
               const row=document.createElement("div");
@@ -3003,11 +3210,13 @@
               row.innerHTML=`
                 <button class="task-check ${task.done?"checked":""}" type="button">${task.done?"✓":""}</button>
                 <div><div class="project-task-name"></div><div class="project-task-meta">${task.durationMinutes} min · ${task.workMode==="group"?"groupe":"solo"}</div></div>
-                <button class="task-plan-btn ${planned?"planned":""}" type="button">${planned?"Prévue":"Aujourd’hui"}</button>
+                <button class="mini-btn" data-action="edit-task" type="button">Modifier</button>
+                <button class="task-plan-btn ${planned?"planned":""}" data-action="plan-task" type="button">${planned?"Prévue":"Aujourd’hui"}</button>
               `;
               row.querySelector(".project-task-name").textContent=task.name;
               row.querySelector(".task-check").onclick=()=>toggleProjectTask(project.id,sp.id,task.id);
-              row.querySelector(".task-plan-btn").onclick=()=>scheduleProjectTask(project.id,sp.id,task.id);
+              row.querySelector('[data-action="edit-task"]').onclick=()=>openProjectTaskEditor(project.id,sp.id,task.id);
+              row.querySelector('[data-action="plan-task"]').onclick=()=>scheduleProjectTask(project.id,sp.id,task.id);
               taskList.appendChild(row);
             });
             subBox.appendChild(spEl);
@@ -5032,6 +5241,7 @@
       el("projectForm").addEventListener("submit",(e)=>{
         e.preventDefault();
         const name=el("projectNameInput").value.trim();
+        const description=el("projectDescriptionInput").value.trim();
         const startDate=el("projectStartInput").value;
         const endDate=el("projectEndInput").value;
         const color=el("projectColorInput").value || "#7c5cff";
@@ -5044,14 +5254,62 @@
         }
         if(editingProjectId){
           const project=projectById(editingProjectId);
-          Object.assign(project,{name,startDate,endDate,color,updatedAt:Date.now()});
+          Object.assign(project,{name,description,startDate,endDate,color,updatedAt:Date.now()});
         }else{
-          state.projects.push({id:uid(),name,startDate,endDate,color,subprojects:[],updatedAt:Date.now()});
+          state.projects.push({id:uid(),name,description,startDate,endDate,color,subprojects:[],updatedAt:Date.now()});
         }
         saveState(false);
         el("projectDialog").close();
         renderProjectsView(); renderProjectDayPlanner(); renderWeekProjectFocus();
         showToast("Projet enregistré");
+      });
+
+
+      el("subprojectForm").addEventListener("submit",(e)=>{
+        e.preventDefault();
+        const ctx=editingSubprojectCtx;
+        const project=ctx ? projectById(ctx.projectId) : null;
+        if(!project) return;
+        const name=el("subprojectNameInput").value.trim();
+        const description=el("subprojectDescriptionInput").value.trim();
+        const deadline=el("subprojectDeadlineInput").value || "";
+        const priority=Math.max(1,Math.min(5,Number(el("subprojectPriorityInput").value)||3));
+        if(!name) return showFormError(el("subprojectError"),"Le nom du sous-projet est obligatoire.");
+        if(ctx.subprojectId){
+          const sp=subprojectById(project,ctx.subprojectId);
+          Object.assign(sp,{name,description,deadline,priority});
+        }else{
+          project.subprojects.push({id:uid(),name,description,deadline,priority,tasks:[]});
+        }
+        project.updatedAt=Date.now();
+        saveState(false);
+        el("subprojectDialog").close();
+        renderProjectsView(); renderProjectDayPlanner(); renderWeekProjectFocus();
+        showToast("Sous-projet enregistré");
+      });
+
+      el("projectTaskForm").addEventListener("submit",(e)=>{
+        e.preventDefault();
+        const ctx=editingProjectTaskCtx;
+        const project=ctx ? projectById(ctx.projectId) : null;
+        const sp=project ? subprojectById(project,ctx.subprojectId) : null;
+        if(!project || !sp) return;
+        const name=el("projectTaskNameInput").value.trim();
+        const description=el("projectTaskDescriptionInput").value.trim();
+        const durationMinutes=Math.max(15,Number(el("projectTaskDurationInput").value)||60);
+        const workMode=el("projectTaskModeInput").value==="group" ? "group" : "solo";
+        if(!name) return showFormError(el("projectTaskError"),"Le nom de la tâche est obligatoire.");
+        if(ctx.taskId){
+          const task=sp.tasks.find(t=>String(t.id)===String(ctx.taskId));
+          Object.assign(task,{name,description,durationMinutes,workMode});
+        }else{
+          sp.tasks.push({id:uid(),name,description,durationMinutes,workMode,done:false});
+        }
+        project.updatedAt=Date.now();
+        saveState(false);
+        el("projectTaskDialog").close();
+        renderProjectsView(); renderProjectDayPlanner(); renderWeekProjectFocus();
+        showToast("Tâche enregistrée");
       });
 
       el("autoPrepareProjectTasksBtn").onclick=()=>{
@@ -5060,6 +5318,8 @@
         recs.forEach(({project,sp,task})=>scheduleProjectTask(project.id,sp.id,task.id));
         render();
       };
+
+      el("projectColorInput").addEventListener("input",()=>renderProjectPresetColors(el("projectColorInput").value));
 
       el("blockProjectSelect").addEventListener("change",()=>{
         const pid=el("blockProjectSelect").value;
@@ -6222,7 +6482,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=10").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=10.1").catch(() => {});
       });
     }
   </script>
