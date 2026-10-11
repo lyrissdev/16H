@@ -2306,6 +2306,7 @@
       </div>
       <div class="error" id="projectError"></div>
       <div class="modal-actions">
+        <button class="btn danger-btn" id="deleteProjectBtn" type="button" style="margin-right:auto;display:none">Supprimer le projet</button>
         <button class="btn" type="button" data-close="projectDialog">Annuler</button>
         <button class="btn primary" type="submit">Enregistrer</button>
       </div>
@@ -2342,6 +2343,7 @@
       </div>
       <div class="error" id="subprojectError"></div>
       <div class="modal-actions">
+        <button class="btn danger-btn" id="deleteSubprojectBtn" type="button" style="margin-right:auto;display:none">Supprimer le sous-projet</button>
         <button class="btn" type="button" data-close="subprojectDialog">Annuler</button>
         <button class="btn primary" type="submit">Enregistrer</button>
       </div>
@@ -3323,6 +3325,7 @@
         el("projectEndInput").value=project?.endDate || localDateKey(end);
         el("projectColorInput").value=project?.color || "#7c5cff";
         renderProjectPresetColors(project?.color || "#7c5cff");
+        el("deleteProjectBtn").style.display=project ? "" : "none";
         el("projectDialog").showModal();
       }
 
@@ -3337,6 +3340,7 @@
         el("subprojectDeadlineInput").value=sp?.deadline || "";
         el("subprojectPriorityInput").value=String(sp?.priority || 3);
         el("subprojectError").style.display="none";
+        el("deleteSubprojectBtn").style.display=sp ? "" : "none";
         el("subprojectDialog").showModal();
       }
 
@@ -3361,6 +3365,15 @@
 
       function addProjectTask(projectId,subprojectId){
         openProjectTaskEditor(projectId,subprojectId,null);
+      }
+
+
+      function linkedBlocksForSubproject(subprojectId){
+        return state.blocks.filter(b=>String(b.subprojectId||"")===String(subprojectId));
+      }
+
+      function linkedBlocksForProject(projectId){
+        return state.blocks.filter(b=>String(b.projectId||"")===String(projectId));
       }
 
       function toggleProjectTask(projectId,subprojectId,taskId){
@@ -5733,6 +5746,66 @@
       });
 
 
+
+      el("deleteProjectBtn").onclick=()=>{
+        if(!editingProjectId) return;
+        const project=projectById(editingProjectId);
+        if(!project) return;
+
+        const linkedBlocks=linkedBlocksForProject(project.id);
+        const taskCount=(project.subprojects||[]).reduce((sum,sp)=>sum+(sp.tasks||[]).length,0);
+        const subCount=(project.subprojects||[]).length;
+
+        let message=`Supprimer définitivement le projet « ${project.name} » ?\n\n`;
+        message+=`${subCount} sous-projet(s) et ${taskCount} tâche(s) seront supprimés.`;
+        if(linkedBlocks.length){
+          message+=`\n\n${linkedBlocks.length} bloc(s) de temps lié(s) seront également supprimés.`;
+        }
+
+        if(!confirm(message)) return;
+
+        const projectId=String(project.id);
+        state.projects=state.projects.filter(p=>String(p.id)!==projectId);
+        state.blocks=state.blocks.filter(b=>String(b.projectId||"")!==projectId);
+
+        saveState(false);
+        el("projectDialog").close();
+        editingProjectId=null;
+        render();
+        showToast("Projet supprimé");
+      };
+
+      el("deleteSubprojectBtn").onclick=()=>{
+        const ctx=editingSubprojectCtx;
+        if(!ctx?.projectId || !ctx?.subprojectId) return;
+
+        const project=projectById(ctx.projectId);
+        const sp=project ? subprojectById(project,ctx.subprojectId) : null;
+        if(!project || !sp) return;
+
+        const linkedBlocks=linkedBlocksForSubproject(sp.id);
+        const taskCount=(sp.tasks||[]).length;
+
+        let message=`Supprimer définitivement le sous-projet « ${sp.name} » ?\n\n`;
+        message+=`${taskCount} tâche(s) seront supprimée(s).`;
+        if(linkedBlocks.length){
+          message+=`\n\n${linkedBlocks.length} bloc(s) de temps lié(s) seront également supprimés.`;
+        }
+
+        if(!confirm(message)) return;
+
+        const subId=String(sp.id);
+        project.subprojects=(project.subprojects||[]).filter(x=>String(x.id)!==subId);
+        project.updatedAt=Date.now();
+        state.blocks=state.blocks.filter(b=>String(b.subprojectId||"")!==subId);
+
+        saveState(false);
+        el("subprojectDialog").close();
+        editingSubprojectCtx=null;
+        render();
+        showToast("Sous-projet supprimé");
+      };
+
       el("subprojectForm").addEventListener("submit",(e)=>{
         e.preventDefault();
         const ctx=editingSubprojectCtx;
@@ -6984,7 +7057,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=10.4").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=10.5").catch(() => {});
       });
     }
   </script>
