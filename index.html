@@ -1777,23 +1777,19 @@
       line-height:1.45;
     }
 
-
-    /* V11 — projets pilotés comme cartes mentales */
+    /* V11.1 — projets = cartes mentales */
     .projects-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;align-items:start}
-    .project-map-card{border:1px solid #e0e4ea;border-radius:18px;background:#fff;overflow:hidden;box-shadow:0 6px 18px rgba(20,24,31,.04)}
-    .project-map-card-main{border-left:8px solid var(--project-color,#7c5cff);padding:18px}
-    .project-map-card-name{font-size:20px;line-height:1.15;font-weight:900;letter-spacing:-.025em}
-    .project-map-card-desc{color:var(--muted);font-size:12px;line-height:1.45;margin-top:7px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-    .project-map-card-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;color:#626b77;font-size:11px}
-    .project-map-card-pill{border:1px solid #e2e6eb;background:#f8f9fb;border-radius:999px;padding:5px 8px}
-    .project-map-card-actions{display:flex;gap:8px;margin-top:14px}
-    .project-map-card-actions .btn{flex:1}
-    .project-map-progress{height:7px;background:#edf0f4;border-radius:99px;overflow:hidden;margin-top:14px}
-    .project-map-progress>span{display:block;height:100%;background:var(--project-color,#7c5cff);border-radius:99px}
-    .project-map-block-count{margin-top:6px;font-size:10px;color:var(--muted)}
+    .project-map-card{border:1px solid #e0e4ea;border-radius:18px;background:#fff;overflow:hidden}
+    .project-map-card-main{padding:18px;border-left:8px solid var(--project-color,#7c5cff)}
+    .project-map-card-name{font-size:20px;font-weight:900;line-height:1.15}
+    .project-map-card-desc{font-size:12px;color:var(--muted);line-height:1.45;margin-top:7px}
+    .project-map-meta{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+    .project-map-pill{font-size:11px;color:#626b77;background:#f7f8fa;border:1px solid #e2e6eb;border-radius:999px;padding:5px 8px}
+    .project-map-progress{height:7px;background:#edf0f4;border-radius:99px;overflow:hidden;margin-top:13px}
+    .project-map-progress span{display:block;height:100%;background:var(--project-color,#7c5cff);border-radius:99px}
+    .project-map-actions{display:flex;gap:8px;margin-top:14px}.project-map-actions .btn{flex:1}
     @media(max-width:1050px){.projects-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
     @media(max-width:700px){.projects-grid{grid-template-columns:1fr!important}}
-
   </style>
 </head>
 <body>
@@ -1939,7 +1935,7 @@
         <div class="projects-toolbar">
           <div>
             <h2>Projets long terme</h2>
-            <div class="projects-toolbar-sub">Ouvre un projet comme une carte mentale. Les Todo lists deviennent des blocs de travail 16H avec leurs propres tâches.</div>
+            <div class="projects-toolbar-sub">Projet → sous-projets → tâches. Les tâches deviennent ensuite des blocs de temps dans 16H.</div>
             <div class="project-legend" id="projectLegend"></div>
           </div>
           <div class="projects-toolbar-actions">
@@ -2688,7 +2684,7 @@
             color:p.color || "#7c5cff",
             description:p.description || "",
             mindmapBlocks:Array.isArray(p.mindmapBlocks) ? p.mindmapBlocks.map((mb,mi)=>({
-              id:String(mb.id || `mindmap-block-${mi}-${now}`),
+              id:String(mb.id || `mindmap-${mi}-${now}`),
               title:mb.title || mb.name || "Bloc de travail",
               description:mb.description || "",
               durationMinutes:Math.max(15,Number(mb.durationMinutes)||90),
@@ -2696,11 +2692,8 @@
               deadline:mb.deadline || "",
               priority:Math.max(1,Math.min(5,Number(mb.priority)||3)),
               items:Array.isArray(mb.items) ? mb.items.map((it,ii)=>({
-                id:String(it.id || `mindmap-item-${ii}-${now}`),
-                text:it.text || it.name || "",
-                done:!!it.done
-              })) : [],
-              updatedAt:Number(mb.updatedAt)||now
+                id:String(it.id || `item-${ii}-${now}`), text:it.text || it.name || "", done:!!it.done
+              })) : []
             })) : [],
             updatedAt:Number(p.updatedAt)||now,
             subprojects:Array.isArray(p.subprojects) ? p.subprojects.map((sp,spi)=>({
@@ -3095,7 +3088,7 @@
             ? "Ta journée fixe de 16 h, à partir de ton réveil."
             : isWeeks
               ? "Les projets et blocs importants de ta semaine."
-              : "Chaque projet est maintenant une grande carte mentale reliée directement à ta timeline.";
+              : "Pilote tes projets, sous-projets et tâches à long terme.";
         }
         if(el("recenterBtn")) el("recenterBtn").style.display=isTimeline ? "" : "none";
       }
@@ -3292,8 +3285,8 @@
       }
 
       function projectProgress(project){
-        const mapItems=(project.mindmapBlocks||[]).flatMap(block=>block.items||[]);
-        if(mapItems.length) return Math.round(mapItems.filter(item=>item.done).length/mapItems.length*100);
+        const mapItems=(project.mindmapBlocks||[]).flatMap(b=>b.items||[]);
+        if(mapItems.length) return Math.round(mapItems.filter(x=>x.done).length/mapItems.length*100);
         const tasks=(project.subprojects||[]).flatMap(sp=>sp.tasks||[]);
         if(!tasks.length) return 0;
         return Math.round(tasks.filter(t=>t.done).length/tasks.length*100);
@@ -3420,44 +3413,43 @@
         renderProjectsView(); renderProjectDayPlanner(); renderWeekProjectFocus();
       }
 
-      function mindmapProjectBlockById(project,blockId){
-        return project?.mindmapBlocks?.find(block=>String(block.id)===String(blockId)) || null;
-      }
 
+      function mindmapBlockById(project,blockId){
+        return project?.mindmapBlocks?.find(b=>String(b.id)===String(blockId)) || null;
+      }
       function mindmapBlockScheduledForDate(projectId,blockId,dateKey){
-        return state.blocks.some(b=>String(b.projectId||"")===String(projectId) && String(b.mindmapNodeId||"")===String(blockId) && b.plannedDate===dateKey);
+        return state.blocks.some(b=>String(b.projectId||"")===String(projectId) &&
+          String(b.mindmapNodeId||"")===String(blockId) && b.plannedDate===dateKey);
       }
-
-      function mapBlockTasksForTimeline(block){
-        const items=block.items||[];
-        const each=Math.max(5,Math.round((Number(block.durationMinutes)||90)/Math.max(1,items.length)/5)*5);
-        return items.map((item,index)=>({
-          id:String(item.id),name:item.text||`Tâche ${index+1}`,durationMinutes:each,
-          completedAt:item.done?Date.now():0,startedAt:0
-        }));
-      }
-
       function scheduleProjectMindmapBlock(projectId,blockId,dateKey=localDateKey(new Date())){
-        const project=projectById(projectId), mapBlock=mindmapProjectBlockById(project,blockId);
-        if(!project||!mapBlock)return;
-        if(mindmapBlockScheduledForDate(project.id,mapBlock.id,dateKey)){showToast("Ce bloc du projet est déjà prévu ce jour");return;}
-        const duration=Math.max(15,Number(mapBlock.durationMinutes)||90);
+        const project=projectById(projectId), mb=mindmapBlockById(project,blockId);
+        if(!project || !mb) return;
+        if(mindmapBlockScheduledForDate(projectId,blockId,dateKey)){
+          showToast("Ce bloc est déjà prévu ce jour"); return;
+        }
+        const duration=Math.max(15,Number(mb.durationMinutes)||90);
         const synthetic=syntheticTimesForFloating(dateKey,duration);
+        const items=(mb.items||[]).map((it,i)=>({
+          id:String(it.id), name:it.text||`Tâche ${i+1}`,
+          durationMinutes:Math.max(5,Math.round(duration/Math.max(1,(mb.items||[]).length)/5)*5),
+          completedAt:it.done?Date.now():0, startedAt:0
+        }));
         state.blocks.push({
-          id:`project-mapblock-${project.id}-${mapBlock.id}-${dateKey}`,
-          name:mapBlock.title||"Bloc projet",address:"Aucune",description:mapBlock.description||project.name,
-          typeId:mapBlock.workMode==="group"?"preset-group-work":"preset-solo-work",
-          start:synthetic.start,end:synthetic.end,color:project.color||"#7c5cff",floating:true,plannedDate:dateKey,
-          durationMinutes:duration,tasks:mapBlockTasksForTimeline(mapBlock),projectId:project.id,subprojectId:null,projectTaskId:null,
-          mindmapNodeId:String(mapBlock.id),updatedAt:Date.now()
+          id:`project-map-${projectId}-${blockId}-${dateKey}`,
+          name:mb.title||"Bloc de travail",
+          address:"Aucune",
+          description:mb.description||project.name,
+          typeId:mb.workMode==="group"?"preset-group-work":"preset-solo-work",
+          start:synthetic.start,end:synthetic.end,color:project.color||"#7c5cff",
+          floating:true,plannedDate:dateKey,durationMinutes:duration,tasks:items,
+          projectId:project.id,subprojectId:null,projectTaskId:null,mindmapNodeId:String(blockId),
+          updatedAt:Date.now()
         });
-        saveState(false);render();showToast("Bloc du projet ajouté à la journée");
+        saveState(false); render(); showToast("Bloc ajouté à la journée");
       }
 
       function scheduleProjectTask(projectId,subprojectId,taskId,dateKey=localDateKey(new Date())){
-        const maybeProject=projectById(projectId);
-        if(maybeProject && mindmapProjectBlockById(maybeProject,taskId)){scheduleProjectMindmapBlock(projectId,taskId,dateKey);return;}
-        const project=maybeProject, sp=subprojectById(project,subprojectId);
+        const project=projectById(projectId), sp=subprojectById(project,subprojectId);
         const task=sp?.tasks?.find(t=>String(t.id)===String(taskId));
         if(!project || !sp || !task || task.done) return;
         if(taskScheduledForDate(task.id,dateKey)){
@@ -3490,27 +3482,32 @@
       }
 
       function recommendedProjectTasks(dateKey=localDateKey(new Date())){
-        const active=activeProjectsForDate(dateKey),candidates=[];
-        active.forEach(project=>{
-          const mapBlocks=project.mindmapBlocks||[];
-          if(mapBlocks.length){
-            mapBlocks.forEach(block=>{
-              const done=(block.items||[]).length>0 && (block.items||[]).every(item=>item.done);
-              if(done||mindmapBlockScheduledForDate(project.id,block.id,dateKey))return;
+        const candidates=[];
+        activeProjectsForDate(dateKey).forEach(project=>{
+          if((project.mindmapBlocks||[]).length){
+            (project.mindmapBlocks||[]).forEach(mb=>{
+              const done=(mb.items||[]).length && (mb.items||[]).every(x=>x.done);
+              if(done || mindmapBlockScheduledForDate(project.id,mb.id,dateKey)) return;
               candidates.push({
                 project,
-                sp:{id:`mindmap-${block.id}`,name:"Carte mentale",deadline:block.deadline||project.endDate||"",priority:block.priority||3},
-                task:{id:block.id,name:block.title,description:block.description||"",durationMinutes:block.durationMinutes||90,workMode:block.workMode||"solo",done:false},
-                deadline:block.deadline||project.endDate||"9999-12-31",mindmapBlock:block
+                sp:{id:`map-${mb.id}`,name:"Carte mentale",deadline:mb.deadline||project.endDate||"",priority:mb.priority||3},
+                task:{id:mb.id,name:mb.title,durationMinutes:mb.durationMinutes||90,workMode:mb.workMode||"solo",done:false},
+                deadline:mb.deadline||project.endDate||"9999-12-31",
+                mindmapBlock:true
               });
             });
           }else{
-            (project.subprojects||[]).forEach(sp=>(sp.tasks||[]).filter(t=>!t.done&&!taskScheduledForDate(t.id,dateKey)).forEach(task=>{
-              candidates.push({project,sp,task,deadline:sp.deadline||project.endDate||"9999-12-31"});
-            }));
+            (project.subprojects||[]).forEach(sp=>{
+              (sp.tasks||[]).filter(t=>!t.done && !taskScheduledForDate(t.id,dateKey)).forEach(task=>{
+                candidates.push({project,sp,task,deadline:sp.deadline||project.endDate||"9999-12-31"});
+              });
+            });
           }
         });
-        candidates.sort((a,b)=>String(a.deadline||"9999-12-31").localeCompare(String(b.deadline||"9999-12-31")) || (b.sp.priority||3)-(a.sp.priority||3) || (b.task.durationMinutes||60)-(a.task.durationMinutes||60));
+        candidates.sort((a,b)=>{
+          const d=String(a.deadline).localeCompare(String(b.deadline)); if(d) return d;
+          return (b.sp.priority||3)-(a.sp.priority||3) || (b.task.durationMinutes||60)-(a.task.durationMinutes||60);
+        });
         return candidates.slice(0,8);
       }
 
@@ -3531,30 +3528,41 @@
           card.innerHTML=`<strong></strong><span></span><button class="mini-btn primary" type="button">Ajouter à aujourd’hui</button>`;
           card.querySelector("strong").textContent=task.name;
           card.querySelector("span").textContent=`${project.name} · ${sp.name}${sp.deadline?` · deadline ${sp.deadline}`:""} · priorité ${sp.priority||3}/5 · ${task.durationMinutes} min`;
-          card.querySelector("button").onclick=()=>scheduleProjectTask(project.id,sp.id,task.id);
+          card.querySelector("button").onclick=()=> mindmapBlockById(project,task.id)
+            ? scheduleProjectMindmapBlock(project.id,task.id)
+            : scheduleProjectTask(project.id,sp.id,task.id);
           list.appendChild(card);
         });
       }
 
       function renderProjectsView(){
-        const grid=el("projectsGrid");if(!grid)return;renderProjectLegend();grid.innerHTML="";
-        if(!(state.projects||[]).length){grid.innerHTML='<div class="project-empty">Aucun projet. Crée ou importe un projet, puis ouvre sa carte mentale.</div>';return;}
+        const grid=el("projectsGrid"); if(!grid) return;
+        renderProjectLegend(); grid.innerHTML="";
+        if(!(state.projects||[]).length){
+          grid.innerHTML='<div class="project-empty">Aucun projet. Crée ou importe un projet puis ouvre sa carte mentale.</div>'; return;
+        }
         [...state.projects].sort((a,b)=>String(a.endDate).localeCompare(String(b.endDate))).forEach(project=>{
-          const card=document.createElement("article");card.className="project-map-card";card.style.setProperty("--project-color",project.color||"#7c5cff");
-          const progress=projectProgress(project),blockCount=(project.mindmapBlocks||[]).length,legacyCount=(project.subprojects||[]).reduce((n,sp)=>n+(sp.tasks||[]).length,0);
-          card.innerHTML=`<div class="project-map-card-main">
-            <div class="project-map-card-name"></div>
-            ${project.description?'<div class="project-map-card-desc"></div>':''}
-            <div class="project-map-card-meta"><span class="project-map-card-pill">${project.startDate} → ${project.endDate}</span><span class="project-map-card-pill">${progress}% terminé</span></div>
-            <div class="project-map-progress"><span style="width:${progress}%"></span></div>
-            <div class="project-map-block-count"></div>
-            <div class="project-map-card-actions"><button class="btn primary" data-action="open-map" type="button">◉ Ouvrir la carte mentale</button><button class="btn" data-action="edit" type="button">Modifier</button></div>
-          </div>`;
+          const progress=projectProgress(project);
+          const card=document.createElement("article");
+          card.className="project-map-card"; card.style.setProperty("--project-color",project.color||"#7c5cff");
+          card.innerHTML=`
+            <div class="project-map-card-main">
+              <div class="project-map-card-name"></div>
+              ${project.description?'<div class="project-map-card-desc"></div>':''}
+              <div class="project-map-meta">
+                <span class="project-map-pill">${project.startDate} → ${project.endDate}</span>
+                <span class="project-map-pill">${progress}% terminé</span>
+              </div>
+              <div class="project-map-progress"><span style="width:${progress}%"></span></div>
+              <div class="project-map-actions">
+                <button class="btn primary" data-map type="button">◉ Ouvrir la carte mentale</button>
+                <button class="btn" data-edit type="button">Modifier</button>
+              </div>
+            </div>`;
           card.querySelector(".project-map-card-name").textContent=project.name;
-          const desc=card.querySelector(".project-map-card-desc");if(desc)desc.textContent=project.description;
-          card.querySelector(".project-map-block-count").textContent=blockCount?`${blockCount} bloc(s) de travail relié(s) à 16H`:legacyCount?`La première ouverture convertira ${legacyCount} tâche(s) existante(s) dans la carte`:"Crée des Todo lists dans la carte pour alimenter 16H.";
-          card.querySelector('[data-action="open-map"]').onclick=()=>openProjectMindmap(project.id);
-          card.querySelector('[data-action="edit"]').onclick=()=>openProjectEditor(project.id);
+          const desc=card.querySelector(".project-map-card-desc"); if(desc) desc.textContent=project.description;
+          card.querySelector("[data-map]").onclick=()=>openProjectMindmap(project.id);
+          card.querySelector("[data-edit]").onclick=()=>openProjectEditor(project.id);
           grid.appendChild(card);
         });
       }
@@ -3573,7 +3581,7 @@
           return;
         }
         projects.forEach(project=>{
-          const top=(project.mindmapBlocks||[]).length ? [...project.mindmapBlocks].filter(block=>!((block.items||[]).length&&(block.items||[]).every(item=>item.done))).sort((a,b)=>String(a.deadline||project.endDate||"9999-12-31").localeCompare(String(b.deadline||project.endDate||"9999-12-31")) || (b.priority||3)-(a.priority||3)).slice(0,2).map(block=>({name:block.title})) : [...(project.subprojects||[])].sort((a,b)=>(b.priority||3)-(a.priority||3)).slice(0,2);
+          const top=[...(project.subprojects||[])].sort((a,b)=>(b.priority||3)-(a.priority||3)).slice(0,2);
           const chip=document.createElement("div");
           chip.className="week-project-chip";
           chip.style.setProperty("--project-color",project.color||"#7c5cff");
@@ -4353,35 +4361,45 @@
         },900);
       }
 
-      function projectSeedPayload(project){return {id:project.id,name:project.name,description:project.description||"",color:project.color||"#7c5cff",startDate:project.startDate||"",endDate:project.endDate||"",subprojects:project.subprojects||[],mindmapBlocks:project.mindmapBlocks||[]};}
 
+      function projectSeedPayload(project){
+        return {
+          id:project.id,name:project.name,description:project.description||"",color:project.color||"#7c5cff",
+          startDate:project.startDate||"",endDate:project.endDate||"",
+          subprojects:project.subprojects||[],mindmapBlocks:project.mindmapBlocks||[]
+        };
+      }
       function openProjectMindmap(projectId,focusNodeId=null){
-        const project=projectById(projectId);if(!project)return;
-        activeMindmapContext={kind:"project",projectId:String(project.id),nodeId:focusNodeId?String(focusNodeId):null};activeMindmapBlockId=`project:${project.id}`;activeMindmapTitle=project.name;
-        const overlay=el("mindmapOverlay"),frame=el("mindmapFrame"),title=el("mindmapHostTitle"),status=el("mindmapSyncState"),back=el("mindmapBackBtn");
-        if(title)title.textContent=project.name;if(status)status.textContent="Projet · carte mentale locale";if(back)back.textContent="← Retour à 16H";
-        overlay?.classList.add("open");overlay?.setAttribute("aria-hidden","false");document.body.style.overflow="hidden";
-        const params=new URLSearchParams({host:"16h",mode:"project",projectId:String(project.id),title:project.name,color:project.color||"#7c5cff"});if(focusNodeId)params.set("focusNodeId",String(focusNodeId));
-        frame.src=`./mindmap.html?${params.toString()}`;
+        const project=projectById(projectId); if(!project) return;
+        activeMindmapContext={kind:"project",projectId:String(projectId),nodeId:focusNodeId?String(focusNodeId):null};
+        activeMindmapBlockId=`project:${projectId}`; activeMindmapTitle=project.name;
+        el("mindmapHostTitle").textContent=project.name;
+        el("mindmapSyncState").textContent="Projet · carte mentale";
+        el("mindmapBackBtn").textContent="← Retour à 16H";
+        el("mindmapOverlay").classList.add("open"); el("mindmapOverlay").setAttribute("aria-hidden","false");
+        document.body.style.overflow="hidden";
+        const q=new URLSearchParams({host:"16h",mode:"project",projectId:String(projectId),title:project.name,color:project.color||"#7c5cff"});
+        if(focusNodeId) q.set("focusNodeId",String(focusNodeId));
+        el("mindmapFrame").src=`./mindmap.html?${q.toString()}`;
       }
-
-      function openProjectBlockDetail(projectId,nodeId,titleText){
-        const project=projectById(projectId);if(!project)return;
-        activeMindmapContext={kind:"detail",projectId:String(projectId),nodeId:String(nodeId)};activeMindmapBlockId=`detail:${projectId}:${nodeId}`;activeMindmapTitle=titleText||"Bloc de travail";
-        const frame=el("mindmapFrame"),title=el("mindmapHostTitle"),status=el("mindmapSyncState"),back=el("mindmapBackBtn");if(title)title.textContent=activeMindmapTitle;if(status)status.textContent=`${project.name} · carte du bloc`;if(back)back.textContent="← Retour au projet";
-        const params=new URLSearchParams({host:"16h",mode:"detail",projectId:String(projectId),nodeId:String(nodeId),title:activeMindmapTitle,color:project.color||"#7c5cff"});frame.src=`./mindmap.html?${params.toString()}`;
-      }
-
-      function handleMindmapBack(){if(activeMindmapContext.kind==="detail"&&activeMindmapContext.projectId){openProjectMindmap(activeMindmapContext.projectId,activeMindmapContext.nodeId);return;}closeMindmap();}
 
       async function openCurrentMindmap(item){
-        if(item?.projectId&&item?.mindmapNodeId){openProjectMindmap(item.projectId,item.mindmapNodeId);return;}
-        const blockId=mindmapBlockKey(item);if(!blockId)return;
-        activeMindmapContext={kind:"standalone",projectId:null,nodeId:null};activeMindmapBlockId=blockId;activeMindmapTitle=item.name||"Tâche";
-        const overlay=el("mindmapOverlay"),frame=el("mindmapFrame"),title=el("mindmapHostTitle"),status=el("mindmapSyncState"),back=el("mindmapBackBtn");
-        if(title)title.textContent=activeMindmapTitle;if(status)status.textContent=cloudUser?"Chargement…":"Sauvegarde locale active";if(back)back.textContent="← Retour à 16H";
-        overlay?.classList.add("open");overlay?.setAttribute("aria-hidden","false");document.body.style.overflow="hidden";
-        const params=new URLSearchParams({blockId,title:activeMindmapTitle,host:"16h",mode:"standalone"});frame.src=`./mindmap.html?${params.toString()}`;
+        if(item?.projectId && item?.mindmapNodeId){
+          openProjectMindmap(item.projectId,item.mindmapNodeId); return;
+        }
+        activeMindmapContext={kind:"standalone",projectId:null,nodeId:null};
+        const blockId=mindmapBlockKey(item);
+        if(!blockId) return;
+        activeMindmapBlockId=blockId;
+        activeMindmapTitle=item.name || "Tâche";
+        const overlay=el("mindmapOverlay"), frame=el("mindmapFrame"), title=el("mindmapHostTitle"), status=el("mindmapSyncState");
+        if(title) title.textContent=activeMindmapTitle;
+        if(status) status.textContent=cloudUser?"Chargement…":"Sauvegarde locale active";
+        overlay?.classList.add("open");
+        overlay?.setAttribute("aria-hidden","false");
+        document.body.style.overflow="hidden";
+        const params=new URLSearchParams({blockId, title:activeMindmapTitle, host:"16h"});
+        frame.src=`./mindmap.html?${params.toString()}`;
       }
 
       function closeMindmap(){
@@ -5108,7 +5126,6 @@
         if(next && !next.startedAt) next.startedAt=now;
 
         block.updatedAt=now;
-        if(block.projectId&&block.mindmapNodeId){const project=projectById(block.projectId),mapBlock=mindmapProjectBlockById(project,block.mindmapNodeId),sourceItem=mapBlock?.items?.find(item=>String(item.id)===String(active.id));if(sourceItem)sourceItem.done=true;if(mapBlock)mapBlock.updatedAt=now;if(project)project.updatedAt=now;}
         saveState();
         renderFocusMode();
         showToast(next ? "Tâche validée · suivante" : "Toutes les tâches sont terminées");
@@ -6981,40 +6998,46 @@
       buildColorPresets("rule");
       updateCloudUi();
       setupSupabaseClient();
-      el("mindmapBackBtn")?.addEventListener("click",handleMindmapBack);
+      el("mindmapBackBtn")?.addEventListener("click",closeMindmap);
       window.addEventListener("message",async event=>{
-        if(event.origin!==location.origin||event.source!==el("mindmapFrame")?.contentWindow)return;
-        const msg=event.data||{},status=el("mindmapSyncState");
+        if(event.origin!==location.origin || event.source!==el("mindmapFrame")?.contentWindow) return;
+        const msg=event.data||{};
+
         if(msg.type==="16h:mindmap-ready"){
           if(msg.mode==="project"){
-            const project=projectById(msg.projectId);if(!project||String(project.id)!==String(activeMindmapContext.projectId))return;
-            el("mindmapFrame")?.contentWindow?.postMessage({type:"16h:project-seed",project:projectSeedPayload(project),focusNodeId:activeMindmapContext.nodeId},location.origin);
-            if(status)status.textContent="Projet · Todo lists = blocs 16H";return;
+            const project=projectById(msg.projectId);
+            if(project){
+              el("mindmapFrame").contentWindow.postMessage({
+                type:"16h:project-seed",project:projectSeedPayload(project),focusNodeId:activeMindmapContext.nodeId
+              },location.origin);
+            }
+            return;
           }
-          if(msg.mode==="detail"){
-            const project=projectById(msg.projectId),mapBlock=mindmapProjectBlockById(project,msg.nodeId);
-            if(mapBlock)el("mindmapFrame")?.contentWindow?.postMessage({type:"16h:block-detail-seed",projectId:project.id,nodeId:mapBlock.id,title:mapBlock.title,color:project.color||"#7c5cff",items:mapBlock.items||[]},location.origin);
-            if(status)status.textContent=`${project?.name||"Projet"} · détail du bloc`;return;
-          }
-          const blockId=String(msg.blockId||"");if(!blockId||blockId!==activeMindmapBlockId)return;const cloudDoc=await fetchMindmapFromCloud(blockId);
-          if(cloudDoc)el("mindmapFrame")?.contentWindow?.postMessage({type:"16h:mindmap-load",blockId,doc:cloudDoc},location.origin);
-          if(status)status.textContent=cloudUser?"Prêt · Cloud":"Sauvegarde locale active";return;
+          const blockId=String(msg.blockId||"");
+          if(!blockId || blockId!==activeMindmapBlockId) return;
+          const cloudDoc=await fetchMindmapFromCloud(blockId);
+          if(cloudDoc) el("mindmapFrame").contentWindow.postMessage({type:"16h:mindmap-load",blockId,doc:cloudDoc},location.origin);
+          el("mindmapSyncState").textContent=cloudUser?"Prêt · Cloud":"Sauvegarde locale active";
         }
-        if(msg.type==="16h:project-mindmap-sync"){
-          const project=projectById(msg.projectId);if(!project||!Array.isArray(msg.blocks))return;
-          const previous=new Map((project.mindmapBlocks||[]).map(block=>[String(block.id),block]));
-          project.mindmapBlocks=msg.blocks.map(incoming=>{const old=previous.get(String(incoming.id)),oldItems=new Map((old?.items||[]).map(item=>[String(item.id),item]));return {...old,...incoming,id:String(incoming.id),items:(incoming.items||[]).map(item=>({...item,done:typeof item.done==="boolean"?item.done:!!oldItems.get(String(item.id))?.done})),updatedAt:Date.now()};});
-          project.updatedAt=Date.now();saveState(false);renderProjectDayPlanner();renderProjectsView();renderWeekProjectFocus();return;
-        }
-        if(msg.type==="16h:schedule-project-block"){scheduleProjectMindmapBlock(msg.projectId,msg.nodeId,msg.dateKey||localDateKey(new Date()));return;}
-        if(msg.type==="16h:open-project-block-mindmap"){openProjectBlockDetail(msg.projectId,msg.nodeId,msg.title);return;}
-        if(msg.type==="16h:block-detail-task-toggle"){
-          const project=projectById(msg.projectId),mapBlock=mindmapProjectBlockById(project,msg.nodeId),item=mapBlock?.items?.find(it=>String(it.id)===String(msg.itemId));
-          if(item){item.done=!!msg.done;mapBlock.updatedAt=Date.now();project.updatedAt=Date.now();state.blocks.filter(block=>String(block.projectId||"")===String(project.id)&&String(block.mindmapNodeId||"")===String(mapBlock.id)).forEach(block=>{const task=block.tasks?.find(t=>String(t.id)===String(item.id));if(task){task.completedAt=item.done?(task.completedAt||Date.now()):0;task.startedAt=item.done?(task.startedAt||Date.now()):0;block.updatedAt=Date.now();}});saveState(false);render();}
+
+        if(msg.type==="16h:project-sync"){
+          const project=projectById(msg.projectId);
+          if(!project || !Array.isArray(msg.blocks)) return;
+          project.mindmapBlocks=msg.blocks;
+          project.updatedAt=Date.now();
+          saveState(false); renderProjectsView(); renderProjectDayPlanner(); renderWeekProjectFocus();
           return;
         }
-        if(msg.type==="16h:mindmap-save"){const blockId=String(msg.blockId||"");if(blockId&&msg.doc)queueMindmapCloudSave(blockId,msg.doc);return;}
-        if(msg.type==="16h:mindmap-close")handleMindmapBack();
+
+        if(msg.type==="16h:schedule-project-block"){
+          scheduleProjectMindmapBlock(msg.projectId,msg.nodeId,msg.dateKey||localDateKey(new Date())) ; return;
+        }
+
+        if(msg.type==="16h:mindmap-save"){
+          const blockId=String(msg.blockId||""); if(!blockId || !msg.doc) return;
+          queueMindmapCloudSave(blockId,msg.doc);
+        }
+        if(msg.type==="16h:mindmap-close") closeMindmap();
       });
 
       document.addEventListener("keydown",event=>{
@@ -7052,7 +7075,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=11").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=11.1").catch(() => {});
       });
     }
   </script>
