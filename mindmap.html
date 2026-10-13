@@ -301,12 +301,15 @@
   .radius-presets button:hover{background:#f4f3f7}
 
   /* 16H V11.1 */
-  .todo-node.project-work-block{min-width:360px;min-height:260px}
-  .todo-node.project-work-block .todo-shell{padding:20px 20px 16px;gap:13px}
-  .todo-node.project-work-block .todo-title{font-size:20px;line-height:1.16;padding-bottom:12px}
-  .todo-node.project-work-block .todo-list{gap:10px}
-  .todo-node.project-work-block .todo-row{min-height:34px}
-  .todo-node.project-work-block .todo-text{font-size:15px}
+  .todo-node.project-work-block{min-width:430px;min-height:300px}
+  .todo-node.project-work-block .todo-shell{padding:22px 22px 18px;gap:14px}
+  .todo-node.project-work-block .todo-title{font-size:21px;line-height:1.18;padding-bottom:13px}
+  .todo-node.project-work-block .todo-list{gap:11px}
+  .todo-node.project-work-block .todo-row{min-height:58px;align-items:flex-start}
+  .todo-node.project-work-block .todo-text{
+    font-size:15px;line-height:1.3;white-space:normal;overflow:hidden;resize:none;
+    min-height:48px;padding:7px 8px;border-radius:8px
+  }
   .project-block-footer{display:flex;gap:7px;align-items:center;flex-wrap:wrap;border-top:1px solid rgba(0,0,0,.08);padding-top:10px}
   .project-block-footer button{height:31px;border:1px solid #dfe3e9;border-radius:9px;background:#fff;padding:0 9px;font-size:11px;font-weight:800;cursor:pointer}
   .project-block-footer .schedule{background:#17191d;color:#fff;border-color:#17191d}
@@ -411,6 +414,7 @@ const HOST_TITLE=hostParams.get("title")||"Carte mentale";
 const HOST_COLOR=hostParams.get("color")||"#7c5cff";
 const HOST_FOCUS_NODE_ID=hostParams.get("focusNodeId")||"";
 const STORAGE_KEY=PROJECT_MODE ? `16h.projectmindmap.${HOST_PROJECT_ID}` : (HOST_16H && HOST_BLOCK_ID ? `16h.mindmap.${HOST_BLOCK_ID}` : "homeMindmapEditor.v1");
+let HOST_PROJECT_DATA=null;
 const ICONS = {
   "floating_comment_add": "asset/floating_comment_add.png",
   "floating_delete": "asset/floating_delete.png",
@@ -570,83 +574,243 @@ function applyViewport(){
 }
 
 function todoDesiredHeight(e){
-  const titleLines=Math.max(1,Math.ceil(String(e.text||"").length/28));
-  const itemCount=Math.max(1,(e.items||[]).length);
-  return Math.max(270, 92 + titleLines*26 + itemCount*44 + (PROJECT_MODE?76:48));
+  const titleChars=String(e.text||"").length;
+  const titleLines=Math.max(1,Math.ceil(titleChars/34));
+  const items=e.items||[];
+  let itemHeight=0;
+  items.forEach(item=>{
+    const chars=String(item.text||"").length;
+    const lines=Math.max(1,Math.ceil(chars/48));
+    itemHeight += Math.max(58, 24 + lines*20);
+  });
+  if(!items.length)itemHeight=58;
+  return Math.max(310, 112 + titleLines*28 + itemHeight + (PROJECT_MODE?92:55));
 }
+
 function normalizeTodoSizes(){
   if(!PROJECT_MODE)return;
   state.elements.filter(e=>e.type==="todo").forEach(e=>{
-    e.w=Math.max(360,Number(e.w)||360);
+    e.w=Math.max(430,Number(e.w)||430);
     e.h=Math.max(todoDesiredHeight(e),Number(e.h)||0);
   });
 }
-function rectsOverlap(a,b,pad=28){
-  return !(a.x+a.w+pad<=b.x || b.x+b.w+pad<=a.x || a.y+a.h+pad<=b.y || b.y+b.h+pad<=a.y);
+
+function normalizedText(v){
+  return String(v||"").trim().toLocaleLowerCase("fr");
 }
+
+/*
+  Migration V11/V11.1 :
+  les anciennes cartes sauvegardées n'avaient pas forcément parentSectionId /
+  projectRole. On les reconstruit à partir du projet 16H avant le rangement.
+*/
+function migrateLegacyProjectMetadata(project){
+  if(!PROJECT_MODE || !project)return;
+
+  const sections=state.elements.filter(e=>e.type==="section");
+  const shapes=state.elements.filter(e=>e.type==="shape");
+  const todos=state.elements.filter(e=>e.type==="todo");
+
+  let root=state.elements.find(e=>e.projectRole==="root");
+  if(!root){
+    root=shapes.find(e=>normalizedText(e.text)===normalizedText(project.name));
+    if(!root){
+      root=shapes.slice().sort((a,b)=>{
+        const acx=a.x+a.w/2,bcx=b.x+b.w/2;
+        return Math.abs(acx-900)-Math.abs(bcx-900);
+      })[0];
+    }
+    if(root)root.projectRole="root";
+  }
+
+  (project.subprojects||[]).forEach(sp=>{
+    const name=normalizedText(sp.name);
+    let sec=sections.find(e=>String(e.subprojectId||"")===String(sp.id));
+    if(!sec)sec=sections.find(e=>normalizedText(e.text)===name);
+    if(!sec)return;
+    sec.projectRole="subproject-section";
+    sec.subprojectId=String(sp.id);
+    sec.z=1;
+
+    let header=shapes.find(e=>e!==root && normalizedText(e.text)===name &&
+      (String(e.parentSectionId||"")===String(sec.id) ||
+       (e.x>=sec.x-80 && e.x<=sec.x+sec.w+80 && e.y>=sec.y-80 && e.y<=sec.y+180)));
+    if(!header)header=shapes.find(e=>e!==root && normalizedText(e.text)===name);
+    if(header){
+      header.projectRole="subproject-header";
+      header.parentSectionId=sec.id;
+      header.z=8;
+    }
+
+    (sp.tasks||[]).forEach(task=>{
+      const taskName=normalizedText(task.name);
+      let todo=todos.find(e=>String(e.legacyTaskId||"")===String(task.id));
+      if(!todo)todo=todos.find(e=>normalizedText(e.text)===taskName);
+      if(todo){
+        todo.parentSectionId=sec.id;
+        todo.legacyTaskId=String(task.id);
+        todo.z=12;
+        todo.blockMeta=todo.blockMeta||{
+          durationMinutes:Math.max(15,Number(task.durationMinutes)||60),
+          workMode:task.workMode==="group"?"group":"solo",
+          deadline:sp.deadline||"",
+          priority:sp.priority||3
+        };
+      }
+    });
+  });
+
+  // Any still-unassigned todo is attached to the nearest section center.
+  todos.filter(t=>!t.parentSectionId).forEach(todo=>{
+    if(!sections.length)return;
+    const tx=todo.x+todo.w/2,ty=todo.y+todo.h/2;
+    let nearest=null,best=Infinity;
+    sections.forEach(sec=>{
+      const sx=sec.x+sec.w/2,sy=sec.y+sec.h/2;
+      const d=(tx-sx)*(tx-sx)+(ty-sy)*(ty-sy);
+      if(d<best){best=d;nearest=sec}
+    });
+    if(nearest){
+      todo.parentSectionId=nearest.id;
+      todo.z=12;
+    }
+  });
+}
+
+/*
+  Nouveau moteur :
+  1. calcule d'abord la taille complète de chaque section
+  2. place ses enfants À L'INTÉRIEUR
+  3. empile ensuite les sections comme des unités indivisibles
+  4. aucune passe globale ne déplace une section sans ses enfants
+*/
 function autoLayoutProject(){
   if(!PROJECT_MODE)return;
+
+  if(HOST_PROJECT_DATA)migrateLegacyProjectMetadata(HOST_PROJECT_DATA);
   normalizeTodoSizes();
-  const root=state.elements.find(e=>e.projectRole==="root") || state.elements.find(e=>e.type==="shape" && e.kind==="rounded");
+
+  const root=state.elements.find(e=>e.projectRole==="root");
   const groups=state.elements.filter(e=>e.projectRole==="subproject-section");
-  if(!root || !groups.length){render();return}
 
-  const gapX=210, gapY=90, outerPad=42, headerH=115, cardGap=28, cols=2;
-  const left=[],right=[];
-  groups.forEach((sec,i)=>(i%2===0?left:right).push(sec));
+  if(!root || !groups.length){
+    toast("Impossible de reconnaître les sous-projets de cette ancienne carte");
+    render();
+    return;
+  }
 
-  function layoutSide(list,side){
-    let y=80;
-    list.forEach(sec=>{
-      const todos=state.elements.filter(e=>e.parentSectionId===sec.id && e.type==="todo");
-      todos.forEach(e=>{e.w=Math.max(360,e.w||360);e.h=todoDesiredHeight(e)});
-      const colW=380;
-      const rows=[];
-      for(let r=0;r<Math.ceil(todos.length/cols);r++){
-        const row=todos.slice(r*cols,r*cols+cols);
-        rows.push(Math.max(0,...row.map(e=>e.h)));
-      }
-      const contentH=rows.reduce((sum,h)=>sum+h,0)+Math.max(0,rows.length-1)*cardGap;
-      sec.w=cols*colW+(cols-1)*cardGap+outerPad*2;
-      sec.h=Math.max(260,headerH+contentH+outerPad);
-      sec.x=side==="left" ? root.x-gapX-sec.w : root.x+root.w+gapX;
-      sec.y=y;
-      const header=state.elements.find(e=>e.parentSectionId===sec.id && e.projectRole==="subproject-header");
-      if(header){
-        header.w=Math.min(430,sec.w-outerPad*2); header.h=70;
-        header.x=sec.x+(sec.w-header.w)/2; header.y=sec.y+30;
-      }
-      let cy=sec.y+headerH;
-      let ti=0;
-      rows.forEach(rowH=>{
-        for(let c=0;c<cols && ti<todos.length;c++,ti++){
-          const t=todos[ti];
-          t.x=sec.x+outerPad+c*(colW+cardGap);
-          t.y=cy;
-        }
-        cy+=rowH+cardGap;
+  const TODO_W=430;
+  const COLS=2;
+  const COL_GAP=42;
+  const PAD_X=58;
+  const PAD_TOP=145;
+  const PAD_BOTTOM=58;
+  const ROW_GAP=42;
+  const SECTION_GAP_Y=120;
+  const ROOT_GAP_X=270;
+  const HEADER_W=560;
+  const HEADER_H=82;
+
+  // Root is fixed first, so all side positioning is deterministic.
+  root.w=Math.max(360,root.w||360);
+  root.h=Math.max(110,root.h||110);
+  root.x=1280;
+  root.y=500;
+  root.z=20;
+
+  const descriptors=groups.map(sec=>{
+    sec.projectRole="subproject-section";
+    sec.z=1;
+
+    const header=state.elements.find(e=>e.projectRole==="subproject-header" && e.parentSectionId===sec.id);
+    const todos=state.elements.filter(e=>e.type==="todo" && e.parentSectionId===sec.id);
+
+    todos.forEach(t=>{
+      t.w=TODO_W;
+      t.h=todoDesiredHeight(t);
+      t.z=12;
+    });
+
+    const rows=[];
+    for(let i=0;i<todos.length;i+=COLS){
+      const row=todos.slice(i,i+COLS);
+      rows.push({
+        todos:row,
+        height:Math.max(...row.map(t=>t.h),310)
       });
-      y+=sec.h+gapY;
+    }
+
+    const contentH=rows.reduce((sum,row)=>sum+row.height,0) +
+      Math.max(0,rows.length-1)*ROW_GAP;
+
+    sec.w=PAD_X*2 + COLS*TODO_W + (COLS-1)*COL_GAP;
+    sec.h=Math.max(390,PAD_TOP+contentH+PAD_BOTTOM);
+
+    return {sec,header,todos,rows,height:sec.h};
+  });
+
+  // Balance by total heights, not by alternating indices.
+  const left=[],right=[];
+  let leftH=0,rightH=0;
+  descriptors
+    .sort((a,b)=>b.height-a.height)
+    .forEach(d=>{
+      if(leftH<=rightH){left.push(d);leftH+=d.height+SECTION_GAP_Y}
+      else{right.push(d);rightH+=d.height+SECTION_GAP_Y}
+    });
+
+  // Restore stable semantic order inside each side.
+  const projectOrder=new Map((HOST_PROJECT_DATA?.subprojects||[]).map((sp,i)=>[String(sp.id),i]));
+  const orderFn=(a,b)=>(projectOrder.get(String(a.sec.subprojectId))??999) -
+                       (projectOrder.get(String(b.sec.subprojectId))??999);
+  left.sort(orderFn);right.sort(orderFn);
+
+  const totalLeft=Math.max(0,left.reduce((sum,d)=>sum+d.height,0)+(left.length-1)*SECTION_GAP_Y);
+  const totalRight=Math.max(0,right.reduce((sum,d)=>sum+d.height,0)+(right.length-1)*SECTION_GAP_Y);
+  const maxSide=Math.max(totalLeft,totalRight,root.h);
+
+  root.y=120+maxSide/2-root.h/2;
+
+  function placeSide(list,side,totalHeight){
+    let y=120+(maxSide-totalHeight)/2;
+
+    list.forEach(d=>{
+      const {sec,header,rows}=d;
+      sec.x=side==="left"
+        ? root.x-ROOT_GAP_X-sec.w
+        : root.x+root.w+ROOT_GAP_X;
+      sec.y=y;
+
+      if(header){
+        header.w=Math.min(HEADER_W,sec.w-PAD_X*2);
+        header.h=HEADER_H;
+        header.x=sec.x+(sec.w-header.w)/2;
+        header.y=sec.y+34;
+        header.z=8;
+      }
+
+      let rowY=sec.y+PAD_TOP;
+      rows.forEach(row=>{
+        row.todos.forEach((todo,col)=>{
+          todo.x=sec.x+PAD_X+col*(TODO_W+COL_GAP);
+          todo.y=rowY;
+        });
+        rowY+=row.height+ROW_GAP;
+      });
+
+      y+=sec.h+SECTION_GAP_Y;
     });
   }
-  layoutSide(left,"left"); layoutSide(right,"right");
-  root.x=900; root.y=Math.max(220,Math.min(
-    (left.length?left[0].y:220)+(left.reduce((a,s)=>a+s.h+gapY,0))/2-root.h/2,
-    (right.length?right[0].y:220)+(right.reduce((a,s)=>a+s.h+gapY,0))/2-root.h/2
-  ));
-  // Final collision safety pass.
-  const positioned=state.elements.filter(e=>e.type==="todo" || e.projectRole==="subproject-section");
-  for(let i=0;i<positioned.length;i++){
-    for(let j=i+1;j<positioned.length;j++){
-      const a=positioned[i],b=positioned[j];
-      if(a.parentSectionId && a.parentSectionId===b.id) continue;
-      if(b.parentSectionId && b.parentSectionId===a.id) continue;
-      if(rectsOverlap(a,b,24)){
-        b.y=a.y+a.h+48;
-      }
-    }
-  }
-  commitHistory();render();fitToContent();
+
+  placeSide(left,"left",totalLeft);
+  placeSide(right,"right",totalRight);
+
+  // Remove orphaned old positions from selection and keep the complete structure visible.
+  state.selectedIds=[];
+  selectedConnectorId=null;
+  commitHistory();
+  render();
+  fitToContent();
 }
 function render(){
   if(PROJECT_MODE)normalizeTodoSizes();
@@ -657,6 +821,8 @@ function renderNodes(){
   [...state.elements].sort((a,b)=>(a.z||0)-(b.z||0)).forEach(e=>{
     const n=document.createElement("div"); n.className=`node hoverable ${e.type==="sticky"?"sticky":""} ${e.type==="text"?"text-node":""} ${e.type==="section"?"section":""} ${e.type==="draw"?"draw-node":""} ${e.type==="table"?"table-node":""} ${e.kind==="diamond"?"diamond":""} ${e.locked?"locked":""} ${editingId===e.id?"editing":""}`;
     n.dataset.id=e.id;n.style.left=e.x+"px";n.style.top=e.y+"px";n.style.width=e.w+"px";n.style.height=e.h+"px";n.style.zIndex=e.z||10;
+    if(PROJECT_MODE && e.projectRole==="subproject-section")n.classList.add("project-subproject-section");
+    if(PROJECT_MODE && e.projectRole==="subproject-header")n.classList.add("project-subproject-header");
     n.style.transform=`rotate(${e.rotation||0}deg)`;n.style.opacity=e.style.opacity??1;
     if(e.type==="todo"){
       n.classList.add("todo-node");
@@ -672,7 +838,7 @@ function renderNodes(){
       (e.items||[]).forEach(item=>{
         const row=document.createElement("div");row.className="todo-row todo-interactive"+(item.done?" done":"");row.dataset.itemId=item.id;
         const ck=document.createElement("input");ck.type="checkbox";ck.className="todo-check todo-interactive";ck.checked=!!item.done;ck.title="Cocher la tâche";
-        const inp=document.createElement("input");inp.type="text";inp.className="todo-text todo-interactive";inp.value=item.text||"";inp.placeholder="Tâche";
+        const inp=document.createElement("textarea");inp.rows=2;inp.className="todo-text todo-interactive";inp.value=item.text||"";inp.placeholder="Tâche";
         const del=document.createElement("button");del.type="button";del.className="todo-delete todo-interactive";del.textContent="×";del.title="Supprimer la tâche";
         row.append(ck,inp,del);list.appendChild(row);
       });
@@ -1237,18 +1403,18 @@ function seedProject(project){
   root.projectRole="root";root.z=20;els.push(root);
 
   (project.subprojects||[]).forEach((sp,si)=>{
-    const sec=el("section",0,0,900,300,sp.name||"Sous-projet","section",{
+    const sec=el("section",0,0,1076,420,sp.name||"Sous-projet","section",{
       fill:"#f7f8fa",stroke:project.color||HOST_COLOR,strokeWidth:2,radius:20,fontSize:18
     });
     sec.projectRole="subproject-section";sec.subprojectId=String(sp.id);sec.z=1;els.push(sec);
-    const head=el("shape",0,0,420,70,sp.name||"Sous-projet","rounded",{
+    const head=el("shape",0,0,560,82,sp.name||"Sous-projet","rounded",{
       fill:"#fff",stroke:project.color||HOST_COLOR,strokeWidth:2,radius:16,fontSize:17
     });
     head.projectRole="subproject-header";head.parentSectionId=sec.id;els.push(head);
     cons.push(con({elementId:root.id,anchor:si%2===0?"left":"right"},{elementId:head.id,anchor:si%2===0?"right":"left"}));
 
     (sp.tasks||[]).forEach(task=>{
-      const todo=el("todo",0,0,380,300,task.name||"Bloc de travail","todo",{
+      const todo=el("todo",0,0,430,330,task.name||"Bloc de travail","todo",{
         fill:"#fff",stroke:project.color||HOST_COLOR,strokeWidth:1,radius:18,textAlign:"left"
       });
       todo.parentSectionId=sec.id;
@@ -1584,7 +1750,12 @@ initHistory();render();layoutFloatingBars();
 if(PROJECT_MODE){
   $("#autoLayoutProjectBtn").hidden=false;
   $("#projectModeBadge").hidden=false;
-  $("#autoLayoutProjectBtn").addEventListener("click",()=>{autoLayoutProject();saveNow(false);toast("Carte réorganisée")});
+  $("#autoLayoutProjectBtn").addEventListener("click",()=>{
+    if(HOST_PROJECT_DATA)migrateLegacyProjectMetadata(HOST_PROJECT_DATA);
+    autoLayoutProject();
+    saveNow(false);
+    toast("Carte entièrement réorganisée");
+  });
 }
 if(HOST_16H){
   document.title=`Carte mentale · ${HOST_TITLE}`;
@@ -1592,7 +1763,9 @@ if(HOST_16H){
     if(event.origin!==location.origin)return;
     const msg=event.data||{};
     if(msg.type==="16h:project-seed" && PROJECT_MODE && String(msg.project?.id||"")===String(HOST_PROJECT_ID)){
+      HOST_PROJECT_DATA=msg.project;
       if(!restored && !state.elements.length)seedProject(msg.project);
+      migrateLegacyProjectMetadata(msg.project);
       applyProjectBlockState(msg.project?.mindmapBlocks||[]);
       normalizeTodoSizes();render();
       if(msg.focusNodeId)requestAnimationFrame(()=>focusNode(msg.focusNodeId));
