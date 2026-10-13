@@ -4369,6 +4369,35 @@
           subprojects:project.subprojects||[],mindmapBlocks:project.mindmapBlocks||[]
         };
       }
+
+      function openProjectBlockDetail(projectId,nodeId,titleText="Bloc de travail"){
+        const project=projectById(projectId);
+        if(!project) return;
+        activeMindmapContext={kind:"detail",projectId:String(projectId),nodeId:String(nodeId)};
+        activeMindmapBlockId=`detail:${projectId}:${nodeId}`;
+        activeMindmapTitle=titleText || "Bloc de travail";
+        el("mindmapHostTitle").textContent=activeMindmapTitle;
+        el("mindmapSyncState").textContent=`${project.name} · carte du bloc`;
+        el("mindmapBackBtn").textContent="← Retour au projet";
+        el("mindmapOverlay").classList.add("open");
+        el("mindmapOverlay").setAttribute("aria-hidden","false");
+        document.body.style.overflow="hidden";
+        const q=new URLSearchParams({
+          host:"16h", mode:"detail", projectId:String(projectId),
+          nodeId:String(nodeId), title:activeMindmapTitle,
+          color:project.color||"#7c5cff"
+        });
+        el("mindmapFrame").src=`./mindmap.html?${q.toString()}`;
+      }
+
+      function handleMindmapBack(){
+        if(activeMindmapContext.kind==="detail" && activeMindmapContext.projectId){
+          openProjectMindmap(activeMindmapContext.projectId,activeMindmapContext.nodeId);
+          return;
+        }
+        closeMindmap();
+      }
+
       function openProjectMindmap(projectId,focusNodeId=null){
         const project=projectById(projectId); if(!project) return;
         activeMindmapContext={kind:"project",projectId:String(projectId),nodeId:focusNodeId?String(focusNodeId):null};
@@ -5126,6 +5155,17 @@
         if(next && !next.startedAt) next.startedAt=now;
 
         block.updatedAt=now;
+
+        if(block.projectId && block.mindmapNodeId){
+          const project=projectById(block.projectId);
+          const mapBlock=mindmapBlockById(project,block.mindmapNodeId);
+          const sourceItem=mapBlock?.items?.find(item=>String(item.id)===String(active.id));
+          if(sourceItem){
+            sourceItem.done=true;
+            project.updatedAt=now;
+          }
+        }
+
         saveState();
         renderFocusMode();
         showToast(next ? "Tâche validée · suivante" : "Toutes les tâches sont terminées");
@@ -6998,7 +7038,7 @@
       buildColorPresets("rule");
       updateCloudUi();
       setupSupabaseClient();
-      el("mindmapBackBtn")?.addEventListener("click",closeMindmap);
+      el("mindmapBackBtn")?.addEventListener("click",handleMindmapBack);
       window.addEventListener("message",async event=>{
         if(event.origin!==location.origin || event.source!==el("mindmapFrame")?.contentWindow) return;
         const msg=event.data||{};
@@ -7008,36 +7048,129 @@
             const project=projectById(msg.projectId);
             if(project){
               el("mindmapFrame").contentWindow.postMessage({
-                type:"16h:project-seed",project:projectSeedPayload(project),focusNodeId:activeMindmapContext.nodeId
+                type:"16h:project-seed",
+                project:projectSeedPayload(project),
+                focusNodeId:activeMindmapContext.nodeId
               },location.origin);
             }
             return;
           }
+
+          if(msg.mode==="detail"){
+            const project=projectById(msg.projectId);
+            const block=mindmapBlockById(project,msg.nodeId);
+            if(project && block){
+              el("mindmapFrame").contentWindow.postMessage({
+                type:"16h:block-detail-seed",
+                projectId:project.id,
+                nodeId:block.id,
+                title:block.title,
+                color:project.color||"#7c5cff",
+                items:block.items||[]
+              },location.origin);
+            }
+            return;
+          }
+
           const blockId=String(msg.blockId||"");
           if(!blockId || blockId!==activeMindmapBlockId) return;
           const cloudDoc=await fetchMindmapFromCloud(blockId);
-          if(cloudDoc) el("mindmapFrame").contentWindow.postMessage({type:"16h:mindmap-load",blockId,doc:cloudDoc},location.origin);
+          if(cloudDoc){
+            el("mindmapFrame").contentWindow.postMessage({
+              type:"16h:mindmap-load",blockId,doc:cloudDoc
+            },location.origin);
+          }
           el("mindmapSyncState").textContent=cloudUser?"Prêt · Cloud":"Sauvegarde locale active";
+          return;
         }
 
         if(msg.type==="16h:project-sync"){
           const project=projectById(msg.projectId);
           if(!project || !Array.isArray(msg.blocks)) return;
-          project.mindmapBlocks=msg.blocks;
+
+          project.mindmapBlocks=msg.blocks.map(block=>({
+            ...block,
+            id:String(block.id),
+            items:Array.isArray(block.items) ? block.items.map(item=>({
+              id:String(item.id), text:item.text||"", done:!!item.done
+            })) : []
+          }));
           project.updatedAt=Date.now();
-          saveState(false); renderProjectsView(); renderProjectDayPlanner(); renderWeekProjectFocus();
+
+          state.blocks
+            .filter(block=>String(block.projectId||"")===String(project.id) && block.mindmapNodeId)
+            .forEach(timelineBlock=>{
+              const source=mindmapBlockById(project,timelineBlock.mindmapNodeId);
+              if(!source) return;
+              const byId=new Map((source.items||[]).map(item=>[String(item.id),item]));
+              (timelineBlock.tasks||[]).forEach(task=>{
+                const sourceItem=byId.get(String(task.id));
+                if(!sourceItem) return;
+                if(sourceItem.done){
+                  task.completedAt=task.completedAt||Date.now();
+                  task.startedAt=task.startedAt||task.completedAt;
+                }else{
+                  task.completedAt=0;
+                }
+              });
+              timelineBlock.updatedAt=Date.now();
+            });
+
+          saveState(false);
+          renderProjectsView();
+          renderProjectDayPlanner();
+          renderWeekProjectFocus();
+          renderFocusMode();
           return;
         }
 
         if(msg.type==="16h:schedule-project-block"){
-          scheduleProjectMindmapBlock(msg.projectId,msg.nodeId,msg.dateKey||localDateKey(new Date())) ; return;
+          scheduleProjectMindmapBlock(msg.projectId,msg.nodeId,msg.dateKey||localDateKey(new Date()));
+          return;
+        }
+
+        if(msg.type==="16h:open-project-block-detail"){
+          openProjectBlockDetail(msg.projectId,msg.nodeId,msg.title||"Bloc de travail");
+          return;
+        }
+
+        if(msg.type==="16h:block-detail-task-toggle"){
+          const project=projectById(msg.projectId);
+          const mapBlock=mindmapBlockById(project,msg.nodeId);
+          const item=mapBlock?.items?.find(it=>String(it.id)===String(msg.itemId));
+          if(!project || !mapBlock || !item) return;
+
+          item.done=!!msg.done;
+          project.updatedAt=Date.now();
+
+          state.blocks
+            .filter(block=>String(block.projectId||"")===String(project.id) &&
+              String(block.mindmapNodeId||"")===String(mapBlock.id))
+            .forEach(block=>{
+              const task=block.tasks?.find(t=>String(t.id)===String(item.id));
+              if(!task) return;
+              if(item.done){
+                task.completedAt=task.completedAt||Date.now();
+                task.startedAt=task.startedAt||task.completedAt;
+              }else{
+                task.completedAt=0;
+              }
+              block.updatedAt=Date.now();
+            });
+
+          saveState(false);
+          render();
+          return;
         }
 
         if(msg.type==="16h:mindmap-save"){
-          const blockId=String(msg.blockId||""); if(!blockId || !msg.doc) return;
+          const blockId=String(msg.blockId||"");
+          if(!blockId || !msg.doc) return;
           queueMindmapCloudSave(blockId,msg.doc);
+          return;
         }
-        if(msg.type==="16h:mindmap-close") closeMindmap();
+
+        if(msg.type==="16h:mindmap-close") handleMindmapBack();
       });
 
       document.addEventListener("keydown",event=>{
@@ -7075,7 +7208,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=11.2").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=12").catch(() => {});
       });
     }
   </script>
