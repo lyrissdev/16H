@@ -2897,17 +2897,23 @@
         return filtered.sort((a,b)=>a.start-b.start);
       }
 
+      function blockReservesTimelineTime(block){
+        if(!block) return false;
+        if(block.floating) return false;
+
+        // If a block is intentionally hidden from the active 16H planning model,
+        // it must not invisibly reserve a time slot.
+        return isFocusBlock(block);
+      }
+
       function hasConflict(start,end,excludeBlockId=null){
         for (const b of state.blocks){
           if (b.id === excludeBlockId) continue;
-
-          // A floating block has a technical timestamp only so it can be
-          // stored/synchronised. It must NOT reserve any real time until
-          // the user actually places it on the timeline.
-          if (b.floating) continue;
-
+          if (!blockReservesTimelineTime(b)) continue;
           if (intervalsOverlap(start,end,b.start,b.end)) return true;
         }
+
+        // Daily rules (especially sleep) remain real occupied time.
         for (const r of getRecurringInstances(start - 24*3600000, end + 24*3600000)){
           if (intervalsOverlap(start,end,r.start,r.end)) return true;
         }
@@ -4043,7 +4049,7 @@
 
       function blockOverlapsExisting(candidate,ignoreId=null){
         return state.blocks.some(b=>{
-          if(b.floating || b.id===ignoreId) return false;
+          if(b.id===ignoreId || !blockReservesTimelineTime(b)) return false;
           return intervalsOverlap(
             Number(candidate.start),
             Number(candidate.end),
@@ -4247,7 +4253,7 @@
         const conflict=state.blocks.some(b=>{
           if(b.floating) return false;
           if(String(b.id)===String(current.id) || String(b.id)===String(next.id)) return false;
-          return intervalsOverlap(next.start,next.end,b.start,b.end);
+          return blockReservesTimelineTime(b) && intervalsOverlap(next.start,next.end,b.start,b.end);
         }) || getRecurringInstances(next.start-24*3600000,next.end+24*3600000).some(r=>
           intervalsOverlap(next.start,next.end,r.start,r.end)
         );
@@ -5447,7 +5453,10 @@
           if(e<=s) e.setDate(e.getDate()+1);
 
           // Check explicit blocks and OTHER recurring rules only.
-          const blockConflict=state.blocks.some(b=>intervalsOverlap(s.getTime(),e.getTime(),b.start,b.end));
+          const blockConflict=state.blocks.some(b=>
+            blockReservesTimelineTime(b) &&
+            intervalsOverlap(s.getTime(),e.getTime(),b.start,b.end)
+          );
           const otherRuleConflict=getRecurringInstances(
             s.getTime()-24*3600000,
             e.getTime()+24*3600000
@@ -5502,7 +5511,7 @@
         let conflict=false;
         for(const inst of instances){
           for(const b of state.blocks){
-            if(intervalsOverlap(inst.start,inst.end,b.start,b.end)){ conflict=true; break; }
+            if(blockReservesTimelineTime(b) && intervalsOverlap(inst.start,inst.end,b.start,b.end)){ conflict=true; break; }
           }
           if(conflict) break;
 
@@ -7228,7 +7237,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=12.2").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=12.3").catch(() => {});
       });
     }
   </script>
