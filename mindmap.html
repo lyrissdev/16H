@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Home Mindmap</title>
+<!-- Home Mindmap V17.1: live dynamic connectors -->
+  <title>Home Mindmap</title>
 <style>
   :root{
     --bg:#fcfcfd; --grid:#dfe4ec; --ink:#17191d; --muted:#6f7785;
@@ -304,7 +305,7 @@
   .radius-presets button:hover{background:#f4f3f7}
 
 
-  /* 16H V12 adapter — does not replace the V17 auto-layout engine */
+  /* 16H V12.2 adapter — V17.2 remains authoritative for auto-layout/connectors */
   #project16hActions{
     position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
     z-index:75;display:none;align-items:center;gap:7px;background:rgba(255,255,255,.98);
@@ -312,31 +313,49 @@
     box-shadow:0 8px 28px rgba(20,24,31,.14);backdrop-filter:blur(10px)
   }
   #project16hActions.show{display:flex}
-  #project16hActions .p16-label{font-size:12px;font-weight:800;padding:0 7px;color:#606875;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}
-  #project16hActions button{height:34px;border:1px solid #dfe3e9;border-radius:9px;background:#fff;padding:0 10px;font-weight:800;font-size:12px;cursor:pointer}
+  #project16hActions .p16-label{
+    font-size:12px;font-weight:800;padding:0 7px;color:#606875;white-space:nowrap;
+    max-width:260px;overflow:hidden;text-overflow:ellipsis
+  }
+  #project16hActions button{
+    height:34px;border:1px solid #dfe3e9;border-radius:9px;background:#fff;
+    padding:0 10px;font-weight:800;font-size:12px;cursor:pointer
+  }
   #project16hActions button:hover{background:#f5f6f8}
   #project16hActions .primary{background:#17191d;color:#fff;border-color:#17191d}
   #project16hActions .icon{width:36px;padding:0;font-size:17px}
-  #p16MetaDialog{border:0;border-radius:18px;padding:0;width:min(470px,calc(100vw - 28px));box-shadow:0 28px 80px rgba(0,0,0,.22)}
+
+  #p16MetaDialog{
+    border:0;border-radius:18px;padding:0;width:min(470px,calc(100vw - 28px));
+    box-shadow:0 28px 80px rgba(0,0,0,.22)
+  }
   #p16MetaDialog::backdrop{background:rgba(18,22,28,.32)}
-  .p16-modal{padding:22px}.p16-modal h3{margin:0 0 17px;font-size:22px}
+  .p16-modal{padding:22px}
+  .p16-modal h3{margin:0 0 17px;font-size:22px}
   .p16-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .p16-field{display:flex;flex-direction:column;gap:6px}
   .p16-field label{font-size:12px;font-weight:800;color:#66707d}
-  .p16-field input,.p16-field select{height:42px;border:1px solid #dfe3e9;border-radius:10px;background:#fff;padding:0 10px}
+  .p16-field input,.p16-field select{
+    height:42px;border:1px solid #dfe3e9;border-radius:10px;background:#fff;padding:0 10px
+  }
   .p16-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
-  .p16-actions button{height:39px;border:1px solid #dfe3e9;background:#fff;border-radius:10px;padding:0 13px;font-weight:800;cursor:pointer}
+  .p16-actions button{
+    height:39px;border:1px solid #dfe3e9;background:#fff;border-radius:10px;
+    padding:0 13px;font-weight:800;cursor:pointer
+  }
   .p16-actions .primary{background:#17191d;color:#fff;border-color:#17191d}
+
   .detail-task-toggle{
     position:absolute;right:-11px;top:-11px;width:26px;height:26px;border-radius:50%;
     border:2px solid #b9c1cc;background:#fff;z-index:50;cursor:pointer;font-weight:900;
     box-shadow:0 2px 7px rgba(0,0,0,.12)
   }
   .detail-task-toggle.done{background:#17191d;color:#fff;border-color:#17191d}
+
   #host16hBadge{
-    position:absolute;left:70px;bottom:18px;z-index:74;background:#fff;border:1px solid #e0e4ea;
-    border-radius:999px;padding:7px 10px;font-size:11px;font-weight:800;
-    box-shadow:0 5px 18px rgba(0,0,0,.08)
+    position:absolute;left:70px;bottom:18px;z-index:74;background:#fff;
+    border:1px solid #e0e4ea;border-radius:999px;padding:7px 10px;
+    font-size:11px;font-weight:800;box-shadow:0 5px 18px rgba(0,0,0,.08)
   }
 
 </style>
@@ -428,23 +447,44 @@
     <button id="p16TodayBtn" class="primary" type="button">+ Aujourd’hui</button>
     <button id="p16DetailBtn" class="icon" type="button" title="Ouvrir la carte de ce bloc">↗</button>
   </div>
+
   <dialog id="p16MetaDialog">
     <form id="p16MetaForm" class="p16-modal">
       <h3>Bloc de travail 16H</h3>
       <div class="p16-grid">
-        <div class="p16-field"><label>Durée prévue</label><select id="p16Duration">
-          <option value="30">30 min</option><option value="45">45 min</option>
-          <option value="60">1 h</option><option value="90">1 h 30</option>
-          <option value="120">2 h</option><option value="180">3 h</option><option value="240">4 h</option>
-        </select></div>
-        <div class="p16-field"><label>Mode de travail</label><select id="p16Mode">
-          <option value="solo">Session ordinateur</option><option value="group">Travail en groupe</option>
-        </select></div>
-        <div class="p16-field"><label>Deadline</label><input id="p16Deadline" type="date"/></div>
-        <div class="p16-field"><label>Priorité</label><select id="p16Priority">
-          <option value="5">5 — Très haute</option><option value="4">4 — Haute</option>
-          <option value="3">3 — Normale</option><option value="2">2 — Basse</option><option value="1">1 — Faible</option>
-        </select></div>
+        <div class="p16-field">
+          <label>Durée prévue</label>
+          <select id="p16Duration">
+            <option value="30">30 min</option>
+            <option value="45">45 min</option>
+            <option value="60">1 h</option>
+            <option value="90">1 h 30</option>
+            <option value="120">2 h</option>
+            <option value="180">3 h</option>
+            <option value="240">4 h</option>
+          </select>
+        </div>
+        <div class="p16-field">
+          <label>Mode de travail</label>
+          <select id="p16Mode">
+            <option value="solo">Session ordinateur</option>
+            <option value="group">Travail en groupe</option>
+          </select>
+        </div>
+        <div class="p16-field">
+          <label>Deadline</label>
+          <input id="p16Deadline" type="date"/>
+        </div>
+        <div class="p16-field">
+          <label>Priorité</label>
+          <select id="p16Priority">
+            <option value="5">5 — Très haute</option>
+            <option value="4">4 — Haute</option>
+            <option value="3">3 — Normale</option>
+            <option value="2">2 — Basse</option>
+            <option value="1">1 — Faible</option>
+          </select>
+        </div>
       </div>
       <div class="p16-actions">
         <button id="p16MetaCancel" type="button">Annuler</button>
@@ -452,6 +492,7 @@
       </div>
     </form>
   </dialog>
+
   <div id="host16hBadge" hidden></div>
   <div id="toast"></div>
 </div>
@@ -735,21 +776,10 @@ function roundedPathFromPoints(points,r=18){
   return d;
 }
 function connectorPolylineWorld(c){
-  if(Array.isArray(c.autoRoutePoints) && c.autoRoutePoints.length>=2) return c.autoRoutePoints.map(p=>({x:p.x,y:p.y}));
-  const a=endpoint(c,"from"), b=endpoint(c,"to");
-  const fa=c.from?.anchor || orthDir(b,a), ta=c.to?.anchor || orthDir(a,b);
-  if(c.type==="curve") return [a,b];
-  if(c.type==="straight") return [a,b];
-  const stub=Math.max(28, Math.min(56, Math.max(Math.abs(b.x-a.x),Math.abs(b.y-a.y))/3));
-  const p1=offsetPoint(a,fa,stub), p2=offsetPoint(b,ta,stub);
-  let pts=[a,p1];
-  const faH=(fa==="left"||fa==="right"), taH=(ta==="left"||ta==="right");
-  if(faH && taH){ const mx=(p1.x+p2.x)/2; pts.push({x:mx,y:p1.y},{x:mx,y:p2.y}); }
-  else if(!faH && !taH){ const my=(p1.y+p2.y)/2; pts.push({x:p1.x,y:my},{x:p2.x,y:my}); }
-  else if(faH && !taH){ pts.push({x:p2.x,y:p1.y}); }
-  else { pts.push({x:p1.x,y:p2.y}); }
-  pts.push(p2,b);
-  return pts;
+  // V17.1: connector geometry is calculated LIVE from the current endpoints.
+  // Never reuse an auto-route snapshot, otherwise moving A/Z or a block leaves
+  // the visual path frozen at the old coordinates.
+  return computeLiveConnectorRoute(c);
 }
 function connectorPath(c){
   const ptsW=connectorPolylineWorld(c), pts=ptsW.map(worldToScreen);
@@ -768,7 +798,7 @@ function renderConnectors(){
     const hit=document.createElementNS("http://www.w3.org/2000/svg","path"); hit.setAttribute("d",p.d); hit.setAttribute("class","connector-hit"); hit.dataset.cid=c.id; connectorSvg.appendChild(hit);
     const vis=document.createElementNS("http://www.w3.org/2000/svg","path"); vis.setAttribute("d",p.d); vis.setAttribute("class","connector-visible");
     vis.setAttribute("stroke", c.style.color||"#17191d");
-    vis.setAttribute("stroke-width", c.style.width||2);
+    vis.setAttribute("stroke-width", selectedConnectorId===c.id ? Math.max(3,(c.style.width||2)+1) : (c.style.width||2));
     vis.setAttribute("stroke-linecap","round"); vis.setAttribute("stroke-linejoin","round");
     if(c.style.dash) vis.setAttribute("stroke-dasharray",c.style.dash);
     if(c.style.arrow!==false) vis.setAttribute("marker-end","url(#arrow)");
@@ -1067,10 +1097,17 @@ function onPointerMove(ev){
   }
   if(interaction.type==="connector-endpoint"){
     const c=getCon(interaction.cid); if(!c) return;
-    const wp=screenToWorld(pos), near=nearestAnchor(wp,56/state.viewport.zoom);
-    if(near){ c[interaction.side]=near; c[interaction.side+"Point"]=null; }
-    else { c[interaction.side]=null; c[interaction.side+"Point"]=wp; }
-    renderConnectors(); renderSelection(); return;
+    delete c.autoRoutePoints;delete c.controlPoints;delete c.bendPoints;delete c.points;_clearAutoTreeRouting(c);
+    const wp=screenToWorld(pos), near=nearestAnchor(wp,42/state.viewport.zoom);
+    if(near){
+      c[interaction.side]=near;
+      c[interaction.side+"Point"]=null;
+    }else{
+      c[interaction.side]=null;
+      c[interaction.side+"Point"]=wp;
+    }
+    // Immediate live redraw while the pointer moves.
+    renderConnectors();renderSelection();return;
   }
   if(interaction.type==="rotate"){
     const c=worldToScreen({x:interaction.cx,y:interaction.cy});let deg=Math.atan2(pos.y-c.y,pos.x-c.x)*180/Math.PI+90;if(ev.shiftKey)deg=Math.round(deg/15)*15;
@@ -1387,12 +1424,176 @@ function _segmentHitsRect(a,b,r){
   if(Math.abs(a.y-b.y)<.001){const y=a.y,x1=Math.min(a.x,b.x),x2=Math.max(a.x,b.x);return y>r.t&&y<r.b&&x2>r.l&&x1<r.r}
   return false;
 }
-function _pathHitsObstacle(points,excludedIds=new Set()){
+function _blockingObstacles(points,excludedIds=new Set()){
+  const clearance=AUTO_LAYOUT?.CONNECTOR_CLEARANCE||24;
   const obstacles=state.elements.filter(e=>e.type!=="section"&&!excludedIds.has(e.id));
-  for(let i=0;i<points.length-1;i++){
-    for(const e of obstacles)if(_segmentHitsRect(points[i],points[i+1],_rectFor(e,AUTO_LAYOUT.CONNECTOR_CLEARANCE)))return true;
+  return obstacles.filter(e=>{
+    const r=_rectFor(e,clearance);
+    for(let i=0;i<points.length-1;i++) if(_segmentHitsRect(points[i],points[i+1],r)) return true;
+    return false;
+  });
+}
+function _pathLength(points){let n=0;for(let i=0;i<points.length-1;i++)n+=Math.abs(points[i+1].x-points[i].x)+Math.abs(points[i+1].y-points[i].y);return n}
+function _basicOrthogonalPoints(c){
+  const a=endpoint(c,"from"),b=endpoint(c,"to");
+  const fa=c.from?.anchor||orthDir(b,a),ta=c.to?.anchor||orthDir(a,b);
+  const distance=Math.max(Math.abs(b.x-a.x),Math.abs(b.y-a.y));
+  const stub=Math.max(26,Math.min(52,distance*.18));
+  const p1=offsetPoint(a,fa,stub),p2=offsetPoint(b,ta,stub);
+  const fromH=fa==="left"||fa==="right",toH=ta==="left"||ta==="right";
+  let pts=[a,p1];
+  if(fromH&&toH){
+    const mid=(p1.x+p2.x)/2;pts.push({x:mid,y:p1.y},{x:mid,y:p2.y});
+  }else if(!fromH&&!toH){
+    const mid=(p1.y+p2.y)/2;pts.push({x:p1.x,y:mid},{x:p2.x,y:mid});
+  }else if(fromH){
+    pts.push({x:p2.x,y:p1.y});
+  }else{
+    pts.push({x:p1.x,y:p2.y});
   }
-  return false;
+  pts.push(p2,b);
+  return {pts,a,b,fa,ta,p1,p2,fromH,toH};
+}
+function _clearAutoTreeRouting(c){
+  delete c.autoTreeParentElementId;
+  delete c.autoTreeChildElementId;
+  delete c.autoTreeParentUnitId;
+  delete c.autoTreeChildUnitId;
+}
+function _elementCenter(e){return {x:e.x+e.w/2,y:e.y+e.h/2}}
+function _liveTreeSide(c){
+  const p=getEl(c.autoTreeParentElementId),ch=getEl(c.autoTreeChildElementId);
+  if(!p||!ch)return null;
+  const a=_elementCenter(p),b=_elementCenter(ch),dx=b.x-a.x,dy=b.y-a.y;
+  return Math.abs(dx)>=Math.abs(dy)?(dx>=0?"right":"left"):(dy>=0?"bottom":"top");
+}
+function _treeSiblingConnectors(c){
+  if(!c.autoTreeParentElementId)return [];
+  const side=_liveTreeSide(c);
+  if(!side)return [];
+  return state.connectors.filter(x=>x.autoTreeParentElementId===c.autoTreeParentElementId && _liveTreeSide(x)===side && x.from?.elementId===c.autoTreeParentElementId && x.to?.elementId===x.autoTreeChildElementId);
+}
+function _sharedTrunkRoute(c){
+  // V17.2: siblings from the same parent share one virtual trunk. Nothing here is
+  // stored as absolute bend coordinates: the trunk is rebuilt from live geometry
+  // on every render, so moving the parent or any child keeps the tree responsive.
+  const siblings=_treeSiblingConnectors(c);
+  if(siblings.length<2)return null;
+  const parent=getEl(c.autoTreeParentElementId),child=getEl(c.autoTreeChildElementId);
+  if(!parent||!child)return null;
+  const side=_liveTreeSide(c);
+  if(!side)return null;
+  const parentPoint=endpoint(c,"from"),childPoint=endpoint(c,"to");
+  const childEls=siblings.map(x=>getEl(x.autoTreeChildElementId)).filter(Boolean);
+  if(!childEls.length)return null;
+  const minClear=34;
+  let pts=null;
+  if(side==="left"){
+    const parentEdge=parent.x;
+    const childEdge=Math.max(...childEls.map(e=>e.x+e.w));
+    const gap=parentEdge-childEdge;
+    let trunkX=(parentEdge+childEdge)/2;
+    if(gap>minClear*2)trunkX=Math.max(childEdge+minClear,Math.min(parentEdge-minClear,trunkX));
+    pts=[parentPoint,{x:trunkX,y:parentPoint.y},{x:trunkX,y:childPoint.y},childPoint];
+  }else if(side==="right"){
+    const parentEdge=parent.x+parent.w;
+    const childEdge=Math.min(...childEls.map(e=>e.x));
+    const gap=childEdge-parentEdge;
+    let trunkX=(parentEdge+childEdge)/2;
+    if(gap>minClear*2)trunkX=Math.max(parentEdge+minClear,Math.min(childEdge-minClear,trunkX));
+    pts=[parentPoint,{x:trunkX,y:parentPoint.y},{x:trunkX,y:childPoint.y},childPoint];
+  }else if(side==="top"){
+    const parentEdge=parent.y;
+    const childEdge=Math.max(...childEls.map(e=>e.y+e.h));
+    const gap=parentEdge-childEdge;
+    let trunkY=(parentEdge+childEdge)/2;
+    if(gap>minClear*2)trunkY=Math.max(childEdge+minClear,Math.min(parentEdge-minClear,trunkY));
+    pts=[parentPoint,{x:parentPoint.x,y:trunkY},{x:childPoint.x,y:trunkY},childPoint];
+  }else{
+    const parentEdge=parent.y+parent.h;
+    const childEdge=Math.min(...childEls.map(e=>e.y));
+    const gap=childEdge-parentEdge;
+    let trunkY=(parentEdge+childEdge)/2;
+    if(gap>minClear*2)trunkY=Math.max(parentEdge+minClear,Math.min(childEdge-minClear,trunkY));
+    pts=[parentPoint,{x:parentPoint.x,y:trunkY},{x:childPoint.x,y:trunkY},childPoint];
+  }
+  return pts;
+}
+function assignTreeRoutingGroups(tree){
+  state.connectors.forEach(_clearAutoTreeRouting);
+  if(!tree)return;
+  const info=tree.sectionInfo;
+  state.connectors.forEach(c=>{
+    if(!c.from?.elementId||!c.to?.elementId)return;
+    const ua=_unitIdForElement(c.from.elementId,info),ub=_unitIdForElement(c.to.elementId,info);
+    let parentUnit=null,childUnit=null,parentAt="from";
+    if(tree.nodes.get(ub)?.parent===ua){parentUnit=ua;childUnit=ub;parentAt="from"}
+    else if(tree.nodes.get(ua)?.parent===ub){parentUnit=ub;childUnit=ua;parentAt="to"}
+    else return;
+
+    // Normalize visual direction parent -> child so arrowheads always terminate on
+    // the child after auto-arrange. This also makes sibling grouping deterministic.
+    if(parentAt==="to"){
+      const f=c.from,t=c.to,fp=c.fromPoint,tp=c.toPoint;
+      c.from=t;c.to=f;c.fromPoint=tp;c.toPoint=fp;
+    }
+    c.autoTreeParentUnitId=parentUnit;
+    c.autoTreeChildUnitId=childUnit;
+    c.autoTreeParentElementId=c.from?.elementId||null;
+    c.autoTreeChildElementId=c.to?.elementId||null;
+  });
+
+  // Anchor all sibling groups consistently. Children on the left receive the
+  // connector on RIGHT, children on the right on LEFT, etc.
+  state.connectors.forEach(c=>{
+    if(!c.autoTreeParentElementId||!c.autoTreeChildElementId)return;
+    const side=_liveTreeSide(c);
+    if(side==="left"){c.from.anchor="left";c.to.anchor="right"}
+    else if(side==="right"){c.from.anchor="right";c.to.anchor="left"}
+    else if(side==="top"){c.from.anchor="top";c.to.anchor="bottom"}
+    else if(side==="bottom"){c.from.anchor="bottom";c.to.anchor="top"}
+    c.type="elbow";
+  });
+}
+function computeLiveConnectorRoute(c){
+  const a=endpoint(c,"from"),b=endpoint(c,"to");
+  if(c.type==="straight"||c.type==="curve") return [a,b];
+
+  const shared=_sharedTrunkRoute(c);
+  if(shared)return shared;
+
+  const base=_basicOrthogonalPoints(c);
+  const excluded=new Set([c.from?.elementId,c.to?.elementId].filter(Boolean));
+  const blockers=_blockingObstacles(base.pts,excluded);
+  if(!blockers.length) return base.pts;
+
+  const clearance=(AUTO_LAYOUT?.CONNECTOR_CLEARANCE||24)+12;
+  const candidates=[];
+  // Only route around the elements actually blocking THIS connector. The old V17
+  // looked at every block on the board, which produced giant detours/spaghetti.
+  if(base.fromH||base.toH){
+    const top=Math.min(...blockers.map(e=>e.y))-clearance;
+    const bottom=Math.max(...blockers.map(e=>e.y+e.h))+clearance;
+    candidates.push([
+      base.a,base.p1,{x:base.p1.x,y:top},{x:base.p2.x,y:top},base.p2,base.b
+    ]);
+    candidates.push([
+      base.a,base.p1,{x:base.p1.x,y:bottom},{x:base.p2.x,y:bottom},base.p2,base.b
+    ]);
+  }else{
+    const left=Math.min(...blockers.map(e=>e.x))-clearance;
+    const right=Math.max(...blockers.map(e=>e.x+e.w))+clearance;
+    candidates.push([
+      base.a,base.p1,{x:left,y:base.p1.y},{x:left,y:base.p2.y},base.p2,base.b
+    ]);
+    candidates.push([
+      base.a,base.p1,{x:right,y:base.p1.y},{x:right,y:base.p2.y},base.p2,base.b
+    ]);
+  }
+  const clear=candidates.filter(p=>!_blockingObstacles(p,excluded).length);
+  const pool=clear.length?clear:candidates;
+  pool.sort((x,y)=>_pathLength(x)-_pathLength(y));
+  return pool[0]||base.pts;
 }
 function chooseBestAnchors(c){
   if(!c.from?.elementId||!c.to?.elementId)return;
@@ -1406,38 +1607,18 @@ function chooseBestAnchors(c){
   }
 }
 function resetConnectorControlPoints(){
-  state.connectors.forEach(c=>{delete c.autoRoutePoints;delete c.controlPoints;delete c.bendPoints;delete c.points});
+  state.connectors.forEach(c=>{delete c.autoRoutePoints;delete c.controlPoints;delete c.bendPoints;delete c.points;_clearAutoTreeRouting(c)});
 }
 function routeConnector(c){
+  // Auto-arrange never stores bend coordinates. Paths remain fully live.
   chooseBestAnchors(c);
-  const a=endpoint(c,"from"),b=endpoint(c,"to");
-  const fa=c.from?.anchor||orthDir(b,a),ta=c.to?.anchor||orthDir(a,b),stub=34;
-  const p1=offsetPoint(a,fa,stub),p2=offsetPoint(b,ta,stub);
-  const fromH=fa==="left"||fa==="right",toH=ta==="left"||ta==="right";
-  let pts=[a,p1];
-  if(fromH&&toH){const mid=(p1.x+p2.x)/2;pts.push({x:mid,y:p1.y},{x:mid,y:p2.y})}
-  else if(!fromH&&!toH){const mid=(p1.y+p2.y)/2;pts.push({x:p1.x,y:mid},{x:p2.x,y:mid})}
-  else if(fromH){pts.push({x:p2.x,y:p1.y})}
-  else{pts.push({x:p1.x,y:p2.y})}
-  pts.push(p2,b);
-  const excluded=new Set([c.from?.elementId,c.to?.elementId].filter(Boolean));
-  if(_pathHitsObstacle(pts,excluded)){
-    const obs=state.elements.filter(e=>e.type!=="section"&&!excluded.has(e.id));
-    if(fromH||toH){
-      const top=Math.min(a.y,b.y,...obs.map(e=>e.y))-AUTO_LAYOUT.CONNECTOR_CLEARANCE*2;
-      const bottom=Math.max(a.y,b.y,...obs.map(e=>e.y+e.h))+AUTO_LAYOUT.CONNECTOR_CLEARANCE*2;
-      const detour=Math.abs(top-(a.y+b.y)/2)<=Math.abs(bottom-(a.y+b.y)/2)?top:bottom;
-      pts=[a,p1,{x:p1.x,y:detour},{x:p2.x,y:detour},p2,b];
-    }else{
-      const left=Math.min(a.x,b.x,...obs.map(e=>e.x))-AUTO_LAYOUT.CONNECTOR_CLEARANCE*2;
-      const right=Math.max(a.x,b.x,...obs.map(e=>e.x+e.w))+AUTO_LAYOUT.CONNECTOR_CLEARANCE*2;
-      const detour=Math.abs(left-(a.x+b.x)/2)<=Math.abs(right-(a.x+b.x)/2)?left:right;
-      pts=[a,p1,{x:detour,y:p1.y},{x:detour,y:p2.y},p2,b];
-    }
-  }
-  c.type="elbow";c.autoRoutePoints=pts.map(p=>({x:Math.round(p.x*100)/100,y:Math.round(p.y*100)/100}));
+  c.type="elbow";
+  delete c.autoRoutePoints;delete c.controlPoints;delete c.bendPoints;delete c.points;
 }
-function rerouteAllConnectors(){state.connectors.forEach(routeConnector)}
+function rerouteAllConnectors(tree=null){
+  state.connectors.forEach(routeConnector);
+  if(tree)assignTreeRoutingGroups(tree);
+}
 function fitToContent(){fitContent(AUTO_LAYOUT.VIEWPORT_PADDING)}
 
 function _overlapsRect(a,b,pad=0){return !(a.x+a.w+pad<=b.x||b.x+b.w+pad<=a.x||a.y+a.h+pad<=b.y||b.y+b.h+pad<=a.y)}
@@ -1463,7 +1644,7 @@ function autoArrangeMindmap(){
     // Children were laid out relative to their section before section movement; this call only
     // refreshes section sizes from the already fitted child dimensions, without changing content.
     resetConnectorControlPoints();
-    rerouteAllConnectors();
+    rerouteAllConnectors(tree);
     selectedConnectorId=null;state.selectedIds=[];
     commitHistory();
     fitToContent();
@@ -1472,7 +1653,7 @@ function autoArrangeMindmap(){
   }catch(err){console.error("Auto arrange failed",err);toast("Impossible de réorganiser la carte")}
   finally{if(btn)btn.disabled=false}
 }
-/* ======================= /V17 — deterministic auto-layout engine ======================= */
+/* ======================= /V17.2 — deterministic auto-layout + live shared-trunk routing ======================= */
 
 function fitContent(pad=120){
   if(!state.elements.length)return;const l=Math.min(...state.elements.map(e=>e.x)),t=Math.min(...state.elements.map(e=>e.y)),r=Math.max(...state.elements.map(e=>e.x+e.w)),b=Math.max(...state.elements.map(e=>e.y+e.h));
@@ -1503,30 +1684,53 @@ function p16ProjectBlocks(){
   return state.elements.filter(e=>e.type==="todo").map(e=>{
     const meta=e.blockMeta||{};
     return {
-      id:String(e.id),title:e.text||"Bloc de travail",description:e.description||"",
+      id:String(e.id),
+      title:e.text||"Bloc de travail",
+      description:e.description||"",
       durationMinutes:Math.max(15,Number(meta.durationMinutes)||90),
       workMode:meta.workMode==="group"?"group":"solo",
-      deadline:meta.deadline||"",priority:Math.max(1,Math.min(5,Number(meta.priority)||3)),
-      items:(e.items||[]).map(item=>({id:String(item.id),text:item.text||"",done:!!item.done})),
+      deadline:meta.deadline||"",
+      priority:Math.max(1,Math.min(5,Number(meta.priority)||3)),
+      items:(e.items||[]).map(item=>({
+        id:String(item.id),text:item.text||"",done:!!item.done
+      })),
       updatedAt:Date.now()
     };
   });
 }
 function p16Document(){
-  return {version:17,integrationVersion:12,mode:HOST16H_MODE,projectId:HOST16H_PROJECT_ID,
-    nodeId:HOST16H_NODE_ID,blockId:HOST16H_BLOCK_ID,viewport:state.viewport,
-    elements:state.elements,connectors:state.connectors};
+  return {
+    version:17.2,
+    integrationVersion:12.2,
+    mode:HOST16H_MODE,
+    projectId:HOST16H_PROJECT_ID,
+    nodeId:HOST16H_NODE_ID,
+    blockId:HOST16H_BLOCK_ID,
+    viewport:state.viewport,
+    elements:state.elements,
+    connectors:state.connectors
+  };
 }
 function saveNow(show=true){
   const doc=p16Document();
   localStorage.setItem(HOST16H_STORAGE_KEY,JSON.stringify(doc));
+
   if(HOST16H && window.parent!==window){
     if(PROJECT16H_MODE){
-      window.parent.postMessage({type:"16h:project-sync",projectId:HOST16H_PROJECT_ID,blocks:p16ProjectBlocks()},location.origin);
+      window.parent.postMessage({
+        type:"16h:project-sync",
+        projectId:HOST16H_PROJECT_ID,
+        blocks:p16ProjectBlocks()
+      },location.origin);
     }else if(!DETAIL16H_MODE && HOST16H_BLOCK_ID){
-      window.parent.postMessage({type:"16h:mindmap-save",blockId:HOST16H_BLOCK_ID,doc},location.origin);
+      window.parent.postMessage({
+        type:"16h:mindmap-save",
+        blockId:HOST16H_BLOCK_ID,
+        doc
+      },location.origin);
     }
   }
+
   if(show)toast("Sauvegardé");
 }
 function restore(){
@@ -1534,7 +1738,9 @@ function restore(){
     const doc=JSON.parse(localStorage.getItem(HOST16H_STORAGE_KEY)||"null");
     if(doc&&doc.elements){
       P16_RESTORED_DOC=doc;
-      state.viewport=doc.viewport||state.viewport;state.elements=doc.elements;state.connectors=doc.connectors||[];
+      state.viewport=doc.viewport||state.viewport;
+      state.elements=doc.elements;
+      state.connectors=doc.connectors||[];
       return doc;
     }
   }catch{}
@@ -1543,111 +1749,253 @@ function restore(){
 
 function p16SelectedTodo(){
   if(!PROJECT16H_MODE || state.selectedIds.length!==1)return null;
-  const e=getEl(state.selectedIds[0]);return e?.type==="todo"?e:null;
+  const e=getEl(state.selectedIds[0]);
+  return e?.type==="todo" ? e : null;
 }
+
 function p16RenderActions(){
-  const bar=$("#project16hActions");if(!bar)return;
-  const todo=p16SelectedTodo();if(!todo){bar.classList.remove("show");return}
+  const bar=$("#project16hActions");
+  if(!bar)return;
+  const todo=p16SelectedTodo();
+  if(!todo){bar.classList.remove("show");return}
   todo.blockMeta=todo.blockMeta||{durationMinutes:90,workMode:"solo",deadline:"",priority:3};
   $("#p16ActionLabel").textContent=todo.text||"Bloc 16H";
-  $("#p16MetaBtn").textContent=`${todo.blockMeta.durationMinutes||90} min · ${todo.blockMeta.workMode==="group"?"Groupe":"Solo"}`;
+  $("#p16MetaBtn").textContent=
+    `${todo.blockMeta.durationMinutes||90} min · ${todo.blockMeta.workMode==="group"?"Groupe":"Solo"}`;
   bar.classList.add("show");
 }
+
 function p16SeedProject(project){
-  if(!PROJECT16H_MODE||state.elements.length)return;
+  if(!PROJECT16H_MODE || state.elements.length)return;
+
   const elements=[],connectors=[];
   const root=el("shape",900,500,320,100,project.name||HOST16H_TITLE,"rounded",{
-    fill:project.color||HOST16H_COLOR,stroke:project.color||HOST16H_COLOR,strokeWidth:2,
-    radius:22,textColor:"#fff",fontSize:23
+    fill:project.color||HOST16H_COLOR,
+    stroke:project.color||HOST16H_COLOR,
+    strokeWidth:2,
+    radius:22,
+    textColor:"#ffffff",
+    fontSize:23
   });
-  root.z=20;elements.push(root);
+  root.z=20;
+  elements.push(root);
+
   const subs=Array.isArray(project.subprojects)?project.subprojects:[];
   subs.forEach((sp,index)=>{
-    const side=index%2===0?-1:1,row=Math.floor(index/2);
-    const secX=side<0?180:1420,secY=140+row*720;
+    const side=index%2===0?-1:1;
+    const row=Math.floor(index/2);
+    const secX=side<0?180:1420;
+    const secY=140+row*720;
+
     const sec=el("section",secX,secY,960,600,sp.name||"Sous-projet","section",{
-      fill:"#f8f9fb",stroke:project.color||HOST16H_COLOR,strokeWidth:2,radius:20,fontSize:18
+      fill:"#f8f9fb",
+      stroke:project.color||HOST16H_COLOR,
+      strokeWidth:2,
+      radius:20,
+      fontSize:18
     });
-    sec.z=1;sec.subprojectId=String(sp.id||"");elements.push(sec);
+    sec.z=1;
+    sec.subprojectId=String(sp.id||"");
+    elements.push(sec);
+
     const tasks=Array.isArray(sp.tasks)?sp.tasks:[];
     const cols=2,cardW=360,cardH=250,gapX=36,gapY=36,padX=60,top=115;
+
     tasks.forEach((task,ti)=>{
-      const col=ti%cols,rowIndex=Math.floor(ti/cols);
-      const todo=el("todo",secX+padX+col*(cardW+gapX),secY+top+rowIndex*(cardH+gapY),
-        cardW,cardH,task.name||"Bloc de travail","todo",{
-          fill:"#fff",stroke:project.color||HOST16H_COLOR,strokeWidth:1,radius:16,textAlign:"left"
-        });
-      todo.items=[{id:String(task.id||uid("todo")),text:task.description||task.name||"À faire",done:!!task.done}];
-      todo.blockMeta={durationMinutes:Math.max(15,Number(task.durationMinutes)||60),
-        workMode:task.workMode==="group"?"group":"solo",deadline:sp.deadline||"",
-        priority:Math.max(1,Math.min(5,Number(sp.priority)||3))};
-      todo.legacyTaskId=String(task.id||"");todo.parentSectionId=sec.id;elements.push(todo);
+      const col=ti%cols;
+      const rowIndex=Math.floor(ti/cols);
+      const todo=el(
+        "todo",
+        secX+padX+col*(cardW+gapX),
+        secY+top+rowIndex*(cardH+gapY),
+        cardW,cardH,
+        task.name||"Bloc de travail",
+        "todo",
+        {
+          fill:"#ffffff",
+          stroke:project.color||HOST16H_COLOR,
+          strokeWidth:1,
+          radius:16,
+          textAlign:"left"
+        }
+      );
+      todo.items=[{
+        id:String(task.id||uid("todo")),
+        text:task.description||task.name||"À faire",
+        done:!!task.done
+      }];
+      todo.blockMeta={
+        durationMinutes:Math.max(15,Number(task.durationMinutes)||60),
+        workMode:task.workMode==="group"?"group":"solo",
+        deadline:sp.deadline||"",
+        priority:Math.max(1,Math.min(5,Number(sp.priority)||3))
+      };
+      todo.legacyTaskId=String(task.id||"");
+      todo.parentSectionId=sec.id;
+      elements.push(todo);
     });
-    connectors.push(con({elementId:root.id,anchor:side<0?"left":"right"},{elementId:sec.id,anchor:side<0?"right":"left"}));
+
+    connectors.push(con(
+      {elementId:root.id,anchor:side<0?"left":"right"},
+      {elementId:sec.id,anchor:side<0?"right":"left"}
+    ));
   });
+
   if(!subs.length){
     const todo=el("todo",760,700,360,260,"Premier bloc de travail","todo",{
-      fill:"#fff",stroke:project.color||HOST16H_COLOR,strokeWidth:1,radius:16,textAlign:"left"
+      fill:"#ffffff",
+      stroke:project.color||HOST16H_COLOR,
+      strokeWidth:1,
+      radius:16,
+      textAlign:"left"
     });
     todo.items=[{id:uid("todo"),text:"Première tâche",done:false}];
     todo.blockMeta={durationMinutes:90,workMode:"solo",deadline:"",priority:3};
-    elements.push(todo);connectors.push(con({elementId:root.id,anchor:"bottom"},{elementId:todo.id,anchor:"top"}));
+    elements.push(todo);
+    connectors.push(con(
+      {elementId:root.id,anchor:"bottom"},
+      {elementId:todo.id,anchor:"top"}
+    ));
   }
-  state.elements=elements;state.connectors=connectors;state.viewport={x:100,y:60,zoom:.55};initHistory();
-  autoArrangeMindmap();saveNow(false);
+
+  state.elements=elements;
+  state.connectors=connectors;
+  state.viewport={x:100,y:60,zoom:.55};
+  initHistory();
+
+  // Uses the new V17.2 engine untouched, including live shared-trunk routing.
+  autoArrangeMindmap();
+  saveNow(false);
 }
+
 function p16ApplyProjectBlocks(blocks){
-  if(!PROJECT16H_MODE||!Array.isArray(blocks))return;
-  const byId=new Map(blocks.map(b=>[String(b.id),b]));
+  if(!PROJECT16H_MODE || !Array.isArray(blocks))return;
+  const byId=new Map(blocks.map(block=>[String(block.id),block]));
+
   state.elements.filter(e=>e.type==="todo").forEach(todo=>{
-    const src=byId.get(String(todo.id));if(!src)return;
-    todo.blockMeta={durationMinutes:Math.max(15,Number(src.durationMinutes)||90),
-      workMode:src.workMode==="group"?"group":"solo",deadline:src.deadline||"",
-      priority:Math.max(1,Math.min(5,Number(src.priority)||3))};
-    const itemMap=new Map((src.items||[]).map(i=>[String(i.id),i]));
-    (todo.items||[]).forEach(item=>{const x=itemMap.get(String(item.id));if(x)item.done=!!x.done});
+    const source=byId.get(String(todo.id));
+    if(!source)return;
+
+    todo.blockMeta={
+      durationMinutes:Math.max(15,Number(source.durationMinutes)||90),
+      workMode:source.workMode==="group"?"group":"solo",
+      deadline:source.deadline||"",
+      priority:Math.max(1,Math.min(5,Number(source.priority)||3))
+    };
+
+    const itemMap=new Map((source.items||[]).map(item=>[String(item.id),item]));
+    (todo.items||[]).forEach(item=>{
+      const incoming=itemMap.get(String(item.id));
+      if(incoming)item.done=!!incoming.done;
+    });
   });
 }
+
 function p16RepairLegacyContainment(){
-  const sections=state.elements.filter(e=>e.type==="section"),todos=state.elements.filter(e=>e.type==="todo");
+  if(!PROJECT16H_MODE)return;
+  const sections=state.elements.filter(e=>e.type==="section");
+  const todos=state.elements.filter(e=>e.type==="todo");
+  if(!sections.length || !todos.length)return;
+
   sections.forEach(sec=>{
-    const children=todos.filter(t=>String(t.parentSectionId||"")===String(sec.id));if(!children.length)return;
-    const cols=2,w=360,gx=36,gy=36,px=55,top=110;let y=sec.y+top;
+    const children=todos.filter(todo=>String(todo.parentSectionId||"")===String(sec.id));
+    if(!children.length)return;
+
+    const cols=2,cardW=360,gapX=36,gapY=36,padX=55,top=110;
+    let y=sec.y+top;
+
     for(let i=0;i<children.length;i+=cols){
-      const row=children.slice(i,i+cols),rh=Math.max(...row.map(t=>Math.max(t.h||260,260)));
-      row.forEach((t,c)=>{t.x=sec.x+px+c*(w+gx);t.y=y});y+=rh+gy;
+      const row=children.slice(i,i+cols);
+      const rowH=Math.max(...row.map(todo=>Math.max(todo.h||260,260)));
+      row.forEach((todo,col)=>{
+        todo.x=sec.x+padX+col*(cardW+gapX);
+        todo.y=y;
+      });
+      y+=rowH+gapY;
     }
-    sec.w=Math.max(sec.w||0,2*w+gx+2*px);sec.h=Math.max(sec.h||0,(y-sec.y)+50);
+
+    sec.w=Math.max(sec.w||0,2*cardW+gapX+2*padX);
+    sec.h=Math.max(sec.h||0,(y-sec.y)+50);
   });
 }
-function p16FocusNode(id){
-  const e=getEl(String(id));if(!e)return;
-  state.selectedIds=[e.id];
-  const r=viewport.getBoundingClientRect(),z=Math.max(.55,Math.min(1,state.viewport.zoom||.8));
-  state.viewport.zoom=z;state.viewport.x=r.width/2-(e.x+e.w/2)*z;state.viewport.y=r.height/2-(e.y+e.h/2)*z;render();
+
+function p16FocusNode(nodeId){
+  if(!nodeId)return;
+  const target=getEl(String(nodeId));
+  if(!target)return;
+
+  state.selectedIds=[target.id];
+  const vr=viewport.getBoundingClientRect();
+  const z=Math.max(.55,Math.min(1,state.viewport.zoom||.8));
+  state.viewport.zoom=z;
+  state.viewport.x=vr.width/2-(target.x+target.w/2)*z;
+  state.viewport.y=vr.height/2-(target.y+target.h/2)*z;
+  render();
 }
+
 function p16SeedDetail(payload){
-  if(!DETAIL16H_MODE||state.elements.length)return;
+  if(!DETAIL16H_MODE || state.elements.length)return;
+
   const elements=[],connectors=[];
   const root=el("shape",650,260,380,105,payload.title||HOST16H_TITLE,"rounded",{
-    fill:payload.color||HOST16H_COLOR,stroke:payload.color||HOST16H_COLOR,strokeWidth:2,
-    radius:22,textColor:"#fff",fontSize:22
-  });elements.push(root);
-  (payload.items||[]).forEach((item,index)=>{
-    const col=index%3,row=Math.floor(index/3);
-    const task=el("shape",300+col*330,500+row*165,250,90,item.text||`Tâche ${index+1}`,"task",{
-      fill:item.done?"#e7f4eb":"#fff",stroke:item.done?"#439766":"#cfd5de",
-      strokeWidth:2,radius:16,textColor:"#17191d"
-    });
-    task.taskItemId=String(item.id);task.taskDone=!!item.done;elements.push(task);
-    connectors.push(con({elementId:root.id,anchor:"bottom"},{elementId:task.id,anchor:"top"}));
+    fill:payload.color||HOST16H_COLOR,
+    stroke:payload.color||HOST16H_COLOR,
+    strokeWidth:2,
+    radius:22,
+    textColor:"#ffffff",
+    fontSize:22
   });
-  state.elements=elements;state.connectors=connectors;state.viewport={x:120,y:60,zoom:.7};initHistory();
-  autoArrangeMindmap();saveNow(false);
+  elements.push(root);
+
+  (payload.items||[]).forEach((item,index)=>{
+    const cols=3;
+    const col=index%cols;
+    const row=Math.floor(index/cols);
+
+    const task=el(
+      "shape",
+      300+col*330,
+      500+row*165,
+      250,90,
+      item.text||`Tâche ${index+1}`,
+      "task",
+      {
+        fill:item.done?"#e7f4eb":"#ffffff",
+        stroke:item.done?"#439766":"#cfd5de",
+        strokeWidth:2,
+        radius:16,
+        textColor:"#17191d"
+      }
+    );
+    task.taskItemId=String(item.id);
+    task.taskDone=!!item.done;
+    elements.push(task);
+
+    connectors.push(con(
+      {elementId:root.id,anchor:"bottom"},
+      {elementId:task.id,anchor:"top"}
+    ));
+  });
+
+  state.elements=elements;
+  state.connectors=connectors;
+  state.viewport={x:120,y:60,zoom:.7};
+  initHistory();
+  autoArrangeMindmap();
+  saveNow(false);
 }
+
 function p16OpenMeta(){
-  const todo=p16SelectedTodo();if(!todo)return;
-  todo.blockMeta=todo.blockMeta||{durationMinutes:90,workMode:"solo",deadline:"",priority:3};
+  const todo=p16SelectedTodo();
+  if(!todo)return;
+
+  todo.blockMeta=todo.blockMeta||{
+    durationMinutes:90,
+    workMode:"solo",
+    deadline:"",
+    priority:3
+  };
+
   P16_EDITING_META_ID=todo.id;
   $("#p16Duration").value=String(todo.blockMeta.durationMinutes||90);
   $("#p16Mode").value=todo.blockMeta.workMode==="group"?"group":"solo";
@@ -1754,13 +2102,31 @@ nodeLayer.addEventListener("dblclick",onNodeDoubleClick);
 
 nodeLayer.addEventListener("click",ev=>{
   if(!DETAIL16H_MODE)return;
-  const btn=ev.target.closest(".detail-task-toggle");if(!btn)return;
-  const node=btn.closest(".node[data-id]"),e=getEl(node?.dataset.id);if(!e?.taskItemId)return;
-  ev.preventDefault();ev.stopPropagation();e.taskDone=!e.taskDone;
-  e.style.fill=e.taskDone?"#e7f4eb":"#fff";e.style.stroke=e.taskDone?"#439766":"#cfd5de";
-  commitHistory();render();saveNow(false);
-  window.parent?.postMessage({type:"16h:block-detail-task-toggle",projectId:HOST16H_PROJECT_ID,
-    nodeId:HOST16H_NODE_ID,itemId:String(e.taskItemId),done:!!e.taskDone},location.origin);
+  const btn=ev.target.closest(".detail-task-toggle");
+  if(!btn)return;
+
+  const node=btn.closest(".node[data-id]");
+  const e=getEl(node?.dataset.id);
+  if(!e?.taskItemId)return;
+
+  ev.preventDefault();
+  ev.stopPropagation();
+
+  e.taskDone=!e.taskDone;
+  e.style.fill=e.taskDone?"#e7f4eb":"#ffffff";
+  e.style.stroke=e.taskDone?"#439766":"#cfd5de";
+
+  commitHistory();
+  render();
+  saveNow(false);
+
+  window.parent?.postMessage({
+    type:"16h:block-detail-task-toggle",
+    projectId:HOST16H_PROJECT_ID,
+    nodeId:HOST16H_NODE_ID,
+    itemId:String(e.taskItemId),
+    done:!!e.taskDone
+  },location.origin);
 },true);
 
 nodeLayer.addEventListener("click",ev=>{
@@ -1838,7 +2204,15 @@ viewport.addEventListener("pointercancel",onPointerUp);
 viewport.addEventListener("wheel",onWheel,{passive:false});
 connectorSvg.addEventListener("pointerdown",ev=>{ const h=ev.target.closest(".connector-hit"); if(!h) return; ev.stopPropagation(); selectConnector(h.dataset.cid); });
 connectorSvg.addEventListener("contextmenu",ev=>{const h=ev.target.closest(".connector-hit");if(!h)return;ev.preventDefault();ev.stopPropagation();selectConnector(h.dataset.cid);contextMenu.innerHTML=`<button data-cm="delconnector">Supprimer la flèche</button>`;contextMenu.classList.add("connector-context","show");contextMenu.style.left=ev.clientX+"px";contextMenu.style.top=ev.clientY+"px";});
-connectorOverlay.addEventListener("pointerdown",ev=>{ const h=ev.target.closest(".connector-handle"); if(!h) return; ev.stopPropagation(); const c=getCon(selectedConnectorId); if(!c) return; interaction={type:"connector-endpoint", side:h.dataset.side, cid:c.id}; connectorOverlay.setPointerCapture(ev.pointerId); });
+connectorOverlay.addEventListener("pointerdown",ev=>{
+  const h=ev.target.closest(".connector-handle"); if(!h) return;
+  ev.preventDefault();ev.stopPropagation();
+  const c=getCon(selectedConnectorId); if(!c) return;
+  // A manual move of point A/Z takes priority over any route generated by V17.
+  delete c.autoRoutePoints;delete c.controlPoints;delete c.bendPoints;delete c.points;
+  interaction={type:"connector-endpoint", side:h.dataset.side, cid:c.id};
+  connectorOverlay.setPointerCapture(ev.pointerId);
+});
 // connector label editing disabled
 
 $$(".tool").forEach(b=>b.addEventListener("click",()=>{
@@ -1904,24 +2278,53 @@ borderPopover.addEventListener("click",ev=>{
 
 $("#p16MetaBtn")?.addEventListener("click",p16OpenMeta);
 $("#p16MetaCancel")?.addEventListener("click",()=>$("#p16MetaDialog").close());
+
 $("#p16MetaForm")?.addEventListener("submit",ev=>{
-  ev.preventDefault();const todo=getEl(P16_EDITING_META_ID);
-  if(!todo||todo.type!=="todo"){ $("#p16MetaDialog").close(); return; }
-  todo.blockMeta={durationMinutes:Math.max(15,Number($("#p16Duration").value)||90),
+  ev.preventDefault();
+  const todo=getEl(P16_EDITING_META_ID);
+  if(!todo||todo.type!=="todo"){
+    $("#p16MetaDialog").close();
+    return;
+  }
+
+  todo.blockMeta={
+    durationMinutes:Math.max(15,Number($("#p16Duration").value)||90),
     workMode:$("#p16Mode").value==="group"?"group":"solo",
     deadline:$("#p16Deadline").value||"",
-    priority:Math.max(1,Math.min(5,Number($("#p16Priority").value)||3))};
-  commitHistory();render();saveNow(false);$("#p16MetaDialog").close();
+    priority:Math.max(1,Math.min(5,Number($("#p16Priority").value)||3))
+  };
+
+  commitHistory();
+  render();
+  saveNow(false);
+  $("#p16MetaDialog").close();
 });
+
 $("#p16TodayBtn")?.addEventListener("click",()=>{
-  const todo=p16SelectedTodo();if(!todo)return;saveNow(false);
-  window.parent?.postMessage({type:"16h:schedule-project-block",projectId:HOST16H_PROJECT_ID,nodeId:String(todo.id)},location.origin);
+  const todo=p16SelectedTodo();
+  if(!todo)return;
+
+  saveNow(false);
+  window.parent?.postMessage({
+    type:"16h:schedule-project-block",
+    projectId:HOST16H_PROJECT_ID,
+    nodeId:String(todo.id)
+  },location.origin);
+
   toast("Bloc envoyé vers aujourd’hui");
 });
+
 $("#p16DetailBtn")?.addEventListener("click",()=>{
-  const todo=p16SelectedTodo();if(!todo)return;saveNow(false);
-  window.parent?.postMessage({type:"16h:open-project-block-detail",projectId:HOST16H_PROJECT_ID,
-    nodeId:String(todo.id),title:todo.text||"Bloc de travail"},location.origin);
+  const todo=p16SelectedTodo();
+  if(!todo)return;
+
+  saveNow(false);
+  window.parent?.postMessage({
+    type:"16h:open-project-block-detail",
+    projectId:HOST16H_PROJECT_ID,
+    nodeId:String(todo.id),
+    title:todo.text||"Bloc de travail"
+  },location.origin);
 });
 
 document.addEventListener("keydown",handleKey);
@@ -1944,14 +2347,36 @@ $("#saveBtn").onclick=saveNow;$("#autoArrangeBtn").onclick=autoArrangeMindmap;$(
 $("#importFile").addEventListener("change",async ev=>{const f=ev.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());state.viewport=d.viewport||state.viewport;state.elements=d.elements||[];state.connectors=d.connectors||[];state.selectedIds=[];initHistory();saveNow();render();toast("Importé")}catch{alert("Fichier JSON invalide")}ev.target.value=""});
 $("#newBtn").onclick=()=>{
   if(!confirm("Créer un nouveau tableau ?"))return;
-  if(HOST16H){state.elements=[];state.connectors=[];state.viewport={x:120,y:40,zoom:.9};state.selectedIds=[]}
-  else{const d=demo();state.elements=d.elements;state.connectors=d.connectors;state.viewport={x:120,y:40,zoom:.9};state.selectedIds=[]}
-  initHistory();saveNow();render();
+
+  if(HOST16H){
+    state.elements=[];
+    state.connectors=[];
+    state.viewport={x:120,y:40,zoom:.9};
+    state.selectedIds=[];
+  }else{
+    const d=demo();
+    state.elements=d.elements;
+    state.connectors=d.connectors;
+    state.viewport={x:120,y:40,zoom:.9};
+    state.selectedIds=[];
+  }
+
+  initHistory();
+  saveNow();
+  render();
 };
 $("#closeBtn").onclick=()=>{
-  if(HOST16H){saveNow(false);window.parent?.postMessage({type:"16h:mindmap-close"},location.origin);return}
-  const hidden=$("#leftToolbar").style.display==="none";$("#leftToolbar").style.display=hidden?"flex":"none";
-  $("#filebar").style.display=hidden?"flex":"none";topbar.style.visibility=hidden?"visible":"hidden";$("#closeBtn").textContent=hidden?"×":"☰";
+  if(HOST16H){
+    saveNow(false);
+    window.parent?.postMessage({type:"16h:mindmap-close"},location.origin);
+    return;
+  }
+
+  const hidden=$("#leftToolbar").style.display==="none";
+  $("#leftToolbar").style.display=hidden?"flex":"none";
+  $("#filebar").style.display=hidden?"flex":"none";
+  topbar.style.visibility=hidden?"visible":"hidden";
+  $("#closeBtn").textContent=hidden?"×":"☰";
 };
 
 window.addEventListener("resize",()=>{renderConnectors();renderSelection();layoutFloatingBars()});
@@ -1970,44 +2395,87 @@ function setControlIcons(){
 
 setControlIcons();
 const P16_RESTORED=restore();
-initHistory();render();layoutFloatingBars();
+initHistory();
+render();
+layoutFloatingBars();
 
 if(HOST16H){
   document.title=`Carte mentale · ${HOST16H_TITLE}`;
+
   const badge=$("#host16hBadge");
-  if(badge){badge.hidden=false;badge.textContent=PROJECT16H_MODE?"Projet 16H":DETAIL16H_MODE?"Carte du bloc":"Bloc 16H"}
+  if(badge){
+    badge.hidden=false;
+    badge.textContent=PROJECT16H_MODE?"Projet 16H":DETAIL16H_MODE?"Carte du bloc":"Bloc 16H";
+  }
 
   window.addEventListener("message",event=>{
-    if(event.origin!==location.origin)return;const msg=event.data||{};
+    if(event.origin!==location.origin)return;
+    const msg=event.data||{};
 
-    if(msg.type==="16h:project-seed" && PROJECT16H_MODE && String(msg.project?.id||"")===String(HOST16H_PROJECT_ID)){
+    if(msg.type==="16h:project-seed" &&
+       PROJECT16H_MODE &&
+       String(msg.project?.id||"")===String(HOST16H_PROJECT_ID)){
+
       HOST16H_PROJECT=msg.project;
-      if(!P16_RESTORED && !state.elements.length)p16SeedProject(msg.project);
-      else{
-        if((P16_RESTORED?.integrationVersion||0)<12){p16RepairLegacyContainment();autoArrangeMindmap()}
-        p16ApplyProjectBlocks(msg.project?.mindmapBlocks||[]);render();saveNow(false);
+
+      if(!P16_RESTORED && !state.elements.length){
+        p16SeedProject(msg.project);
+      }else{
+        if((P16_RESTORED?.integrationVersion||0)<12.2){
+          p16RepairLegacyContainment();
+          // V17.2 recalculates sizes + sections + tree + live connector trunks.
+          autoArrangeMindmap();
+        }
+
+        p16ApplyProjectBlocks(msg.project?.mindmapBlocks||[]);
+        render();
+        saveNow(false);
       }
-      if(msg.focusNodeId)requestAnimationFrame(()=>p16FocusNode(msg.focusNodeId));
+
+      if(msg.focusNodeId){
+        requestAnimationFrame(()=>p16FocusNode(msg.focusNodeId));
+      }
     }
 
-    if(msg.type==="16h:block-detail-seed" && DETAIL16H_MODE &&
-       String(msg.projectId||"")===String(HOST16H_PROJECT_ID) && String(msg.nodeId||"")===String(HOST16H_NODE_ID)){
-      if(!P16_RESTORED && !state.elements.length)p16SeedDetail(msg);
+    if(msg.type==="16h:block-detail-seed" &&
+       DETAIL16H_MODE &&
+       String(msg.projectId||"")===String(HOST16H_PROJECT_ID) &&
+       String(msg.nodeId||"")===String(HOST16H_NODE_ID)){
+
+      if(!P16_RESTORED && !state.elements.length){
+        p16SeedDetail(msg);
+      }
     }
 
-    if(msg.type==="16h:mindmap-load" && !PROJECT16H_MODE && !DETAIL16H_MODE && msg.doc?.elements){
-      state.viewport=msg.doc.viewport||state.viewport;state.elements=msg.doc.elements;state.connectors=msg.doc.connectors||[];
-      initHistory();render();
+    if(msg.type==="16h:mindmap-load" &&
+       !PROJECT16H_MODE &&
+       !DETAIL16H_MODE &&
+       msg.doc?.elements){
+
+      state.viewport=msg.doc.viewport||state.viewport;
+      state.elements=msg.doc.elements;
+      state.connectors=msg.doc.connectors||[];
+      initHistory();
+      render();
     }
 
-    if(msg.type==="16h:mindmap-flush")saveNow(false);
+    if(msg.type==="16h:mindmap-flush"){
+      saveNow(false);
+    }
   });
 
   window.addEventListener("beforeunload",()=>saveNow(false));
-  if(window.parent!==window)window.parent.postMessage({type:"16h:mindmap-ready",mode:HOST16H_MODE,
-    projectId:HOST16H_PROJECT_ID,nodeId:HOST16H_NODE_ID,blockId:HOST16H_BLOCK_ID},location.origin);
-}
 
+  if(window.parent!==window){
+    window.parent.postMessage({
+      type:"16h:mindmap-ready",
+      mode:HOST16H_MODE,
+      projectId:HOST16H_PROJECT_ID,
+      nodeId:HOST16H_NODE_ID,
+      blockId:HOST16H_BLOCK_ID
+    },location.origin);
+  }
+}
 })();
 </script>
 </body>

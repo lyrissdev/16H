@@ -4964,9 +4964,29 @@
 
       function isFocusBlock(block){
         if(!block || block.recurring) return true;
+
         const id=String(block.typeId||"");
+
+        // Types natifs 16H.
         if(["preset-rdv-cafe","preset-call","preset-solo-work","preset-group-work","preset-deep-work"].includes(id)) return true;
+
+        // Tout bloc relié à un projet doit rester visible.
         if(block.projectId) return true;
+
+        // V12.1 : les types personnalisés créés par l'utilisateur doivent
+        // apparaître dans la semaine et dans la timeline.
+        // On continue seulement à masquer quelques anciens types personnels
+        // que 16H n'utilise plus comme blocs de planning.
+        if(id){
+          const customType=state.blockTypes.find(type=>String(type.id)===id);
+          if(customType){
+            const typeLabel=String(customType.name||"").toLocaleUpperCase("fr");
+            const deprecatedPersonal=/\b(PAUSE\s*(MIDI|REPAS)?|REPAS|VAISSELLE|CUISINE|MARCHE\s*DIGESTIVE|SOMMEIL)\b/.test(typeLabel);
+            if(!deprecatedPersonal) return true;
+          }
+        }
+
+        // Compatibilité avec d'anciens blocs sans type correctement enregistré.
         const label=String(block.name||"").toLocaleUpperCase("fr");
         return /\b(CALL|APPEL|RDV|RENDEZ|MEETING|VISIO)\b/.test(label);
       }
@@ -7208,7 +7228,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=12").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=12.2").catch(() => {});
       });
     }
   </script>
