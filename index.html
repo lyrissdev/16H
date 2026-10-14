@@ -4183,10 +4183,50 @@
       }
       function formatCountdown(ms){ms=Math.max(0,ms);const total=Math.ceil(ms/60000);const h=Math.floor(total/60),m=total%60;if(h&&m)return `${h} h ${m} min`;if(h)return `${h} h`;return `${m} min`;}
       function focusTimelineItems(){
-        const now=Date.now(), end=now+48*3600000;
-        const explicit=state.blocks.filter(b=>!b.floating&&b.end>now&&b.start<end).map(b=>({...b,recurring:false}));
-        const recurring=getRecurringInstances(now-12*3600000,end).filter(r=>r.end>now).map(r=>({...r,description:"",address:""}));
-        return [...explicit,...recurring].sort((a,b)=>a.start-b.start);
+        const now=Date.now();
+
+        // The locked "AUJOURD'HUI" screen must use the same planning model
+        // as the visible 16H timeline. Previously it scanned every stored block,
+        // including legacy/hidden overlapping blocks, which could make the focus
+        // card display a different task than the one visible on the timeline.
+        const dayStart=anchor.getTime();
+        const dayEnd=dayStart+WINDOW_MS;
+
+        const explicit=state.blocks
+          .filter(b=>
+            !b.floating &&
+            isFocusBlock(b) &&
+            intervalsOverlap(b.start,b.end,dayStart,dayEnd) &&
+            b.end>now
+          )
+          .map(b=>({...b,recurring:false}));
+
+        const recurring=getRecurringInstances(dayStart,dayEnd)
+          .filter(r=>r.end>now)
+          .map(r=>({...r,description:"",address:""}));
+
+        return [...explicit,...recurring].sort((a,b)=>{
+          if(a.start!==b.start) return a.start-b.start;
+
+          // Same start time: project-linked / newer block wins, matching the
+          // block that is visually on top in the editable timeline.
+          const ap=a.projectId?1:0, bp=b.projectId?1:0;
+          if(ap!==bp) return ap-bp;
+
+          const au=Number(a.updatedAt)||0, bu=Number(b.updatedAt)||0;
+          if(au!==bu) return au-bu;
+
+          return (a.end||0)-(b.end||0);
+        });
+      }
+
+      function currentFocusItem(items,now=Date.now()){
+        const active=items.filter(i=>i.start<=now && i.end>now);
+        if(!active.length) return null;
+
+        // Pick the last candidate in rendering priority order.
+        // This is important when old overlapping blocks still exist in storage.
+        return active[active.length-1];
       }
 
       function getStoredExplicitBlock(item){
@@ -4494,7 +4534,7 @@
         const end=endOfDayTs(now);
 
         const explicit=state.blocks
-          .filter(b=>!b.floating && b.start<end && b.end>start)
+          .filter(b=>!b.floating && isFocusBlock(b) && b.start<end && b.end>start)
           .map(b=>({...b,recurring:false}));
 
         const recurring=getRecurringInstances(start,end)
@@ -4620,8 +4660,10 @@
       function renderFocusMode(){
         if(!focusPage||!focusCurrentCard||!focusNextCard)return;
         const now=Date.now(), items=focusTimelineItems();
-        const current=items.find(i=>i.start<=now&&i.end>now)||null;
-        const next=items.find(i=>i.start>now)||null;
+        const current=currentFocusItem(items,now);
+        const next=items.find(i=>i.start>now && (!current || i.start>=current.end)) ||
+                   items.find(i=>i.start>now) ||
+                   null;
         if(current){
           const isDeep=isDeepWorkType(current.typeId,current.name) && Array.isArray(current.tasks) && current.tasks.length>0;
           if(isDeep){
@@ -7237,7 +7279,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=12.3").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=12.4").catch(() => {});
       });
     }
   </script>
