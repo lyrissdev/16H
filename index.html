@@ -3540,25 +3540,114 @@
         return state.blocks.filter(b=>String(b.projectId||"")===String(projectId));
       }
 
+
+      function sessionBlocksForStage(projectId,stageId){
+        return state.blocks.filter(b=>
+          String(b.projectId||"")===String(projectId) &&
+          String(b.subprojectId||"")===String(stageId)
+        );
+      }
+
+      function syncStageTaskSnapshots(projectId,stageId){
+        const project=projectById(projectId);
+        const stage=subprojectById(project,stageId);
+        if(!project||!stage)return;
+
+        const stageMap=new Map((stage.tasks||[]).map(t=>[String(t.id),t]));
+        sessionBlocksForStage(projectId,stageId).forEach(block=>{
+          block.tasks=(block.tasks||[])
+            .filter(bt=>stageMap.has(String(bt.id)))
+            .map(bt=>{
+              const src=stageMap.get(String(bt.id));
+              return {
+                ...bt,
+                id:String(src.id),
+                name:src.name||"Tâche",
+                durationMinutes:Math.max(5,Number(src.durationMinutes)||30),
+                completedAt:src.done ? (bt.completedAt||Date.now()) : 0,
+                startedAt:src.done ? (bt.startedAt||bt.completedAt||Date.now()) : bt.startedAt||0
+              };
+            });
+          block.updatedAt=Date.now();
+        });
+      }
+
+      function pushStageSnapshotToOpenMindmap(projectId,stageId){
+        if(
+          activeMindmapContext?.kind!=="stage" ||
+          String(activeMindmapContext.projectId||"")!==String(projectId) ||
+          String(activeMindmapContext.nodeId||"")!==String(stageId)
+        ) return;
+
+        const project=projectById(projectId);
+        const stage=subprojectById(project,stageId);
+        const frame=el("mindmapFrame");
+        if(!project||!stage||!frame?.contentWindow)return;
+
+        frame.contentWindow.postMessage({
+          type:"16h:stage-seed",
+          projectId:project.id,
+          stage:{
+            id:stage.id,name:stage.name,description:stage.description||"",
+            order:stageNumber(project,stage.id),completed:!!stage.completed,
+            tasks:(stage.tasks||[]).map(t=>({...t}))
+          },
+          project:{id:project.id,name:project.name,color:project.color||"#7c5cff"}
+        },location.origin);
+      }
+
+      function afterStageTasksChanged(projectId,stageId,{pushMindmap=true}={}){
+        const project=projectById(projectId);
+        if(!project)return;
+        project.updatedAt=Date.now();
+        syncStageTaskSnapshots(projectId,stageId);
+        saveState(false);
+        renderProjectsView();
+        renderProjectDayPlanner();
+        renderWeekProjectFocus();
+        renderFocusMode();
+        if(pushMindmap) pushStageSnapshotToOpenMindmap(projectId,stageId);
+      }
+
+      function applyStageTodoSnapshot(projectId,stageId,items){
+        const project=projectById(projectId);
+        const stage=subprojectById(project,stageId);
+        if(!project||!stage||!Array.isArray(items))return;
+
+        const existing=new Map((stage.tasks||[]).map(t=>[String(t.id),t]));
+        const next=[];
+
+        items.forEach((item,index)=>{
+          const id=String(item.id||uid());
+          const old=existing.get(id);
+          if(old){
+            old.name=String(item.text||old.name||"Tâche").trim()||"Tâche";
+            old.done=!!item.done;
+            next.push(old);
+          }else{
+            next.push({
+              id,
+              name:String(item.text||"Nouvelle tâche").trim()||"Nouvelle tâche",
+              description:"",
+              durationMinutes:30,
+              workMode:"solo",
+              done:!!item.done
+            });
+          }
+        });
+
+        stage.tasks=next;
+        afterStageTasksChanged(projectId,stageId,{pushMindmap:false});
+      }
+
       function toggleProjectTask(projectId,subprojectId,taskId){
         const project=projectById(projectId), sp=subprojectById(project,subprojectId);
         const task=sp?.tasks?.find(t=>String(t.id)===String(taskId));
         if(!task) return;
         task.done=!task.done;
-        project.updatedAt=Date.now();
-        // Synchronise tous les blocs de session qui utilisent cette tâche.
-        state.blocks.filter(b=>String(b.projectId||"")===String(project.id) && String(b.subprojectId||"")===String(sp.id))
-          .forEach(b=>{
-            const bt=(b.tasks||[]).find(x=>String(x.id)===String(task.id));
-            if(bt){
-              if(task.done){bt.completedAt=bt.completedAt||Date.now();bt.startedAt=bt.startedAt||bt.completedAt}
-              else bt.completedAt=0;
-              b.updatedAt=Date.now();
-            }
-          });
-        saveState(false);
-        renderProjectsView(); renderProjectDayPlanner(); renderWeekProjectFocus();
+        afterStageTasksChanged(project.id,sp.id);
       }
+
 
 
       function mindmapBlockById(project,blockId){
@@ -4650,7 +4739,7 @@
       }
 
 
-      function openProjectStageMindmap(projectId,stageId,titleText="Étape"){
+      function openProjectStageMindmap(projectId,stageId,titleText="Étape",sessionEnd=null,sessionStart=null){
         const project=projectById(projectId), stage=subprojectById(project,stageId);
         if(!project||!stage)return;
         activeMindmapContext={kind:"stage",projectId:String(projectId),nodeId:String(stageId)};
@@ -4666,6 +4755,8 @@
           host:"16h",mode:"stage",projectId:String(projectId),stageId:String(stageId),
           title:stage.name,color:project.color||"#7c5cff"
         });
+        if(Number.isFinite(Number(sessionEnd))) q.set("sessionEnd",String(Number(sessionEnd)));
+        if(Number.isFinite(Number(sessionStart))) q.set("sessionStart",String(Number(sessionStart)));
         el("mindmapFrame").src=`./mindmap.html?${q.toString()}`;
       }
 
@@ -4713,7 +4804,7 @@
 
       async function openCurrentMindmap(item){
         if(item?.projectId && item?.subprojectId){
-          openProjectStageMindmap(item.projectId,item.subprojectId,item.name); return;
+          openProjectStageMindmap(item.projectId,item.subprojectId,item.name,item.end,item.start); return;
         }
         if(item?.projectId && item?.mindmapNodeId){
           openProjectMindmap(item.projectId,item.mindmapNodeId); return;
@@ -5487,6 +5578,8 @@
           if(sourceTask){
             sourceTask.done=true;
             project.updatedAt=now;
+            syncStageTaskSnapshots(project.id,stage.id);
+            pushStageSnapshotToOpenMindmap(project.id,stage.id);
           }
         }else if(block.projectId && block.mindmapNodeId){
           const project=projectById(block.projectId);
@@ -5548,6 +5641,9 @@
 
       function fillBlockEditFields(b){
         refreshBlockTypeSelect(b?.typeId || null);
+        if(b?.projectId && b?.subprojectId){
+          syncStageTaskSnapshots(b.projectId,b.subprojectId);
+        }
         editingDeepTasks=Array.isArray(b?.tasks) ? b.tasks.map(t=>({...t})) : [];
         refreshProjectLinkFields(b?.projectId || null,b?.subprojectId || null);
         fillDurationOptions();
@@ -6235,10 +6331,8 @@
         }else{
           sp.tasks.push({id:uid(),name,description,durationMinutes,workMode,done:false});
         }
-        project.updatedAt=Date.now();
-        saveState(false);
         el("projectTaskDialog").close();
-        renderProjectsView(); renderProjectDayPlanner(); renderWeekProjectFocus();
+        afterStageTasksChanged(project.id,sp.id);
         showToast("Tâche enregistrée");
       });
 
@@ -6251,27 +6345,21 @@
         const task=sp?.tasks?.find(t=>String(t.id)===String(ctx.taskId));
         if(!project || !sp || !task) return;
 
-        const linkedBlocks=state.blocks.filter(b=>String(b.projectTaskId||"")===String(task.id));
-        let removeBlocks=false;
-        if(linkedBlocks.length){
-          removeBlocks=confirm(
-            `« ${task.name} » est déjà liée à ${linkedBlocks.length} bloc(s) de temps.\n\nOK = supprimer la tâche ET ses blocs liés.\nAnnuler = ne rien supprimer.`
-          );
-          if(!removeBlocks) return;
-        }else if(!confirm(`Supprimer définitivement la tâche « ${task.name} » ?`)){
+        if(!confirm(`Supprimer définitivement la tâche « ${task.name} » ?\n\nElle sera aussi retirée des blocs de temps qui l’utilisent.`)){
           return;
         }
 
         sp.tasks=sp.tasks.filter(t=>String(t.id)!==String(task.id));
-        if(removeBlocks){
-          state.blocks=state.blocks.filter(b=>String(b.projectTaskId||"")!==String(task.id));
-        }
-        project.updatedAt=Date.now();
-        saveState(false);
+        sessionBlocksForStage(project.id,sp.id).forEach(block=>{
+          block.tasks=(block.tasks||[]).filter(t=>String(t.id)!==String(task.id));
+          block.updatedAt=Date.now();
+        });
+
         el("projectTaskDialog").close();
-        render();
-        showToast(linkedBlocks.length ? "Tâche et blocs liés supprimés" : "Tâche supprimée");
+        afterStageTasksChanged(project.id,sp.id);
+        showToast("Tâche supprimée partout");
       };
+
 
       el("weekChoiceProject").onclick=()=>openWeekProjectTaskPicker();
       el("weekChoiceAppointment").onclick=()=>openWeekAppointmentBlock();
@@ -6307,11 +6395,14 @@
         if(!project||!stage||!name)return;
         const task={id:uid(),name,description:"",durationMinutes:30,workMode:"solo",done:false};
         stage.tasks.push(task);
-        project.updatedAt=Date.now();
+        if(!editingDeepTasks.some(t=>String(t.id)===String(task.id))){
+          editingDeepTasks.push(projectTaskToSessionTask(task));
+        }
         input.value="";
-        saveState(false);
+        afterStageTasksChanged(project.id,stage.id);
+        renderDeepTaskEditor();
         renderProjectStageTaskPicker(project.id,stage.id,editingDeepTasks.map(t=>String(t.id)));
-        showToast("Tâche ajoutée à l’étape");
+        showToast("Tâche ajoutée au projet et au bloc");
       });
 
       el("notificationBtn").onclick=()=>{
@@ -7475,26 +7566,20 @@
           return;
         }
 
+        if(msg.type==="16h:stage-todo-sync"){
+          applyStageTodoSnapshot(msg.projectId,msg.stageId,msg.items||[]);
+          return;
+        }
+
         if(msg.type==="16h:stage-task-sync"){
           const project=projectById(msg.projectId);
           const stage=subprojectById(project,msg.stageId);
           const task=stage?.tasks?.find(t=>String(t.id)===String(msg.taskId));
           if(!project||!stage||!task)return;
           task.done=!!msg.done;
-          project.updatedAt=Date.now();
-
-          state.blocks.filter(b=>
-            String(b.projectId||"")===String(project.id) &&
-            String(b.subprojectId||"")===String(stage.id)
-          ).forEach(block=>{
-            const bt=(block.tasks||[]).find(t=>String(t.id)===String(task.id));
-            if(bt){
-              if(task.done){bt.completedAt=bt.completedAt||Date.now();bt.startedAt=bt.startedAt||bt.completedAt}
-              else bt.completedAt=0;
-              block.updatedAt=Date.now();
-            }
-          });
-          saveState(false);render();return;
+          if(msg.text!=null && String(msg.text).trim()) task.name=String(msg.text).trim();
+          afterStageTasksChanged(project.id,stage.id,{pushMindmap:false});
+          return;
         }
 
         if(msg.type==="16h:project-sync"){
@@ -7621,7 +7706,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=13").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=13.2").catch(() => {});
       });
     }
   </script>
