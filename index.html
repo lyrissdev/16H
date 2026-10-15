@@ -1790,6 +1790,40 @@
     .project-map-actions{display:flex;gap:8px;margin-top:14px}.project-map-actions .btn{flex:1}
     @media(max-width:1050px){.projects-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
     @media(max-width:700px){.projects-grid{grid-template-columns:1fr!important}}
+    /* V13 — Projet → Étapes séquentielles → Tâches → Sessions 16H */
+    .project-map-card-current{
+      margin-top:13px;padding:12px 13px;border:1px solid #e3e7ed;border-radius:13px;background:#f8f9fb
+    }
+    .project-map-card-current small{display:block;color:#707887;font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:.08em}
+    .project-map-card-current strong{display:block;margin-top:4px;font-size:15px}
+    .project-map-card-current span{display:block;margin-top:4px;font-size:11px;color:#6b7380}
+    .stage-complete-btn{margin-top:9px;width:100%}
+    .project-stage-picker{
+      display:none;border:1px solid #e0e5eb;border-radius:14px;padding:12px;background:#f8f9fb
+    }
+    .project-stage-picker.show{display:block}
+    .project-stage-picker-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+    .project-stage-picker-head strong{font-size:14px}
+    .project-stage-picker-head span{display:block;color:#6f7785;font-size:11px;margin-top:3px}
+    .project-stage-task-list{display:flex;flex-direction:column;gap:7px;max-height:260px;overflow:auto}
+    .project-stage-task-option{
+      display:flex;align-items:flex-start;gap:9px;padding:9px 10px;border:1px solid #e2e6ec;border-radius:10px;background:#fff
+    }
+    .project-stage-task-option input{margin-top:2px;width:18px;height:18px}
+    .project-stage-task-option label{flex:1;font-size:13px;line-height:1.25;cursor:pointer}
+    .project-stage-task-option label.done{text-decoration:line-through;opacity:.55}
+    .project-stage-add-task{display:flex;gap:7px;margin-top:10px}
+    .project-stage-add-task input{flex:1;height:38px;border:1px solid #dfe4ea;border-radius:9px;padding:0 10px}
+    .project-stage-add-task button{height:38px}
+    .active-stage-badge{
+      display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 8px;background:#ecfdf3;
+      color:#167343;font-size:10px;font-weight:900
+    }
+    .locked-stage-badge{
+      display:inline-flex;align-items:center;border-radius:999px;padding:4px 8px;background:#f1f3f6;
+      color:#747b86;font-size:10px;font-weight:800
+    }
+    .stage-order-note{font-size:11px;color:#6d7582;margin-top:5px}
   </style>
 </head>
 <body>
@@ -2015,8 +2049,23 @@
                   <select id="blockProjectSelect"></select>
                 </div>
                 <div class="field">
-                  <label>Sous-projet</label>
-                  <select id="blockSubprojectSelect"></select>
+                  <label>Étape active</label>
+                  <select id="blockSubprojectSelect" disabled></select>
+                </div>
+              </div>
+            </div>
+            <div class="field full">
+              <div class="project-stage-picker" id="projectStageTaskPicker">
+                <div class="project-stage-picker-head">
+                  <div>
+                    <strong id="projectStagePickerTitle">Tâches de l’étape active</strong>
+                    <span>Sélectionne uniquement les petites actions que tu veux faire pendant ce bloc.</span>
+                  </div>
+                </div>
+                <div class="project-stage-task-list" id="projectStageTaskList"></div>
+                <div class="project-stage-add-task">
+                  <input id="projectStageNewTaskInput" maxlength="140" placeholder="Ajouter une nouvelle tâche à cette étape…"/>
+                  <button class="btn" id="projectStageAddTaskBtn" type="button">Ajouter</button>
                 </div>
               </div>
             </div>
@@ -2329,10 +2378,10 @@
 
   <dialog id="subprojectDialog">
     <form class="modal" id="subprojectForm">
-      <h3 id="subprojectDialogTitle">Nouveau sous-projet</h3>
+      <h3 id="subprojectDialogTitle">Nouvelle étape</h3>
       <div class="form-grid">
         <div class="field full">
-          <label>Nom du sous-projet</label>
+          <label>Nom de l’étape</label>
           <input id="subprojectNameInput" required maxlength="120"/>
         </div>
         <div class="field full">
@@ -2340,23 +2389,23 @@
           <textarea id="subprojectDescriptionInput" placeholder="Objectif, résultat attendu, contexte…"></textarea>
         </div>
         <div class="field">
-          <label>Deadline (optionnelle)</label>
+          <label>Date cible (optionnelle)</label>
           <input id="subprojectDeadlineInput" type="date"/>
         </div>
         <div class="field">
-          <label>Priorité</label>
+          <label>Ordre</label>
           <select id="subprojectPriorityInput">
-            <option value="5">5 — Très haute</option>
-            <option value="4">4 — Haute</option>
-            <option value="3" selected>3 — Normale</option>
-            <option value="2">2 — Basse</option>
-            <option value="1">1 — Faible</option>
+            <option value="1">Étape 1</option>
+            <option value="2">Étape 2</option>
+            <option value="3">Étape 3</option>
+            <option value="4">Étape 4</option>
+            <option value="5">Étape 5</option>
           </select>
         </div>
       </div>
       <div class="error" id="subprojectError"></div>
       <div class="modal-actions">
-        <button class="btn danger-btn" id="deleteSubprojectBtn" type="button" style="margin-right:auto;display:none">Supprimer le sous-projet</button>
+        <button class="btn danger-btn" id="deleteSubprojectBtn" type="button" style="margin-right:auto;display:none">Supprimer l’étape</button>
         <button class="btn" type="button" data-close="subprojectDialog">Annuler</button>
         <button class="btn primary" type="submit">Enregistrer</button>
       </div>
@@ -2414,7 +2463,7 @@
       <div class="week-add-choice-grid">
         <button class="week-add-choice" id="weekChoiceProject" type="button">
           <strong>Projet</strong>
-          <span>Choisir une tâche existante d’un projet ou sous-projet à avancer ce jour-là.</span>
+          <span>Choisir un projet : 16H utilisera automatiquement son étape active.</span>
         </button>
         <button class="week-add-choice" id="weekChoiceAppointment" type="button">
           <strong>Rendez-vous</strong>
@@ -2429,8 +2478,8 @@
       <div class="week-project-task-picker" id="weekProjectTaskPicker">
         <div class="week-project-task-picker-head">
           <div>
-            <strong>Tâches de projet proposées</strong>
-            <div class="week-choice-date">Classées par deadline du sous-projet puis priorité.</div>
+            <strong>Étapes actives proposées</strong>
+            <div class="week-choice-date">Une seule étape active par projet. Les étapes suivantes restent verrouillées.</div>
           </div>
           <button class="btn" type="button" id="weekBackToChoicesBtn">Retour</button>
         </div>
@@ -2701,7 +2750,10 @@
               name:sp.name || "Sous-projet",
               description:sp.description || "",
               deadline:sp.deadline || "",
-              priority:Math.max(1,Math.min(5,Number(sp.priority)||3)),
+              priority:Math.max(1,Number(sp.order)||Number(sp.priority)||spi+1),
+              order:Math.max(1,Number(sp.order)||spi+1),
+              completed:typeof sp.completed==="boolean" ? sp.completed : false,
+              completedAt:Number(sp.completedAt)||0,
               tasks:Array.isArray(sp.tasks) ? sp.tasks.map((t,ti)=>({
                 id:t.id || `pt-${ti}-${now}`,
                 name:t.name || "Tâche",
@@ -3290,12 +3342,84 @@
         },null,2);
       }
 
+
+      function orderedStages(project){
+        return [...(project?.subprojects||[])].sort((a,b)=>
+          (Number(a.order)||999)-(Number(b.order)||999) ||
+          String(a.name||"").localeCompare(String(b.name||""))
+        );
+      }
+
+      function normalizeStageOrder(project){
+        if(!project) return;
+        const stages=orderedStages(project);
+        stages.forEach((sp,index)=>{
+          sp.order=index+1;
+          sp.priority=index+1; // backward compatibility with old exports
+        });
+        project.subprojects=stages;
+      }
+
+      function stageIsComplete(stage){
+        return !!stage?.completed;
+      }
+
+      function activeStage(project){
+        if(!project) return null;
+        normalizeStageOrder(project);
+        return (project.subprojects||[]).find(sp=>!stageIsComplete(sp)) || null;
+      }
+
+      function stageNumber(project,stageId){
+        normalizeStageOrder(project);
+        return Math.max(0,(project?.subprojects||[]).findIndex(sp=>String(sp.id)===String(stageId)))+1;
+      }
+
+      function completeStage(projectId,stageId){
+        const project=projectById(projectId);
+        const stage=subprojectById(project,stageId);
+        if(!project || !stage) return;
+        const current=activeStage(project);
+        if(!current || String(current.id)!==String(stage.id)){
+          showToast("Seule l’étape active peut être terminée");
+          return;
+        }
+        const remaining=(stage.tasks||[]).filter(t=>!t.done);
+        if(remaining.length && !confirm(
+          `${remaining.length} tâche(s) de « ${stage.name} » ne sont pas cochées.\n\nTerminer quand même cette étape ?`
+        )) return;
+
+        stage.completed=true;
+        stage.completedAt=Date.now();
+        project.updatedAt=Date.now();
+        saveState(false);
+        render();
+        const next=activeStage(project);
+        showToast(next ? `Étape suivante : ${next.name}` : "Projet terminé ✓");
+      }
+
+      function reopenStage(projectId,stageId){
+        const project=projectById(projectId);
+        const stage=subprojectById(project,stageId);
+        if(!project||!stage)return;
+        normalizeStageOrder(project);
+        const index=(project.subprojects||[]).findIndex(x=>String(x.id)===String(stage.id));
+        (project.subprojects||[]).forEach((sp,i)=>{
+          if(i>=index){sp.completed=false;sp.completedAt=0}
+        });
+        project.updatedAt=Date.now();
+        saveState(false);render();
+      }
+
+      function projectStageProgress(project){
+        const stages=orderedStages(project);
+        if(!stages.length)return {done:0,total:0,pct:0};
+        const done=stages.filter(stageIsComplete).length;
+        return {done,total:stages.length,pct:Math.round(done/stages.length*100)};
+      }
+
       function projectProgress(project){
-        const mapItems=(project.mindmapBlocks||[]).flatMap(b=>b.items||[]);
-        if(mapItems.length) return Math.round(mapItems.filter(x=>x.done).length/mapItems.length*100);
-        const tasks=(project.subprojects||[]).flatMap(sp=>sp.tasks||[]);
-        if(!tasks.length) return 0;
-        return Math.round(tasks.filter(t=>t.done).length/tasks.length*100);
+        return projectStageProgress(project).pct;
       }
 
       function projectById(id){
@@ -3367,11 +3491,18 @@
         if(!project) return;
         const sp=subprojectId ? subprojectById(project,subprojectId) : null;
         editingSubprojectCtx={projectId,subprojectId};
-        el("subprojectDialogTitle").textContent=sp ? "Modifier le sous-projet" : "Nouveau sous-projet";
+        normalizeStageOrder(project);
+        el("subprojectDialogTitle").textContent=sp ? "Modifier l’étape" : "Nouvelle étape";
         el("subprojectNameInput").value=sp?.name || "";
         el("subprojectDescriptionInput").value=sp?.description || "";
         el("subprojectDeadlineInput").value=sp?.deadline || "";
-        el("subprojectPriorityInput").value=String(sp?.priority || 3);
+        const orderSelect=el("subprojectPriorityInput");
+        orderSelect.innerHTML="";
+        const max=Math.max(1,(project.subprojects||[]).length+(sp?0:1));
+        for(let i=1;i<=max;i++){
+          const opt=document.createElement("option");opt.value=String(i);opt.textContent=`Étape ${i}`;orderSelect.appendChild(opt);
+        }
+        orderSelect.value=String(sp?.order || (project.subprojects||[]).length+1);
         el("subprojectError").style.display="none";
         el("deleteSubprojectBtn").style.display=sp ? "" : "none";
         el("subprojectDialog").showModal();
@@ -3415,6 +3546,16 @@
         if(!task) return;
         task.done=!task.done;
         project.updatedAt=Date.now();
+        // Synchronise tous les blocs de session qui utilisent cette tâche.
+        state.blocks.filter(b=>String(b.projectId||"")===String(project.id) && String(b.subprojectId||"")===String(sp.id))
+          .forEach(b=>{
+            const bt=(b.tasks||[]).find(x=>String(x.id)===String(task.id));
+            if(bt){
+              if(task.done){bt.completedAt=bt.completedAt||Date.now();bt.startedAt=bt.startedAt||bt.completedAt}
+              else bt.completedAt=0;
+              b.updatedAt=Date.now();
+            }
+          });
         saveState(false);
         renderProjectsView(); renderProjectDayPlanner(); renderWeekProjectFocus();
       }
@@ -3454,67 +3595,102 @@
         saveState(false); render(); showToast("Bloc ajouté à la journée");
       }
 
-      function scheduleProjectTask(projectId,subprojectId,taskId,dateKey=localDateKey(new Date())){
-        const project=projectById(projectId), sp=subprojectById(project,subprojectId);
-        const task=sp?.tasks?.find(t=>String(t.id)===String(taskId));
-        if(!project || !sp || !task || task.done) return;
-        if(taskScheduledForDate(task.id,dateKey)){
-          showToast("Cette tâche est déjà prévue ce jour");
-          return;
+      function stageScheduledForDate(projectId,stageId,dateKey){
+        return state.blocks.some(b=>
+          String(b.projectId||"")===String(projectId) &&
+          String(b.subprojectId||"")===String(stageId) &&
+          b.plannedDate===dateKey
+        );
+      }
+
+      function projectTaskToSessionTask(task){
+        return {
+          id:String(task.id),
+          name:task.name||"Tâche",
+          durationMinutes:Math.max(5,Number(task.durationMinutes)||30),
+          completedAt:task.done?Date.now():0,
+          startedAt:0
+        };
+      }
+
+      function createProjectStageSession(projectId,dateKey=localDateKey(new Date()),selectedTaskIds=[]){
+        const project=projectById(projectId);
+        const stage=activeStage(project);
+        if(!project || !stage){
+          showToast(project ? "Toutes les étapes sont terminées" : "Projet introuvable");
+          return null;
         }
-        const typeId=task.workMode==="group" ? "preset-group-work" : "preset-solo-work";
-        const synthetic=syntheticTimesForFloating(dateKey,task.durationMinutes);
-        state.blocks.push({
-          id:`project-task-${task.id}-${dateKey}`,
-          name:task.name,
+        const selected=new Set((selectedTaskIds||[]).map(String));
+        const tasks=(stage.tasks||[])
+          .filter(t=>selected.has(String(t.id)))
+          .map(projectTaskToSessionTask);
+
+        const duration=Math.max(60,tasks.reduce((sum,t)=>sum+(t.durationMinutes||0),0)||90);
+        const synthetic=syntheticTimesForFloating(dateKey,duration);
+        const block={
+          id:uid(),
+          name:stage.name,
           address:"Aucune",
-          description:`${project.name} · ${sp.name}`,
-          typeId,
-          start:synthetic.start,
-          end:synthetic.end,
+          description:`${project.name} · Étape ${stageNumber(project,stage.id)}`,
+          typeId:"preset-solo-work",
+          start:synthetic.start,end:synthetic.end,
           color:project.color||"#7c5cff",
-          floating:true,
-          plannedDate:dateKey,
-          durationMinutes:task.durationMinutes,
-          tasks:[],
+          floating:true,plannedDate:dateKey,durationMinutes:duration,
+          tasks,
           projectId:project.id,
-          subprojectId:sp.id,
-          projectTaskId:task.id,
+          subprojectId:stage.id,
+          projectTaskId:null,
+          mindmapNodeId:null,
+          projectSession:true,
           updatedAt:Date.now()
-        });
+        };
+        state.blocks.push(block);
         saveState(false);
-        render();
-        showToast("Tâche ajoutée à aujourd’hui");
+        return block;
+      }
+
+      function openProjectStageSessionEditor(projectId,dateKey=localDateKey(new Date())){
+        const project=projectById(projectId), stage=activeStage(project);
+        if(!project||!stage){
+          showToast(project?"Projet terminé ✓":"Projet introuvable");return;
+        }
+        const start=getDefaultStartForDate(new Date(`${dateKey}T12:00:00`));
+        openNewBlock(start,false,dateKey);
+        el("blockProjectSelect").value=String(project.id);
+        refreshProjectLinkFields(project.id,stage.id);
+        el("blockSubprojectSelect").value=String(stage.id);
+        el("blockName").value=stage.name;
+        el("blockDescription").value=`${project.name} · Étape ${stageNumber(project,stage.id)}`;
+        el("blockColor").value=project.color||"#7c5cff";
+        editingDeepTasks=[];
+        renderDeepTaskEditor();
+        renderProjectStageTaskPicker(project.id,stage.id,[]);
       }
 
       function recommendedProjectTasks(dateKey=localDateKey(new Date())){
         const candidates=[];
         activeProjectsForDate(dateKey).forEach(project=>{
-          if((project.mindmapBlocks||[]).length){
-            (project.mindmapBlocks||[]).forEach(mb=>{
-              const done=(mb.items||[]).length && (mb.items||[]).every(x=>x.done);
-              if(done || mindmapBlockScheduledForDate(project.id,mb.id,dateKey)) return;
-              candidates.push({
-                project,
-                sp:{id:`map-${mb.id}`,name:"Carte mentale",deadline:mb.deadline||project.endDate||"",priority:mb.priority||3},
-                task:{id:mb.id,name:mb.title,durationMinutes:mb.durationMinutes||90,workMode:mb.workMode||"solo",done:false},
-                deadline:mb.deadline||project.endDate||"9999-12-31",
-                mindmapBlock:true
-              });
-            });
-          }else{
-            (project.subprojects||[]).forEach(sp=>{
-              (sp.tasks||[]).filter(t=>!t.done && !taskScheduledForDate(t.id,dateKey)).forEach(task=>{
-                candidates.push({project,sp,task,deadline:sp.deadline||project.endDate||"9999-12-31"});
-              });
-            });
-          }
+          const stage=activeStage(project);
+          if(!stage)return;
+          const remaining=(stage.tasks||[]).filter(t=>!t.done);
+          candidates.push({
+            project,sp:stage,
+            task:{
+              id:stage.id,
+              name:stage.name,
+              durationMinutes:Math.max(60,remaining.slice(0,3).reduce((sum,t)=>sum+(t.durationMinutes||30),0)||90),
+              workMode:"solo",done:false
+            },
+            deadline:stage.deadline||project.endDate||"9999-12-31",
+            stageSession:true
+          });
         });
         candidates.sort((a,b)=>{
-          const d=String(a.deadline).localeCompare(String(b.deadline)); if(d) return d;
-          return (b.sp.priority||3)-(a.sp.priority||3) || (b.task.durationMinutes||60)-(a.task.durationMinutes||60);
+          const da=String(a.deadline||"9999-12-31"), db=String(b.deadline||"9999-12-31");
+          const d=da.localeCompare(db); if(d)return d;
+          return String(a.project.endDate||"9999-12-31").localeCompare(String(b.project.endDate||"9999-12-31"));
         });
-        return candidates.slice(0,8);
+        return candidates;
       }
 
       function renderProjectDayPlanner(){
@@ -3533,10 +3709,10 @@
           card.style.setProperty("--project-color",project.color||"#7c5cff");
           card.innerHTML=`<strong></strong><span></span><button class="mini-btn primary" type="button">Ajouter à aujourd’hui</button>`;
           card.querySelector("strong").textContent=task.name;
-          card.querySelector("span").textContent=`${project.name} · ${sp.name}${sp.deadline?` · deadline ${sp.deadline}`:""} · priorité ${sp.priority||3}/5 · ${task.durationMinutes} min`;
-          card.querySelector("button").onclick=()=> mindmapBlockById(project,task.id)
-            ? scheduleProjectMindmapBlock(project.id,task.id)
-            : scheduleProjectTask(project.id,sp.id,task.id);
+          const remaining=(sp.tasks||[]).filter(t=>!t.done).length;
+          card.querySelector("span").textContent=`${project.name} · Étape ${stageNumber(project,sp.id)} · ${remaining} tâche(s) restante(s)${sp.deadline?` · cible ${sp.deadline}`:""}`;
+          card.querySelector("button").textContent="Planifier cette étape";
+          card.querySelector("button").onclick=()=>openProjectStageSessionEditor(project.id,localDateKey(new Date()));
           list.appendChild(card);
         });
       }
@@ -3560,13 +3736,25 @@
                 <span class="project-map-pill">${progress}% terminé</span>
               </div>
               <div class="project-map-progress"><span style="width:${progress}%"></span></div>
+              <div class="project-map-card-current"></div>
               <div class="project-map-actions">
-                <button class="btn primary" data-map type="button">◉ Ouvrir la carte mentale</button>
+                <button class="btn primary" data-map type="button">◉ Vue globale du projet</button>
                 <button class="btn" data-edit type="button">Modifier</button>
               </div>
             </div>`;
           card.querySelector(".project-map-card-name").textContent=project.name;
           const desc=card.querySelector(".project-map-card-desc"); if(desc) desc.textContent=project.description;
+          const currentBox=card.querySelector(".project-map-card-current");
+          const currentStage=activeStage(project);
+          const stageProg=projectStageProgress(project);
+          if(currentStage){
+            const remaining=(currentStage.tasks||[]).filter(t=>!t.done).length;
+            currentBox.innerHTML=`<small>Étape actuelle · ${stageProg.done+1}/${stageProg.total}</small><strong></strong><span>${remaining} tâche(s) restante(s)</span><button class="btn stage-complete-btn" type="button">Terminer cette étape →</button>`;
+            currentBox.querySelector("strong").textContent=currentStage.name;
+            currentBox.querySelector("button").onclick=()=>completeStage(project.id,currentStage.id);
+          }else{
+            currentBox.innerHTML=`<small>Projet terminé</small><strong>✓ Toutes les étapes sont terminées</strong><span>${stageProg.total} étape(s)</span>`;
+          }
           card.querySelector("[data-map]").onclick=()=>openProjectMindmap(project.id);
           card.querySelector("[data-edit]").onclick=()=>openProjectEditor(project.id);
           grid.appendChild(card);
@@ -3587,13 +3775,15 @@
           return;
         }
         projects.forEach(project=>{
-          const top=[...(project.subprojects||[])].sort((a,b)=>(b.priority||3)-(a.priority||3)).slice(0,2);
+          const stage=activeStage(project);
           const chip=document.createElement("div");
           chip.className="week-project-chip";
           chip.style.setProperty("--project-color",project.color||"#7c5cff");
           chip.innerHTML="<strong></strong><span></span>";
           chip.querySelector("strong").textContent=project.name;
-          chip.querySelector("span").textContent=top.length ? top.map(x=>x.name).join(" · ") : "Aucun sous-projet";
+          chip.querySelector("span").textContent=stage
+            ? `Étape actuelle : ${stage.name} · ${(stage.tasks||[]).filter(t=>!t.done).length} tâche(s) restantes`
+            : "Projet terminé ✓";
           box.appendChild(chip);
         });
       }
@@ -3606,13 +3796,58 @@
           const opt=document.createElement("option"); opt.value=p.id; opt.textContent=p.name; pSelect.appendChild(opt);
         });
         if(projectId) pSelect.value=String(projectId);
-        sSelect.innerHTML='<option value="">Aucun sous-projet</option>';
+
+        sSelect.innerHTML='<option value="">Aucune étape active</option>';
         const project=projectById(pSelect.value);
-        (project?.subprojects||[]).forEach(sp=>{
-          const opt=document.createElement("option"); opt.value=sp.id; opt.textContent=sp.name; sSelect.appendChild(opt);
-        });
-        if(subprojectId) sSelect.value=String(subprojectId);
+        const stage=activeStage(project);
+        if(stage){
+          const opt=document.createElement("option");
+          opt.value=stage.id;
+          opt.textContent=`Étape ${stageNumber(project,stage.id)} — ${stage.name}`;
+          sSelect.appendChild(opt);
+          sSelect.value=String(stage.id);
+        }
+        renderProjectStageTaskPicker(project?.id||null,stage?.id||null,editingDeepTasks.map(t=>String(t.id)));
       }
+
+      function renderProjectStageTaskPicker(projectId,stageId,selectedIds=[]){
+        const picker=el("projectStageTaskPicker"), list=el("projectStageTaskList");
+        if(!picker||!list)return;
+        const project=projectById(projectId), stage=subprojectById(project,stageId);
+        if(!project||!stage){
+          picker.classList.remove("show");list.innerHTML="";return;
+        }
+        picker.classList.add("show");
+        el("projectStagePickerTitle").textContent=`${stage.name} — tâches disponibles`;
+        const selected=new Set((selectedIds||[]).map(String));
+        list.innerHTML="";
+        const tasks=stage.tasks||[];
+        if(!tasks.length){
+          list.innerHTML='<div class="week-empty">Aucune tâche pour cette étape. Tu peux en créer une juste en dessous.</div>';
+        }
+        tasks.forEach(task=>{
+          const row=document.createElement("div");
+          row.className="project-stage-task-option";
+          const id=`stagepick-${task.id}`;
+          row.innerHTML=`<input type="checkbox" id="${id}"><label for="${id}"></label>`;
+          const ck=row.querySelector("input");
+          ck.checked=selected.has(String(task.id));
+          ck.disabled=!!task.done;
+          const label=row.querySelector("label");
+          label.textContent=task.name+(task.durationMinutes?` · ${task.durationMinutes} min`:"");
+          if(task.done)label.classList.add("done");
+          ck.addEventListener("change",()=>{
+            if(ck.checked){
+              if(!editingDeepTasks.some(t=>String(t.id)===String(task.id))) editingDeepTasks.push(projectTaskToSessionTask(task));
+            }else{
+              editingDeepTasks=editingDeepTasks.filter(t=>String(t.id)!==String(task.id));
+            }
+            renderDeepTaskEditor();
+          });
+          list.appendChild(row);
+        });
+      }
+
 
       function minutesSinceMidnight(time){
         const [h,m]=String(time||"00:00").split(":").map(Number);
@@ -3681,28 +3916,24 @@
       function openWeekProjectTaskPicker(){
         if(!weekAddTargetDate) return;
         const dateKey=localDateKey(weekAddTargetDate);
-        const box=el("weekTaskOptions");
-        const picker=el("weekProjectTaskPicker");
-        box.innerHTML="";
+        const picker=el("weekProjectTaskPicker"), box=el("weekTaskOptions");
         const recs=recommendedProjectTasks(dateKey);
-
+        box.innerHTML="";
         if(!recs.length){
-          box.innerHTML='<div class="week-empty">Aucune tâche de projet disponible pour cette date.</div>';
+          box.innerHTML='<div class="week-empty">Aucune étape active de projet à cette date.</div>';
         }else{
-          recs.forEach(({project,sp,task})=>{
+          recs.forEach(({project,sp})=>{
             const button=document.createElement("button");
             button.type="button";
             button.className="week-task-option";
             button.style.setProperty("--project-color",project.color||"#23272d");
             button.innerHTML='<strong></strong><span></span>';
-            button.querySelector("strong").textContent=task.name;
-            const deadline=sp.deadline || project.endDate || "";
+            button.querySelector("strong").textContent=sp.name;
             button.querySelector("span").textContent=
-              `${project.name} · ${sp.name}${deadline?` · deadline ${deadline}`:""} · ${task.durationMinutes} min`;
+              `${project.name} · Étape ${stageNumber(project,sp.id)} · ${(sp.tasks||[]).filter(t=>!t.done).length} tâche(s) restantes`;
             button.onclick=()=>{
-              scheduleProjectTask(project.id,sp.id,task.id,dateKey);
               el("weekAddChoiceDialog").close();
-              renderWeekView();
+              openProjectStageSessionEditor(project.id,dateKey);
             };
             box.appendChild(button);
           });
@@ -4409,11 +4640,33 @@
 
 
       function projectSeedPayload(project){
+        normalizeStageOrder(project);
         return {
           id:project.id,name:project.name,description:project.description||"",color:project.color||"#7c5cff",
           startDate:project.startDate||"",endDate:project.endDate||"",
-          subprojects:project.subprojects||[],mindmapBlocks:project.mindmapBlocks||[]
+          subprojects:(project.subprojects||[]).map(sp=>({...sp})),
+          mindmapBlocks:project.mindmapBlocks||[]
         };
+      }
+
+
+      function openProjectStageMindmap(projectId,stageId,titleText="Étape"){
+        const project=projectById(projectId), stage=subprojectById(project,stageId);
+        if(!project||!stage)return;
+        activeMindmapContext={kind:"stage",projectId:String(projectId),nodeId:String(stageId)};
+        activeMindmapBlockId=`stage:${projectId}:${stageId}`;
+        activeMindmapTitle=titleText||stage.name;
+        el("mindmapHostTitle").textContent=stage.name;
+        el("mindmapSyncState").textContent=`${project.name} · Étape active`;
+        el("mindmapBackBtn").textContent="← Retour à 16H";
+        el("mindmapOverlay").classList.add("open");
+        el("mindmapOverlay").setAttribute("aria-hidden","false");
+        document.body.style.overflow="hidden";
+        const q=new URLSearchParams({
+          host:"16h",mode:"stage",projectId:String(projectId),stageId:String(stageId),
+          title:stage.name,color:project.color||"#7c5cff"
+        });
+        el("mindmapFrame").src=`./mindmap.html?${q.toString()}`;
       }
 
       function openProjectBlockDetail(projectId,nodeId,titleText="Bloc de travail"){
@@ -4459,6 +4712,9 @@
       }
 
       async function openCurrentMindmap(item){
+        if(item?.projectId && item?.subprojectId){
+          openProjectStageMindmap(item.projectId,item.subprojectId,item.name); return;
+        }
         if(item?.projectId && item?.mindmapNodeId){
           openProjectMindmap(item.projectId,item.mindmapNodeId); return;
         }
@@ -5179,7 +5435,7 @@
       function refreshDeepTasksVisibility(){
         const typeId=el("blockTypeSelect")?.value;
         const name=el("blockName")?.value || "";
-        const show=isDeepWorkType(typeId,name);
+        const show=!!el("blockProjectSelect")?.value || isDeepWorkType(typeId,name);
         if(deepTasksField) deepTasksField.style.display=show ? "flex" : "none";
       }
 
@@ -5224,14 +5480,19 @@
 
         block.updatedAt=now;
 
-        if(block.projectId && block.mindmapNodeId){
+        if(block.projectId && block.subprojectId){
+          const project=projectById(block.projectId);
+          const stage=subprojectById(project,block.subprojectId);
+          const sourceTask=stage?.tasks?.find(task=>String(task.id)===String(active.id));
+          if(sourceTask){
+            sourceTask.done=true;
+            project.updatedAt=now;
+          }
+        }else if(block.projectId && block.mindmapNodeId){
           const project=projectById(block.projectId);
           const mapBlock=mindmapBlockById(project,block.mindmapNodeId);
           const sourceItem=mapBlock?.items?.find(item=>String(item.id)===String(active.id));
-          if(sourceItem){
-            sourceItem.done=true;
-            project.updatedAt=now;
-          }
+          if(sourceItem){sourceItem.done=true;project.updatedAt=now}
         }
 
         saveState();
@@ -5287,6 +5548,7 @@
 
       function fillBlockEditFields(b){
         refreshBlockTypeSelect(b?.typeId || null);
+        editingDeepTasks=Array.isArray(b?.tasks) ? b.tasks.map(t=>({...t})) : [];
         refreshProjectLinkFields(b?.projectId || null,b?.subprojectId || null);
         fillDurationOptions();
         if(b?.typeId && state.blockTypes.some(t=>String(t.id)===String(b.typeId))){
@@ -5302,7 +5564,6 @@
         el("blockDate").value=b?.plannedDate || localDateKey(new Date(b.start || Date.now()));
         el("blockDuration").value=String(Math.max(15,Number(b?.durationMinutes)||Math.round((b.end-b.start)/60000)||15));
         el("blockColor").value=b?.color || "#23272d";
-        editingDeepTasks=Array.isArray(b?.tasks) ? b.tasks.map(t=>({...t})) : [];
         renderDeepTaskEditor();
         refreshDeepTasksVisibility();
         syncPresetState("block");
@@ -5418,9 +5679,11 @@
         const projectId=el("blockProjectSelect")?.value || null;
         const subprojectId=el("blockSubprojectSelect")?.value || null;
         const linkedProject=projectById(projectId);
-        const color=linkedProject?.color || el("blockColor").value || "#23272d";
+        const linkedStage=activeStage(linkedProject);
+        const effectiveSubprojectId=linkedProject ? (linkedStage?.id || subprojectId) : subprojectId;
+        const color=el("blockColor").value || linkedProject?.color || "#23272d";
         const floating=!el("blockHasTime").checked;
-        const tasks=isDeepWorkType(typeId,name) ? normalizeDeepTasksForSave() : [];
+        const tasks=projectId ? normalizeDeepTasksForSave() : (isDeepWorkType(typeId,name) ? normalizeDeepTasksForSave() : []);
         const err=el("blockError");
         let start,end,plannedDate,durationMinutes;
 
@@ -5458,9 +5721,15 @@
         const updatedAt=Date.now();
         if(selectedBlockId){
           const b=state.blocks.find(x=>x.id===selectedBlockId);
-          Object.assign(b,{name,address,description,typeId,start,end,color,floating,plannedDate,durationMinutes,tasks,projectId,subprojectId,updatedAt});
+          Object.assign(b,{
+            name,address,description,typeId,start,end,color,floating,plannedDate,durationMinutes,tasks,
+            projectId,subprojectId:effectiveSubprojectId,projectSession:!!projectId,projectTaskId:null,mindmapNodeId:null,updatedAt
+          });
         }else{
-          state.blocks.push({id:uid(),name,address,description,typeId,start,end,color,floating,plannedDate,durationMinutes,tasks,projectId,subprojectId,updatedAt});
+          state.blocks.push({
+            id:uid(),name,address,description,typeId,start,end,color,floating,plannedDate,durationMinutes,tasks,
+            projectId,subprojectId:effectiveSubprojectId,projectSession:!!projectId,projectTaskId:null,mindmapNodeId:null,updatedAt
+          });
         }
         saveState();
         blockDialog.close();
@@ -5846,7 +6115,10 @@
           const project=projectById(editingProjectId);
           Object.assign(project,{name,description,startDate,endDate,color,updatedAt:Date.now()});
         }else{
-          state.projects.push({id:uid(),name,description,startDate,endDate,color,subprojects:[],updatedAt:Date.now()});
+          state.projects.push({
+            id:uid(),name,description,startDate,endDate,color,
+            projectModelVersion:13,subprojects:[],mindmapBlocks:[],updatedAt:Date.now()
+          });
         }
         saveState(false);
         el("projectDialog").close();
@@ -5895,7 +6167,7 @@
         const linkedBlocks=linkedBlocksForSubproject(sp.id);
         const taskCount=(sp.tasks||[]).length;
 
-        let message=`Supprimer définitivement le sous-projet « ${sp.name} » ?\n\n`;
+        let message=`Supprimer définitivement l’étape « ${sp.name} » ?\n\n`;
         message+=`${taskCount} tâche(s) seront supprimée(s).`;
         if(linkedBlocks.length){
           message+=`\n\n${linkedBlocks.length} bloc(s) de temps lié(s) seront également supprimés.`;
@@ -5912,7 +6184,7 @@
         el("subprojectDialog").close();
         editingSubprojectCtx=null;
         render();
-        showToast("Sous-projet supprimé");
+        showToast("Étape supprimée");
       };
 
       el("subprojectForm").addEventListener("submit",(e)=>{
@@ -5923,19 +6195,27 @@
         const name=el("subprojectNameInput").value.trim();
         const description=el("subprojectDescriptionInput").value.trim();
         const deadline=el("subprojectDeadlineInput").value || "";
-        const priority=Math.max(1,Math.min(5,Number(el("subprojectPriorityInput").value)||3));
-        if(!name) return showFormError(el("subprojectError"),"Le nom du sous-projet est obligatoire.");
+        const order=Math.max(1,Number(el("subprojectPriorityInput").value)||1);
+        if(!name) return showFormError(el("subprojectError"),"Le nom de l’étape est obligatoire.");
         if(ctx.subprojectId){
           const sp=subprojectById(project,ctx.subprojectId);
-          Object.assign(sp,{name,description,deadline,priority});
+          Object.assign(sp,{name,description,deadline,order,priority:order});
         }else{
-          project.subprojects.push({id:uid(),name,description,deadline,priority,tasks:[]});
+          project.subprojects.push({id:uid(),name,description,deadline,order,priority:order,completed:false,completedAt:0,tasks:[]});
+        }
+        normalizeStageOrder(project);
+        // Move stage to requested chronological position.
+        const moving=ctx.subprojectId ? subprojectById(project,ctx.subprojectId) : project.subprojects[project.subprojects.length-1];
+        if(moving){
+          project.subprojects=project.subprojects.filter(x=>x!==moving);
+          project.subprojects.splice(Math.max(0,Math.min(order-1,project.subprojects.length)),0,moving);
+          normalizeStageOrder(project);
         }
         project.updatedAt=Date.now();
         saveState(false);
         el("subprojectDialog").close();
         renderProjectsView(); renderProjectDayPlanner(); renderWeekProjectFocus();
-        showToast("Sous-projet enregistré");
+        showToast("Étape enregistrée");
       });
 
       el("projectTaskForm").addEventListener("submit",(e)=>{
@@ -6001,15 +6281,37 @@
       el("autoPrepareProjectTasksBtn").onclick=()=>{
         const recs=recommendedProjectTasks().slice(0,3);
         if(!recs.length){showToast("Aucune tâche de projet à préparer");return;}
-        recs.forEach(({project,sp,task})=>scheduleProjectTask(project.id,sp.id,task.id));
+        recs.forEach(({project})=>createProjectStageSession(project.id));
         render();
       };
 
       el("blockProjectSelect").addEventListener("change",()=>{
         const pid=el("blockProjectSelect").value;
+        editingDeepTasks=[];
         refreshProjectLinkFields(pid,null);
-        const project=projectById(pid);
-        if(project) el("blockColor").value=project.color || el("blockColor").value;
+        const project=projectById(pid), stage=activeStage(project);
+        if(project && stage){
+          el("blockName").value=stage.name;
+          el("blockDescription").value=`${project.name} · Étape ${stageNumber(project,stage.id)}`;
+          el("blockColor").value=project.color || el("blockColor").value;
+          el("blockSubprojectSelect").value=String(stage.id);
+        }
+        renderDeepTaskEditor();
+      });
+
+      el("projectStageAddTaskBtn").addEventListener("click",()=>{
+        const pid=el("blockProjectSelect").value;
+        const project=projectById(pid), stage=activeStage(project);
+        const input=el("projectStageNewTaskInput");
+        const name=input.value.trim();
+        if(!project||!stage||!name)return;
+        const task={id:uid(),name,description:"",durationMinutes:30,workMode:"solo",done:false};
+        stage.tasks.push(task);
+        project.updatedAt=Date.now();
+        input.value="";
+        saveState(false);
+        renderProjectStageTaskPicker(project.id,stage.id,editingDeepTasks.map(t=>String(t.id)));
+        showToast("Tâche ajoutée à l’étape");
       });
 
       el("notificationBtn").onclick=()=>{
@@ -7127,6 +7429,24 @@
             return;
           }
 
+          if(msg.mode==="stage"){
+            const project=projectById(msg.projectId);
+            const stage=subprojectById(project,msg.stageId);
+            if(project && stage){
+              el("mindmapFrame").contentWindow.postMessage({
+                type:"16h:stage-seed",
+                projectId:project.id,
+                stage:{
+                  id:stage.id,name:stage.name,description:stage.description||"",
+                  order:stageNumber(project,stage.id),completed:!!stage.completed,
+                  tasks:stage.tasks||[]
+                },
+                project:{id:project.id,name:project.name,color:project.color||"#7c5cff"}
+              },location.origin);
+            }
+            return;
+          }
+
           if(msg.mode==="detail"){
             const project=projectById(msg.projectId);
             const block=mindmapBlockById(project,msg.nodeId);
@@ -7153,6 +7473,28 @@
           }
           el("mindmapSyncState").textContent=cloudUser?"Prêt · Cloud":"Sauvegarde locale active";
           return;
+        }
+
+        if(msg.type==="16h:stage-task-sync"){
+          const project=projectById(msg.projectId);
+          const stage=subprojectById(project,msg.stageId);
+          const task=stage?.tasks?.find(t=>String(t.id)===String(msg.taskId));
+          if(!project||!stage||!task)return;
+          task.done=!!msg.done;
+          project.updatedAt=Date.now();
+
+          state.blocks.filter(b=>
+            String(b.projectId||"")===String(project.id) &&
+            String(b.subprojectId||"")===String(stage.id)
+          ).forEach(block=>{
+            const bt=(block.tasks||[]).find(t=>String(t.id)===String(task.id));
+            if(bt){
+              if(task.done){bt.completedAt=bt.completedAt||Date.now();bt.startedAt=bt.startedAt||bt.completedAt}
+              else bt.completedAt=0;
+              block.updatedAt=Date.now();
+            }
+          });
+          saveState(false);render();return;
         }
 
         if(msg.type==="16h:project-sync"){
@@ -7279,7 +7621,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=12.4").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=13").catch(() => {});
       });
     }
   </script>

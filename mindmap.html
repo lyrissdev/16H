@@ -305,10 +305,60 @@
   .radius-presets button:hover{background:#f4f3f7}
 
 
-  /* 16H V12.2 adapter — V17.2 remains authoritative for auto-layout/connectors */
+/* ========================= V18.1 — hierarchy, multiline text, task-child nodes ========================= */
+.node-text{
+  display:block!important;
+  width:100%;height:100%;
+  padding:10px 14px;
+  box-sizing:border-box;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:normal;
+  line-height:1.28;
+  overflow:hidden;
+  text-align:left;
+  vertical-align:top;
+}
+.node-text-editor{
+  display:block!important;
+  width:100%!important;height:100%!important;
+  resize:none!important;
+  border:0!important;outline:0!important;
+  background:transparent!important;
+  box-sizing:border-box!important;
+  padding:10px 14px!important;
+  margin:0!important;
+  white-space:pre-wrap!important;
+  overflow-wrap:anywhere!important;
+  line-height:1.28!important;
+  overflow:auto!important;
+  vertical-align:top!important;
+}
+.text-node .node-text,.text-node .node-text-editor{padding:4px 6px!important}
+.sticky .node-text,.sticky .node-text-editor{padding:16px!important}
+.section .node-text,.section .node-text-editor{padding:16px 20px!important}
+.taskcard-node{display:flex!important;align-items:flex-start!important;overflow:hidden!important}
+.taskcard-shell{width:100%;height:100%;display:flex;align-items:flex-start;gap:6px;padding:9px 11px;box-sizing:border-box}
+.taskcard-check-hit{width:34px;height:34px;min-width:34px;display:grid;place-items:center;border-radius:9px;cursor:pointer;margin:-5px 0 0 -5px;position:relative;z-index:3}
+.taskcard-check-hit:hover{background:rgba(139,61,255,.08)}
+.taskcard-check{appearance:none;-webkit-appearance:none;width:20px;height:20px;min-width:20px;border:1.8px solid #8a919b;border-radius:5px;background:#fff;display:grid;place-items:center;cursor:pointer;margin:0}
+.taskcard-check:checked{background:#8b3dff;border-color:#8b3dff}
+.taskcard-check:checked::after{content:"✓";color:#fff;font-size:14px;font-weight:900;line-height:1}
+.taskcard-label{flex:1;min-width:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.28;font-weight:700;padding-top:1px}
+.node.dependency-muted{opacity:.42!important;filter:grayscale(.92);}
+.node.dependency-muted::after{content:"";position:absolute;inset:0;background:rgba(190,194,202,.18);pointer-events:none;border-radius:inherit}
+#todoTaskPicker{position:absolute;z-index:80;min-width:260px;max-width:360px;background:#fff;border:1px solid #dde1e8;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.16);padding:8px;display:none}
+#todoTaskPicker.show{display:block}
+#todoTaskPicker .picker-title{font-size:12px;font-weight:800;color:#656b75;padding:6px 8px 8px}
+#todoTaskPicker button{width:100%;border:0;background:#fff;text-align:left;padding:9px 10px;border-radius:9px;cursor:pointer;font-size:13px;white-space:normal;line-height:1.25}
+#todoTaskPicker button:hover{background:#f4efff;color:#6328b8}
+#todoTaskPicker .empty{padding:10px;color:#8a919b;font-size:13px}
+
+
+  /* 16H V12.5 adapter — Home Mindmap V18.1 remains authoritative */
   #project16hActions{
     position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
-    z-index:75;display:none;align-items:center;gap:7px;background:rgba(255,255,255,.98);
+    z-index:90;display:none;align-items:center;gap:7px;background:rgba(255,255,255,.98);
     border:1px solid #e1e5eb;border-radius:15px;padding:6px;
     box-shadow:0 8px 28px rgba(20,24,31,.14);backdrop-filter:blur(10px)
   }
@@ -345,15 +395,8 @@
   }
   .p16-actions .primary{background:#17191d;color:#fff;border-color:#17191d}
 
-  .detail-task-toggle{
-    position:absolute;right:-11px;top:-11px;width:26px;height:26px;border-radius:50%;
-    border:2px solid #b9c1cc;background:#fff;z-index:50;cursor:pointer;font-weight:900;
-    box-shadow:0 2px 7px rgba(0,0,0,.12)
-  }
-  .detail-task-toggle.done{background:#17191d;color:#fff;border-color:#17191d}
-
   #host16hBadge{
-    position:absolute;left:70px;bottom:18px;z-index:74;background:#fff;
+    position:absolute;left:70px;bottom:18px;z-index:89;background:#fff;
     border:1px solid #e0e4ea;border-radius:999px;padding:7px 10px;
     font-size:11px;font-weight:800;box-shadow:0 5px 18px rgba(0,0,0,.08)
   }
@@ -367,6 +410,7 @@
     <div id="world"><div id="nodeLayer"></div></div>
     <svg id="selectionSvg"></svg>
     <div id="connectorOverlay"></div>
+    <div id="todoTaskPicker"></div>
     <div id="marquee"></div>
     <div id="smartV"></div><div id="smartH"></div>
 
@@ -504,17 +548,21 @@ const HOST16H_PARAMS=new URLSearchParams(location.search);
 const HOST16H=HOST16H_PARAMS.get("host")==="16h";
 const HOST16H_MODE=HOST16H_PARAMS.get("mode")||"standalone";
 const PROJECT16H_MODE=HOST16H && HOST16H_MODE==="project";
+const STAGE16H_MODE=HOST16H && HOST16H_MODE==="stage";
 const DETAIL16H_MODE=HOST16H && HOST16H_MODE==="detail";
 const HOST16H_PROJECT_ID=HOST16H_PARAMS.get("projectId")||"";
 const HOST16H_NODE_ID=HOST16H_PARAMS.get("nodeId")||"";
+const HOST16H_STAGE_ID=HOST16H_PARAMS.get("stageId")||"";
 const HOST16H_BLOCK_ID=HOST16H_PARAMS.get("blockId")||HOST16H_NODE_ID||"";
 const HOST16H_TITLE=HOST16H_PARAMS.get("title")||"Carte mentale";
 const HOST16H_COLOR=HOST16H_PARAMS.get("color")||"#7c5cff";
 const HOST16H_STORAGE_KEY=PROJECT16H_MODE
   ? `16h.projectmindmap.${HOST16H_PROJECT_ID}`
-  : DETAIL16H_MODE
-    ? `16h.blockdetail.${HOST16H_PROJECT_ID}.${HOST16H_NODE_ID}`
-    : HOST16H && HOST16H_BLOCK_ID
+  : STAGE16H_MODE
+    ? `16h.stagemindmap.${HOST16H_PROJECT_ID}.${HOST16H_STAGE_ID}`
+    : DETAIL16H_MODE
+      ? `16h.blockdetail.${HOST16H_PROJECT_ID}.${HOST16H_NODE_ID}`
+      : HOST16H && HOST16H_BLOCK_ID
       ? `16h.mindmap.${HOST16H_BLOCK_ID}`
       : "homeMindmapEditor.v1";
 let HOST16H_PROJECT=null;
@@ -612,7 +660,9 @@ function anchorFor(a){
   return {x:x+w,y:y+h/2};
 }
 function con(from,to,type="elbow",style={}){
-  return {id:uid("con"),from,to,type,label:"",style:{color:"#17191d",width:2,dash:"",arrow:true,...style},z:1};
+  const c={id:uid("con"),from,to,type,label:"",style:{color:"#17191d",width:2,dash:"",arrow:true,...style},z:1};
+  if(from?.elementId&&to?.elementId)c.relation={type:"parent-child",parentId:from.elementId,childId:to.elementId};
+  return c;
 }
 function demo(){
   const els=[], cons=[];
@@ -679,6 +729,8 @@ function applyViewport(){
   $("#zoomPct").textContent=Math.round(state.viewport.zoom*100)+"%";
 }
 function render(){
+  syncHierarchyFromConnectors();
+  syncTaskcardsFromTodos();
   applyViewport(); renderNodes(); renderConnectors(); renderSelection(); renderTopbar();
   if(PROJECT16H_MODE)p16RenderActions();
 }
@@ -686,6 +738,7 @@ function renderNodes(){
   nodeLayer.innerHTML="";
   [...state.elements].sort((a,b)=>(a.z||0)-(b.z||0)).forEach(e=>{
     const n=document.createElement("div"); n.className=`node hoverable ${e.type==="sticky"?"sticky":""} ${e.type==="text"?"text-node":""} ${e.type==="section"?"section":""} ${e.type==="draw"?"draw-node":""} ${e.type==="table"?"table-node":""} ${e.kind==="diamond"?"diamond":""} ${e.locked?"locked":""} ${editingId===e.id?"editing":""}`;
+    if(isBlockedByCompletedTaskAncestor(e.id))n.classList.add("dependency-muted");
     n.dataset.id=e.id;n.style.left=e.x+"px";n.style.top=e.y+"px";n.style.width=e.w+"px";n.style.height=e.h+"px";n.style.zIndex=e.z||10;
     n.style.transform=`rotate(${e.rotation||0}deg)`;n.style.opacity=e.style.opacity??1;
     if(e.type==="todo"){
@@ -708,6 +761,19 @@ function renderNodes(){
       shell.appendChild(list);
       const add=document.createElement("button");add.type="button";add.className="todo-add todo-interactive";add.textContent="＋ Ajouter une tâche";shell.appendChild(add);
       n.appendChild(shell);
+    } else if(e.type==="taskcard"){
+      n.classList.add("taskcard-node");
+      n.style.background=e.style.fill||"#ffffff";
+      n.style.border=`${e.style.strokeWidth||1}px ${e.style.borderStyle||"solid"} ${e.style.stroke||"#c9cfd8"}`;
+      n.style.borderRadius=(e.style.radius??12)+"px";
+      n.style.color=e.style.textColor||"#17191d";
+      n.style.fontFamily=e.style.fontFamily||"Open Sans, Arial, sans-serif";
+      const shell=document.createElement("div");shell.className="taskcard-shell";
+      const hit=document.createElement("label");hit.className="taskcard-check-hit";hit.title="Marquer cette tâche comme terminée";
+      const ck=document.createElement("input");ck.type="checkbox";ck.className="taskcard-check";ck.checked=!!e.done;
+      hit.appendChild(ck);
+      const label=document.createElement("div");label.className="taskcard-label";label.textContent=e.text||"Tâche";
+      shell.append(hit,label);n.appendChild(shell);
     } else if(e.type==="image"){
       n.classList.add("image-node");
       if(cropEditingId===e.id)n.classList.add("crop-editing");
@@ -731,21 +797,14 @@ function renderNodes(){
         n.style.border=`${e.style.strokeWidth||0}px ${e.style.borderStyle||"solid"} ${e.style.stroke||"transparent"}`;
         n.style.borderRadius=(e.kind==="circle"?"50%":(e.style.radius||0)+"px");
       }
-      const tx=document.createElement("div");tx.className="node-text";tx.textContent=e.text;tx.contentEditable=editingId===e.id?"true":"false";
+      const editing=editingId===e.id;
+      const tx=document.createElement(editing?"textarea":"div");
+      tx.className=editing?"node-text node-text-editor":"node-text";
+      if(editing)tx.value=e.text||"";else tx.textContent=e.text||"";
       tx.spellcheck=false;tx.style.fontFamily=e.style.fontFamily;tx.style.fontSize=(e.style.fontSize||16)+"px";tx.style.fontWeight=e.style.fontWeight||500;tx.style.fontStyle=e.style.fontStyle||"normal";
       tx.style.textDecoration=e.style.textDecoration||"none";tx.style.color=e.style.textColor||"#17191d";tx.style.textAlign=e.style.textAlign||"center";
-      tx.style.justifyContent=e.style.textAlign==="left"?"flex-start":e.style.textAlign==="right"?"flex-end":"center";
       n.appendChild(tx);
-      if(editingId===e.id) setTimeout(()=>{if(document.body.contains(tx)){tx.focus();placeCaretEnd(tx)}},0);
-    }
-    if(DETAIL16H_MODE && e.taskItemId){
-      const toggle=document.createElement("button");
-      toggle.type="button";
-      toggle.className="detail-task-toggle"+(e.taskDone?" done":"");
-      toggle.textContent=e.taskDone?"✓":"";
-      toggle.title=e.taskDone?"Tâche terminée":"Marquer la tâche terminée";
-      toggle.dataset.itemId=String(e.taskItemId);
-      n.appendChild(toggle);
+      if(editing) setTimeout(()=>{if(document.body.contains(tx)){tx.focus();tx.selectionStart=tx.selectionEnd=tx.value.length}},0);
     }
     nodeLayer.appendChild(n);
   });
@@ -822,7 +881,7 @@ function renderSelection(){
   const b=selectedBounds(); if(!b){selectionBox.style.display="none";return}
   const s=worldToScreen({x:b.x,y:b.y});
   selectionBox.style.display="block"; selectionBox.style.left=s.x+"px"; selectionBox.style.top=s.y+"px"; selectionBox.style.width=(b.w*state.viewport.zoom)+"px"; selectionBox.style.height=(b.h*state.viewport.zoom)+"px";
-  const one=selectedEls().length===1, e=one?selectedEls()[0]:null, canQuick=one&&["shape","sticky"].includes(e.type)&&!e.locked;
+  const one=selectedEls().length===1, e=one?selectedEls()[0]:null, canQuick=one&&["shape","sticky","todo","taskcard"].includes(e.type)&&!e.locked;
   $$(".quick").forEach(q=>q.style.display=canQuick?"grid":"none");
   $$(".handle").forEach(h=>h.style.display=selectedEls().some(e=>e.locked)?"none":"block");
   $("#rotateHandle").style.display=(one&&!e.locked)?"grid":"none"; $("#rotateStem").style.display="none";
@@ -904,17 +963,18 @@ function toggleSelect(id){
 }
 function clearSelection(){state.selectedIds=[];selectedConnectorId=null;borderPopover.classList.remove("show");renderSelection();renderTopbar();layoutFloatingBars()}
 function beginEdit(id){
-  const e=getEl(id);if(!e||e.locked||["draw","table","image"].includes(e.type))return;
+  const e=getEl(id);if(!e||e.locked||["draw","table","image","todo","taskcard"].includes(e.type))return;
+  if(isBlockedByCompletedTaskAncestor(id)){toast("Ce bloc dépend d’une tâche terminée");return}
   editingId=id;pendingTextBefore=e.text;select([id]);renderNodes();renderSelection();renderTopbar();
   requestAnimationFrame(()=>{
-    const node=document.querySelector(`.node[data-id="${id}"] .node-text`);
-    if(node){node.contentEditable="true";node.focus();placeCaretEnd(node);}
+    const node=document.querySelector(`.node[data-id="${id}"] .node-text-editor`);
+    if(node){node.focus();node.selectionStart=node.selectionEnd=node.value.length;}
   });
 }
 function endEdit(commit=true){
   if(!editingId)return;
-  const node=document.querySelector(`.node[data-id="${editingId}"] .node-text`);
-  const e=getEl(editingId);if(node&&e)e.text=node.innerText.replace(/\n$/,"");
+  const node=document.querySelector(`.node[data-id="${editingId}"] .node-text-editor`);
+  const e=getEl(editingId);if(node&&e)e.text=node.value.replace(/\r\n/g,"\n");
   editingId=null;renderNodes();renderSelection();renderTopbar();if(commit)commitHistory();
 }
 function cloneSelected(){
@@ -948,8 +1008,45 @@ function createAtCenter(type,kind,text,w=180,h=70,style={}){
   const rect=viewport.getBoundingClientRect(), p=screenToWorld({x:rect.width/2,y:rect.height/2});
   const e=el(type,p.x-w/2,p.y-h/2,w,h,text,kind,style);e.z=maxZ()+1;state.elements.push(e);state.selectedIds=[e.id];commitHistory();render();return e;
 }
-function quickFlow(dir){
+let pendingTodoQuick=null;
+function createConnectedChild(src,dir,opts={}){
+  const gap=150;
+  const w=opts.w||190,h=opts.h||64;
+  let n;
+  if(opts.type==="taskcard"){
+    n=el("taskcard",src.x,src.y,w,h,opts.text||"Tâche","rect",{fill:"#ffffff",stroke:"#b9bec8",strokeWidth:1,radius:12,textAlign:"left"});
+    n.done=!!opts.done;n.sourceTodoId=src.id;n.sourceTodoItemId=opts.todoItemId||null;
+  }else{
+    n=el("shape",src.x,src.y,w,h,opts.text||"Nouveau bloc","rect",{fill:"#ffffff",stroke:"#17191d",strokeWidth:1,radius:8,textAlign:"left"});
+  }
+  n.z=maxZ()+1;
+  if(dir==="right"){n.x=src.x+src.w+gap;n.y=src.y}
+  if(dir==="left"){n.x=src.x-w-gap;n.y=src.y}
+  if(dir==="down"){n.x=src.x;n.y=src.y+src.h+gap}
+  if(dir==="up"){n.x=src.x;n.y=src.y-h-gap}
+  state.elements.push(n);
+  const fromAnchor=dir==="right"?"right":dir==="left"?"left":dir==="down"?"bottom":"top";
+  const toAnchor=dir==="right"?"left":dir==="left"?"right":dir==="down"?"top":"bottom";
+  const c=con({elementId:src.id,anchor:fromAnchor},{elementId:n.id,anchor:toAnchor});
+  state.connectors.push(c);syncHierarchyFromConnectors();state.selectedIds=[n.id];commitHistory();render();
+  if(n.type==="shape")beginEdit(n.id);
+  return n;
+}
+function openTodoTaskPicker(src,dir,buttonEl){
+  const picker=$("#todoTaskPicker");if(!picker)return;
+  pendingTodoQuick={srcId:src.id,dir};
+  const items=src.items||[];
+  picker.innerHTML=`<div class="picker-title">Créer un bloc depuis une tâche</div>`+(items.length?items.map(it=>`<button type="button" data-todo-item="${it.id}">${escapeHtml(it.text||"Tâche sans nom")}</button>`).join(""):`<div class="empty">Aucune tâche dans cette Todo list.</div>`);
+  const br=buttonEl?.getBoundingClientRect?.()||{left:100,top:100,bottom:130,right:130};
+  const vr=viewport.getBoundingClientRect();
+  picker.style.left=Math.min(vr.width-370,Math.max(10,br.right-vr.left+8))+"px";
+  picker.style.top=Math.min(vr.height-280,Math.max(10,br.top-vr.top-10))+"px";
+  picker.classList.add("show");
+}
+function quickFlow(dir,buttonEl=null){
   const src=selectedEls()[0];if(!src)return;
+  if(src.type==="todo"){openTodoTaskPicker(src,dir,buttonEl);return}
+  if(src.type==="taskcard"){createConnectedChild(src,dir,{type:"shape",text:"Nouveau bloc",w:190,h:70});return}
   const gap=150,n=clone(src);n.id=uid("el");n.text="Nouveau bloc";n.groupId=null;n.z=maxZ()+1;
   if(dir==="right"){n.x=src.x+src.w+gap;n.y=src.y}
   if(dir==="left"){n.x=src.x-src.w-gap;n.y=src.y}
@@ -959,7 +1056,7 @@ function quickFlow(dir){
   const fromAnchor=dir==="right"?"right":dir==="left"?"left":dir==="down"?"bottom":"top";
   const toAnchor=dir==="right"?"left":dir==="left"?"right":dir==="down"?"top":"bottom";
   state.connectors.push(con({elementId:src.id,anchor:fromAnchor},{elementId:n.id,anchor:toAnchor}));
-  state.selectedIds=[n.id];commitHistory();render();beginEdit(n.id);
+  syncHierarchyFromConnectors();state.selectedIds=[n.id];commitHistory();render();beginEdit(n.id);
 }
 function nearestAnchor(wp,maxDist=42){
   let best=null;
@@ -973,7 +1070,7 @@ function nearestAnchor(wp,maxDist=42){
 function createFreeConnector(a,b){
   const na=nearestAnchor(a), nb=nearestAnchor(b);
   const c={id:uid("con"),from:na||null,to:nb||null,fromPoint:na?null:a,toPoint:nb?null:b,type:"elbow",label:"",style:{color:"#17191d",width:2,dash:"",arrow:true}};
-  state.connectors.push(c); selectedConnectorId=c.id; commitHistory(); render();
+  state.connectors.push(c); syncHierarchyFromConnectors(); selectedConnectorId=c.id; commitHistory(); render();
 }
 function snapDelta(startBounds,dx,dy,movingIds){
   const z=state.viewport.zoom,th=7/z, others=state.elements.filter(e=>!movingIds.has(e.id)&&e.type!=="section");
@@ -994,9 +1091,11 @@ function hideGuides(){smartV.style.display=smartH.style.display="none"}
 function onNodePointerDown(ev){
   const n=ev.target.closest(".node"); if(!n)return; const id=n.dataset.id,e=getEl(id); if(!e)return;
   if(e.type==="todo" && ev.target.closest(".todo-title, .todo-check, .todo-text, .todo-delete, .todo-add")){
-    // Keep Todo controls interactive. Without stopping pointerdown here, the viewport
-    // captures the pointer for canvas selection/drag and the later click/change event
-    // never reaches the Todo button/checkbox reliably.
+    ev.stopPropagation();
+    return;
+  }
+  if(e.type==="taskcard" && ev.target.closest(".taskcard-check-hit, .taskcard-check")){
+    // Large, reliable checkbox hit-zone: never let canvas drag steal this click.
     ev.stopPropagation();
     return;
   }
@@ -1037,7 +1136,7 @@ function onNodeDoubleClick(ev){
   const n=ev.target.closest(".node");
   if(!n)return;
   const e=getEl(n.dataset.id);
-  if(!e||e.locked||e.type==="draw"||e.type==="table"||e.type==="image"||e.type==="todo")return;
+  if(!e||e.locked||e.type==="draw"||e.type==="table"||e.type==="image"||e.type==="todo"||e.type==="taskcard")return;
   ev.preventDefault();
   ev.stopImmediatePropagation();
   interaction=null;
@@ -1048,7 +1147,7 @@ function onNodeDoubleClick(ev){
   beginEdit(e.id);
 }
 function onPointerDown(ev){
-  if(ev.target.closest("#leftToolbar,#topbar,#filebar,#zoomControls,#shapePalette,#contextMenu,#selectionBox,#closeBtn"))return;
+  if(ev.target.closest("#leftToolbar,#topbar,#filebar,#zoomControls,#shapePalette,#contextMenu,#selectionBox,#closeBtn,#todoTaskPicker"))return;
   const pos=eventPos(ev), wp=screenToWorld(pos);
   contextMenu.classList.remove("show");shapePalette.classList.toggle("show",state.tool==="shapes"||state.tool==="add");
   if(ev.button===1||spaceDown){interaction={type:"pan",start:pos,vx:state.viewport.x,vy:state.viewport.y};viewport.setPointerCapture(ev.pointerId);return}
@@ -1129,7 +1228,7 @@ function onPointerUp(ev){
   if(i.type==="image-crop-pan"){commitHistory();render();return}
   if(i.type==="pan"){scheduleSave();return}
   if(i.type==="resize"||i.type==="rotate"){commitHistory();render();return}
-  if(i.type==="connector-endpoint"){commitHistory();render();return}
+  if(i.type==="connector-endpoint"){syncHierarchyFromConnectors();commitHistory();render();return}
   if(i.type==="marquee"){
     marquee.style.display="none";const a=screenToWorld({x:Math.min(i.start.x,i.now.x),y:Math.min(i.start.y,i.now.y)}),b=screenToWorld({x:Math.max(i.start.x,i.now.x),y:Math.max(i.start.y,i.now.y)});
     state.selectedIds=state.elements.filter(e=>e.x<b.x&&e.x+e.w>a.x&&e.y<b.y&&e.y+e.h>a.y).map(e=>e.id);renderSelection();renderTopbar();return;
@@ -1204,6 +1303,67 @@ function zoomAtCenter(factor){
   state.viewport.zoom=nz;state.viewport.x=pos.x-wp.x*nz;state.viewport.y=pos.y-wp.y*nz;render();scheduleSave();
 }
 
+/* ========================= V18 hierarchy model ========================= */
+function syncTaskcardsFromTodos(){
+  state.elements.filter(e=>e.type==="taskcard"&&e.sourceTodoId&&e.sourceTodoItemId).forEach(card=>{
+    const todo=getEl(card.sourceTodoId);
+    const item=todo?.type==="todo"?(todo.items||[]).find(it=>it.id===card.sourceTodoItemId):null;
+    if(!item)return;
+    card.done=!!item.done;
+    if(item.text!=null && item.text!=="")card.text=item.text;
+  });
+}
+function syncTaskcardToSource(card){
+  if(!card||card.type!=="taskcard"||!card.sourceTodoId||!card.sourceTodoItemId)return;
+  const todo=getEl(card.sourceTodoId);
+  const item=todo?.type==="todo"?(todo.items||[]).find(it=>it.id===card.sourceTodoItemId):null;
+  if(item)item.done=!!card.done;
+}
+function syncHierarchyFromConnectors(){
+  const parentMap=new Map(state.elements.map(e=>[e.id,new Set()]));
+  const childMap=new Map(state.elements.map(e=>[e.id,new Set()]));
+  const valid=[];
+  state.connectors.forEach((c,idx)=>{
+    if(c.style?.arrow===false||!c.from?.elementId||!c.to?.elementId){delete c.relation;return}
+    const p=getEl(c.from.elementId),ch=getEl(c.to.elementId);if(!p||!ch||p.id===ch.id){delete c.relation;return}
+    const previousOrder=Number.isFinite(c.relation?.order)?c.relation.order:null;
+    c.relation={type:"parent-child",parentId:p.id,childId:ch.id,order:previousOrder};
+    valid.push({c,idx,p,ch});
+  });
+  // V18.1: hierarchy has a stable sibling chronology. For old maps that do not yet
+  // have an order number, infer it ONCE from the current visual reading order
+  // (top-to-bottom, then left-to-right). Auto-arrange never changes that number.
+  const byParent=new Map();
+  valid.forEach(x=>{if(!byParent.has(x.p.id))byParent.set(x.p.id,[]);byParent.get(x.p.id).push(x)});
+  byParent.forEach(group=>{
+    const used=group.filter(x=>Number.isFinite(x.c.relation.order)).map(x=>x.c.relation.order);
+    let next=used.length?Math.max(...used)+1:0;
+    group.filter(x=>!Number.isFinite(x.c.relation.order))
+      .sort((a,b)=>(a.ch.y-b.ch.y)||(a.ch.x-b.ch.x)||(a.idx-b.idx))
+      .forEach(x=>{x.c.relation.order=next++});
+    group.sort((a,b)=>(a.c.relation.order-b.c.relation.order)||(a.idx-b.idx)).forEach(x=>{
+      childMap.get(x.p.id)?.add(x.ch.id); parentMap.get(x.ch.id)?.add(x.p.id);
+    });
+  });
+  state.elements.forEach(e=>{
+    e.parentIds=[...(parentMap.get(e.id)||[])];
+    e.childIds=[...(childMap.get(e.id)||[])];
+    e.primaryParentId=e.parentIds[0]||null;
+  });
+}
+function hierarchyChildren(id){return (getEl(id)?.childIds||[]).map(getEl).filter(Boolean)}
+function hierarchyDescendantIds(id){
+  syncHierarchyFromConnectors();const out=new Set(),q=[id];
+  while(q.length){const x=q.shift();for(const kid of getEl(x)?.childIds||[])if(!out.has(kid)){out.add(kid);q.push(kid)}}
+  return out;
+}
+function isBlockedByCompletedTaskAncestor(id){
+  syncHierarchyFromConnectors();const seen=new Set(),q=[...(getEl(id)?.parentIds||[])];
+  while(q.length){const pid=q.shift();if(seen.has(pid))continue;seen.add(pid);const p=getEl(pid);if(!p)continue;if(p.type==="taskcard"&&p.done)return true;q.push(...(p.parentIds||[]))}
+  return false;
+}
+function escapeHtml(s){return String(s??"").replace(/[&<>\"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]))}
+
 /* ========================= V17 — deterministic auto-layout engine ========================= */
 const AUTO_LAYOUT = Object.freeze({
   TEXT_MIN_W:140,
@@ -1270,6 +1430,11 @@ function captureSectionMembership(){
 
 function calculateNodeSize(e){
   if(!e || e.type==="section" || e.type==="draw" || e.type==="image" || e.type==="table") return;
+  if(e.type==="taskcard"){
+    const s=e.style||{};const w=Math.max(190,Math.min(340,e.w||210));
+    const lines=_wrappedLineCount(e.text||"Tâche",Math.max(80,w-58),{...s,fontSize:s.fontSize||15,fontWeight:700},s.fontSize||15);
+    e.w=w;e.h=Math.max(58,Math.ceil(lines*Math.max(19,(s.fontSize||15)*1.28)+26));return;
+  }
   if(e.type==="todo"){
     const w=Math.max(AUTO_LAYOUT.TODO_MIN_W, e.w||0);
     const contentW=w-28;
@@ -1341,33 +1506,37 @@ function _unitIdForElement(id,sectionInfo){return sectionInfo.membership.get(id)
 
 function buildMindmapTree(sectionInfo){
   const units=_unitMap(sectionInfo);
-  const adj=new Map([...units.keys()].map(id=>[id,new Set()]));
-  state.connectors.forEach(c=>{
+  const outgoing=new Map([...units.keys()].map(id=>[id,new Set()]));
+  const incoming=new Map([...units.keys()].map(id=>[id,new Set()]));
+  const edgeOrder=[];
+  state.connectors.forEach((c,idx)=>{
+    if(c.style?.arrow===false)return;
     const a=c.from?.elementId,b=c.to?.elementId;if(!a||!b)return;
     const ua=_unitIdForElement(a,sectionInfo),ub=_unitIdForElement(b,sectionInfo);
     if(ua===ub||!units.has(ua)||!units.has(ub))return;
-    adj.get(ua).add(ub);adj.get(ub).add(ua);
+    outgoing.get(ua).add(ub);incoming.get(ub).add(ua);edgeOrder.push({ua,ub,idx,order:Number.isFinite(c.relation?.order)?c.relation.order:idx});
   });
-  const degree=id=>adj.get(id)?.size||0;
-  const all=[...units.values()];
-  const center=all.length?{
-    x:all.reduce((n,u)=>n+u.rootEl.x+u.w/2,0)/all.length,
-    y:all.reduce((n,u)=>n+u.rootEl.y+u.h/2,0)/all.length
-  }:{x:0,y:0};
-  const rootUnit=all.sort((a,b)=>degree(b.id)-degree(a.id) || (a.section?1:0)-(b.section?1:0) ||
-    Math.hypot(a.rootEl.x+a.w/2-center.x,a.rootEl.y+a.h/2-center.y)-Math.hypot(b.rootEl.x+b.w/2-center.x,b.rootEl.y+b.h/2-center.y) || a.id.localeCompare(b.id))[0];
-  if(!rootUnit)return null;
-  const nodes=new Map([...units.keys()].map(id=>[id,{unit:units.get(id),children:[],parent:null,subtreeH:0}]));
-  const visited=new Set([rootUnit.id]),q=[rootUnit.id];
+  const allIds=[...units.keys()].sort();
+  const roots=allIds.filter(id=>(incoming.get(id)?.size||0)===0);
+  const descendantCount=id=>{const seen=new Set(),q=[id];while(q.length){const x=q.shift();for(const y of outgoing.get(x)||[])if(!seen.has(y)){seen.add(y);q.push(y)}}return seen.size};
+  let rootId=(roots.length?roots:allIds).sort((a,b)=>descendantCount(b)-descendantCount(a)||(outgoing.get(b)?.size||0)-(outgoing.get(a)?.size||0)||a.localeCompare(b))[0];
+  if(!rootId)return null;
+  const nodes=new Map(allIds.map(id=>[id,{unit:units.get(id),children:[],parent:null,subtreeH:0,layoutOnlyParent:false}]));
+  const visited=new Set([rootId]),q=[rootId];
   while(q.length){
     const id=q.shift();
-    [...(adj.get(id)||[])].sort().forEach(nid=>{if(visited.has(nid))return;visited.add(nid);nodes.get(nid).parent=id;nodes.get(id).children.push(nid);q.push(nid)});
+    const orderFor=kid=>{const edges=edgeOrder.filter(e=>e.ua===id&&e.ub===kid);return edges.length?Math.min(...edges.map(e=>e.order)):Number.MAX_SAFE_INTEGER};
+    const kids=[...(outgoing.get(id)||[])].sort((a,b)=>orderFor(a)-orderFor(b)||a.localeCompare(b));
+    kids.forEach(kid=>{
+      if(visited.has(kid))return;
+      visited.add(kid);nodes.get(kid).parent=id;nodes.get(id).children.push(kid);q.push(kid);
+    });
   }
-  // Preserve disconnected material by attaching deterministic components to root.
-  [...units.keys()].sort().forEach(id=>{if(id!==rootUnit.id&&!visited.has(id)){visited.add(id);nodes.get(id).parent=rootUnit.id;nodes.get(rootUnit.id).children.push(id)}});
-  return {rootId:rootUnit.id,nodes,units,sectionInfo};
+  // Disconnected directed components are positioned near the main root only for layout.
+  // This DOES NOT create or reverse any logical relation/arrow.
+  allIds.forEach(id=>{if(id!==rootId&&!visited.has(id)){visited.add(id);nodes.get(id).parent=rootId;nodes.get(id).layoutOnlyParent=true;nodes.get(rootId).children.push(id)}});
+  return {rootId,nodes,units,sectionInfo,outgoing,incoming};
 }
-
 function calculateBranchBounds(tree){
   if(!tree)return tree;
   const gap=AUTO_LAYOUT.BRANCH_GAP_Y;
@@ -1387,6 +1556,11 @@ function _moveUnitTo(unit,x,y){
 }
 function _layoutSubtree(tree,id,side,edgeX,centerY){
   const n=tree.nodes.get(id),u=n.unit;
+  // V18: the side is semantic for the whole branch, not recalculated from
+  // the vertical/horizontal distance between each parent and child.
+  // A branch placed on the LEFT of its parent/root keeps using LEFT -> RIGHT
+  // anchors even when one child is much higher/lower than the parent.
+  n.branchSide=side;
   const x=side==="right"?edgeX:edgeX-u.w;
   const y=centerY-u.h/2;
   _moveUnitTo(u,x,y);
@@ -1402,20 +1576,19 @@ function _layoutSubtree(tree,id,side,edgeX,centerY){
 function layoutBranch(tree){
   if(!tree)return;
   const root=tree.nodes.get(tree.rootId),u=root.unit;
-  _moveUnitTo(u,-u.w/2,-u.h/2);
-  const branches=root.children.slice().sort((a,b)=>tree.nodes.get(b).subtreeH-tree.nodes.get(a).subtreeH || a.localeCompare(b));
-  const left=[],right=[];let lh=0,rh=0;
-  branches.forEach(id=>{const h=tree.nodes.get(id).subtreeH;if(lh<=rh){left.push(id);lh+=h+AUTO_LAYOUT.BRANCH_GAP_Y}else{right.push(id);rh+=h+AUTO_LAYOUT.BRANCH_GAP_Y}});
-  const placeSide=(ids,side)=>{
-    const total=ids.reduce((sum,id)=>sum+tree.nodes.get(id).subtreeH,0)+AUTO_LAYOUT.BRANCH_GAP_Y*Math.max(0,ids.length-1);
-    let y=-total/2;
-    ids.forEach(id=>{
-      const h=tree.nodes.get(id).subtreeH,center=y+h/2;
-      const edge=side==="right"?u.rootEl.x+u.w+AUTO_LAYOUT.ROOT_GAP_X:u.rootEl.x-AUTO_LAYOUT.ROOT_GAP_X;
-      _layoutSubtree(tree,id,side,edge,center);y+=h+AUTO_LAYOUT.BRANCH_GAP_Y;
-    });
-  };
-  placeSide(left,"left");placeSide(right,"right");
+  // V18.1: reading direction is intentionally LEFT -> RIGHT.
+  // The root stays on the left and every real child branch is placed to its right.
+  // We do NOT rebalance branches to the left, and we do NOT sort siblings by size.
+  _moveUnitTo(u,0,-u.h/2);
+  const branches=root.children.slice(); // already chronological from relation.order
+  const total=branches.reduce((sum,id)=>sum+tree.nodes.get(id).subtreeH,0)+AUTO_LAYOUT.BRANCH_GAP_Y*Math.max(0,branches.length-1);
+  let y=-total/2;
+  const firstEdge=u.rootEl.x+u.w+AUTO_LAYOUT.ROOT_GAP_X;
+  branches.forEach(id=>{
+    const h=tree.nodes.get(id).subtreeH;
+    _layoutSubtree(tree,id,"right",firstEdge,y+h/2);
+    y+=h+AUTO_LAYOUT.BRANCH_GAP_Y;
+  });
 }
 
 function _rectFor(e,clearance=0){return {l:e.x-clearance,r:e.x+e.w+clearance,t:e.y-clearance,b:e.y+e.h+clearance}}
@@ -1459,9 +1632,14 @@ function _clearAutoTreeRouting(c){
   delete c.autoTreeChildElementId;
   delete c.autoTreeParentUnitId;
   delete c.autoTreeChildUnitId;
+  delete c.autoTreeSide;
 }
 function _elementCenter(e){return {x:e.x+e.w/2,y:e.y+e.h/2}}
 function _liveTreeSide(c){
+  // V18: when the connector belongs to an auto-arranged tree, its side is
+  // defined by the BRANCH (left/right), not by whichever axis happens to be
+  // numerically dominant between the two block centres.
+  if(c.autoTreeSide) return c.autoTreeSide;
   const p=getEl(c.autoTreeParentElementId),ch=getEl(c.autoTreeChildElementId);
   if(!p||!ch)return null;
   const a=_elementCenter(p),b=_elementCenter(ch),dx=b.x-a.x,dy=b.y-a.y;
@@ -1469,9 +1647,9 @@ function _liveTreeSide(c){
 }
 function _treeSiblingConnectors(c){
   if(!c.autoTreeParentElementId)return [];
-  const side=_liveTreeSide(c);
+  const side=c.autoTreeSide||_liveTreeSide(c);
   if(!side)return [];
-  return state.connectors.filter(x=>x.autoTreeParentElementId===c.autoTreeParentElementId && _liveTreeSide(x)===side && x.from?.elementId===c.autoTreeParentElementId && x.to?.elementId===x.autoTreeChildElementId);
+  return state.connectors.filter(x=>x.autoTreeParentElementId===c.autoTreeParentElementId && (x.autoTreeSide||_liveTreeSide(x))===side && x.from?.elementId===c.autoTreeParentElementId && x.to?.elementId===x.autoTreeChildElementId);
 }
 function _sharedTrunkRoute(c){
   // V17.2: siblings from the same parent share one virtual trunk. Nothing here is
@@ -1481,7 +1659,7 @@ function _sharedTrunkRoute(c){
   if(siblings.length<2)return null;
   const parent=getEl(c.autoTreeParentElementId),child=getEl(c.autoTreeChildElementId);
   if(!parent||!child)return null;
-  const side=_liveTreeSide(c);
+  const side=c.autoTreeSide||_liveTreeSide(c);
   if(!side)return null;
   const parentPoint=endpoint(c,"from"),childPoint=endpoint(c,"to");
   const childEls=siblings.map(x=>getEl(x.autoTreeChildElementId)).filter(Boolean);
@@ -1524,30 +1702,14 @@ function assignTreeRoutingGroups(tree){
   if(!tree)return;
   const info=tree.sectionInfo;
   state.connectors.forEach(c=>{
-    if(!c.from?.elementId||!c.to?.elementId)return;
-    const ua=_unitIdForElement(c.from.elementId,info),ub=_unitIdForElement(c.to.elementId,info);
-    let parentUnit=null,childUnit=null,parentAt="from";
-    if(tree.nodes.get(ub)?.parent===ua){parentUnit=ua;childUnit=ub;parentAt="from"}
-    else if(tree.nodes.get(ua)?.parent===ub){parentUnit=ub;childUnit=ua;parentAt="to"}
-    else return;
-
-    // Normalize visual direction parent -> child so arrowheads always terminate on
-    // the child after auto-arrange. This also makes sibling grouping deterministic.
-    if(parentAt==="to"){
-      const f=c.from,t=c.to,fp=c.fromPoint,tp=c.toPoint;
-      c.from=t;c.to=f;c.fromPoint=tp;c.toPoint=fp;
-    }
-    c.autoTreeParentUnitId=parentUnit;
-    c.autoTreeChildUnitId=childUnit;
-    c.autoTreeParentElementId=c.from?.elementId||null;
-    c.autoTreeChildElementId=c.to?.elementId||null;
-  });
-
-  // Anchor all sibling groups consistently. Children on the left receive the
-  // connector on RIGHT, children on the right on LEFT, etc.
-  state.connectors.forEach(c=>{
-    if(!c.autoTreeParentElementId||!c.autoTreeChildElementId)return;
-    const side=_liveTreeSide(c);
+    if(c.style?.arrow===false||!c.from?.elementId||!c.to?.elementId)return;
+    const parentUnit=_unitIdForElement(c.from.elementId,info),childUnit=_unitIdForElement(c.to.elementId,info);
+    const childNode=tree.nodes.get(childUnit);
+    if(!childNode||childNode.parent!==parentUnit||childNode.layoutOnlyParent)return;
+    c.autoTreeParentUnitId=parentUnit;c.autoTreeChildUnitId=childUnit;
+    c.autoTreeParentElementId=c.from.elementId;c.autoTreeChildElementId=c.to.elementId;
+    c.autoTreeSide=childNode.branchSide||null;
+    const side=c.autoTreeSide;
     if(side==="left"){c.from.anchor="left";c.to.anchor="right"}
     else if(side==="right"){c.from.anchor="right";c.to.anchor="left"}
     else if(side==="top"){c.from.anchor="top";c.to.anchor="bottom"}
@@ -1635,6 +1797,7 @@ function autoArrangeMindmap(){
   const btn=$("#autoArrangeBtn");if(btn)btn.disabled=true;
   try{
     if(editingId)endEdit(true);
+    syncHierarchyFromConnectors();
     const sectionInfo=captureSectionMembership();
     fitNodesToContent();
     updateSectionBounds(sectionInfo);
@@ -1653,7 +1816,7 @@ function autoArrangeMindmap(){
   }catch(err){console.error("Auto arrange failed",err);toast("Impossible de réorganiser la carte")}
   finally{if(btn)btn.disabled=false}
 }
-/* ======================= /V17.2 — deterministic auto-layout + live shared-trunk routing ======================= */
+/* ======================= /V18.1 — branch-side semantic anchors + live shared-trunk routing ======================= */
 
 function fitContent(pad=120){
   if(!state.elements.length)return;const l=Math.min(...state.elements.map(e=>e.x)),t=Math.min(...state.elements.map(e=>e.y)),r=Math.max(...state.elements.map(e=>e.x+e.w)),b=Math.max(...state.elements.map(e=>e.y+e.h));
@@ -1692,7 +1855,9 @@ function p16ProjectBlocks(){
       deadline:meta.deadline||"",
       priority:Math.max(1,Math.min(5,Number(meta.priority)||3)),
       items:(e.items||[]).map(item=>({
-        id:String(item.id),text:item.text||"",done:!!item.done
+        id:String(item.id),
+        text:item.text||"",
+        done:!!item.done
       })),
       updatedAt:Date.now()
     };
@@ -1700,8 +1865,8 @@ function p16ProjectBlocks(){
 }
 function p16Document(){
   return {
-    version:17.2,
-    integrationVersion:12.2,
+    version:"18.1",
+    integrationVersion:"12.5",
     mode:HOST16H_MODE,
     projectId:HOST16H_PROJECT_ID,
     nodeId:HOST16H_NODE_ID,
@@ -1712,16 +1877,38 @@ function p16Document(){
   };
 }
 function saveNow(show=true){
+  syncHierarchyFromConnectors();
+  syncTaskcardsFromTodos();
   const doc=p16Document();
   localStorage.setItem(HOST16H_STORAGE_KEY,JSON.stringify(doc));
 
   if(HOST16H && window.parent!==window){
     if(PROJECT16H_MODE){
-      window.parent.postMessage({
-        type:"16h:project-sync",
-        projectId:HOST16H_PROJECT_ID,
-        blocks:p16ProjectBlocks()
-      },location.origin);
+      const activeTodo=state.elements.find(e=>e.type==="todo" && e.stageId);
+      if(activeTodo){
+        (activeTodo.items||[]).forEach(item=>{
+          window.parent.postMessage({
+            type:"16h:stage-task-sync",
+            projectId:HOST16H_PROJECT_ID,
+            stageId:String(activeTodo.stageId),
+            taskId:String(item.id),
+            done:!!item.done
+          },location.origin);
+        });
+      }
+    }else if(STAGE16H_MODE){
+      const stageTodo=state.elements.find(e=>e.type==="todo" && String(e.stageId||"")===String(HOST16H_STAGE_ID));
+      if(stageTodo){
+        (stageTodo.items||[]).forEach(item=>{
+          window.parent.postMessage({
+            type:"16h:stage-task-sync",
+            projectId:HOST16H_PROJECT_ID,
+            stageId:HOST16H_STAGE_ID,
+            taskId:String(item.id),
+            done:!!item.done
+          },location.origin);
+        });
+      }
     }else if(!DETAIL16H_MODE && HOST16H_BLOCK_ID){
       window.parent.postMessage({
         type:"16h:mindmap-save",
@@ -1741,6 +1928,8 @@ function restore(){
       state.viewport=doc.viewport||state.viewport;
       state.elements=doc.elements;
       state.connectors=doc.connectors||[];
+      syncHierarchyFromConnectors();
+      syncTaskcardsFromTodos();
       return doc;
     }
   }catch{}
@@ -1757,8 +1946,13 @@ function p16RenderActions(){
   const bar=$("#project16hActions");
   if(!bar)return;
   const todo=p16SelectedTodo();
-  if(!todo){bar.classList.remove("show");return}
-  todo.blockMeta=todo.blockMeta||{durationMinutes:90,workMode:"solo",deadline:"",priority:3};
+  if(!todo){
+    bar.classList.remove("show");
+    return;
+  }
+  todo.blockMeta=todo.blockMeta||{
+    durationMinutes:90,workMode:"solo",deadline:"",priority:3
+  };
   $("#p16ActionLabel").textContent=todo.text||"Bloc 16H";
   $("#p16MetaBtn").textContent=
     `${todo.blockMeta.durationMinutes||90} min · ${todo.blockMeta.workMode==="group"?"Groupe":"Solo"}`;
@@ -1769,107 +1963,84 @@ function p16SeedProject(project){
   if(!PROJECT16H_MODE || state.elements.length)return;
 
   const elements=[],connectors=[];
-  const root=el("shape",900,500,320,100,project.name||HOST16H_TITLE,"rounded",{
-    fill:project.color||HOST16H_COLOR,
-    stroke:project.color||HOST16H_COLOR,
-    strokeWidth:2,
-    radius:22,
-    textColor:"#ffffff",
-    fontSize:23
+  const root=el("shape",900,120,360,110,project.name||HOST16H_TITLE,"rounded",{
+    fill:project.color||HOST16H_COLOR,stroke:project.color||HOST16H_COLOR,strokeWidth:2,
+    radius:22,textColor:"#fff",fontSize:23,textAlign:"center"
   });
-  root.z=20;
+  root.z=20;elements.push(root);
+
+  const stages=[...(project.subprojects||[])].sort((a,b)=>(Number(a.order)||999)-(Number(b.order)||999));
+  const active=stages.find(sp=>!sp.completed)||null;
+  let prev=root;
+
+  stages.forEach((sp,index)=>{
+    const completed=!!sp.completed;
+    const activeNow=active && String(active.id)===String(sp.id);
+    const stage=el("shape",900,330+index*260,360,100,
+      `ÉTAPE ${index+1}\n${sp.name}`,"rounded",{
+        fill:completed?"#e9f7ee":activeNow?"#fff":"#f1f3f6",
+        stroke:completed?"#399b61":activeNow?(project.color||HOST16H_COLOR):"#cfd4dc",
+        strokeWidth:activeNow?3:2,radius:18,
+        textColor:completed?"#17683d":activeNow?"#17191d":"#8b929d",
+        fontSize:17,textAlign:"center"
+      });
+    stage.stageId=String(sp.id);
+    stage.stageOrder=index+1;
+    stage.stageLocked=!completed&&!activeNow;
+    stage.stageCompleted=completed;
+    elements.push(stage);
+    const c=con({elementId:prev.id,anchor:"bottom"},{elementId:stage.id,anchor:"top"});
+    c.relation={type:"parent-child",parentId:prev.id,childId:stage.id,order:index};
+    connectors.push(c);
+    prev=stage;
+
+    if(activeNow){
+      const todo=el("todo",1420,330+index*260,430,340,sp.name,"todo",{
+        fill:"#fff",stroke:project.color||HOST16H_COLOR,strokeWidth:2,radius:18,textAlign:"left"
+      });
+      todo.stageId=String(sp.id);
+      todo.items=(sp.tasks||[]).map(t=>({
+        id:String(t.id),text:t.name||"Tâche",done:!!t.done
+      }));
+      elements.push(todo);
+      const tc=con({elementId:stage.id,anchor:"right"},{elementId:todo.id,anchor:"left"});
+      tc.relation={type:"parent-child",parentId:stage.id,childId:todo.id,order:0};
+      connectors.push(tc);
+    }
+  });
+
+  state.elements=elements;state.connectors=connectors;state.viewport={x:100,y:40,zoom:.64};
+  syncHierarchyFromConnectors();syncTaskcardsFromTodos();initHistory();autoArrangeMindmap();saveNow(false);
+}
+
+function p16SeedStage(payload){
+  if(!STAGE16H_MODE || state.elements.length)return;
+  const elements=[],connectors=[];
+  const stage=payload.stage||{};
+  const root=el("shape",650,250,390,110,stage.name||HOST16H_TITLE,"rounded",{
+    fill:payload.project?.color||HOST16H_COLOR,stroke:payload.project?.color||HOST16H_COLOR,
+    strokeWidth:2,radius:22,textColor:"#fff",fontSize:22,textAlign:"center"
+  });
+  root.stageId=String(stage.id||HOST16H_STAGE_ID);
   elements.push(root);
 
-  const subs=Array.isArray(project.subprojects)?project.subprojects:[];
-  subs.forEach((sp,index)=>{
-    const side=index%2===0?-1:1;
-    const row=Math.floor(index/2);
-    const secX=side<0?180:1420;
-    const secY=140+row*720;
-
-    const sec=el("section",secX,secY,960,600,sp.name||"Sous-projet","section",{
-      fill:"#f8f9fb",
-      stroke:project.color||HOST16H_COLOR,
-      strokeWidth:2,
-      radius:20,
-      fontSize:18
-    });
-    sec.z=1;
-    sec.subprojectId=String(sp.id||"");
-    elements.push(sec);
-
-    const tasks=Array.isArray(sp.tasks)?sp.tasks:[];
-    const cols=2,cardW=360,cardH=250,gapX=36,gapY=36,padX=60,top=115;
-
-    tasks.forEach((task,ti)=>{
-      const col=ti%cols;
-      const rowIndex=Math.floor(ti/cols);
-      const todo=el(
-        "todo",
-        secX+padX+col*(cardW+gapX),
-        secY+top+rowIndex*(cardH+gapY),
-        cardW,cardH,
-        task.name||"Bloc de travail",
-        "todo",
-        {
-          fill:"#ffffff",
-          stroke:project.color||HOST16H_COLOR,
-          strokeWidth:1,
-          radius:16,
-          textAlign:"left"
-        }
-      );
-      todo.items=[{
-        id:String(task.id||uid("todo")),
-        text:task.description||task.name||"À faire",
-        done:!!task.done
-      }];
-      todo.blockMeta={
-        durationMinutes:Math.max(15,Number(task.durationMinutes)||60),
-        workMode:task.workMode==="group"?"group":"solo",
-        deadline:sp.deadline||"",
-        priority:Math.max(1,Math.min(5,Number(sp.priority)||3))
-      };
-      todo.legacyTaskId=String(task.id||"");
-      todo.parentSectionId=sec.id;
-      elements.push(todo);
-    });
-
-    connectors.push(con(
-      {elementId:root.id,anchor:side<0?"left":"right"},
-      {elementId:sec.id,anchor:side<0?"right":"left"}
-    ));
+  const todo=el("todo",1160,210,460,380,stage.name||"Tâches","todo",{
+    fill:"#fff",stroke:payload.project?.color||HOST16H_COLOR,strokeWidth:2,radius:18,textAlign:"left"
   });
+  todo.stageId=String(stage.id||HOST16H_STAGE_ID);
+  todo.items=(stage.tasks||[]).map(t=>({id:String(t.id),text:t.name||"Tâche",done:!!t.done}));
+  elements.push(todo);
+  const c=con({elementId:root.id,anchor:"right"},{elementId:todo.id,anchor:"left"});
+  c.relation={type:"parent-child",parentId:root.id,childId:todo.id,order:0};
+  connectors.push(c);
 
-  if(!subs.length){
-    const todo=el("todo",760,700,360,260,"Premier bloc de travail","todo",{
-      fill:"#ffffff",
-      stroke:project.color||HOST16H_COLOR,
-      strokeWidth:1,
-      radius:16,
-      textAlign:"left"
-    });
-    todo.items=[{id:uid("todo"),text:"Première tâche",done:false}];
-    todo.blockMeta={durationMinutes:90,workMode:"solo",deadline:"",priority:3};
-    elements.push(todo);
-    connectors.push(con(
-      {elementId:root.id,anchor:"bottom"},
-      {elementId:todo.id,anchor:"top"}
-    ));
-  }
-
-  state.elements=elements;
-  state.connectors=connectors;
-  state.viewport={x:100,y:60,zoom:.55};
-  initHistory();
-
-  // Uses the new V17.2 engine untouched, including live shared-trunk routing.
-  autoArrangeMindmap();
-  saveNow(false);
+  state.elements=elements;state.connectors=connectors;state.viewport={x:140,y:120,zoom:.78};
+  syncHierarchyFromConnectors();syncTaskcardsFromTodos();initHistory();autoArrangeMindmap();saveNow(false);
 }
 
 function p16ApplyProjectBlocks(blocks){
   if(!PROJECT16H_MODE || !Array.isArray(blocks))return;
+
   const byId=new Map(blocks.map(block=>[String(block.id),block]));
 
   state.elements.filter(e=>e.type==="todo").forEach(todo=>{
@@ -1886,13 +2057,19 @@ function p16ApplyProjectBlocks(blocks){
     const itemMap=new Map((source.items||[]).map(item=>[String(item.id),item]));
     (todo.items||[]).forEach(item=>{
       const incoming=itemMap.get(String(item.id));
-      if(incoming)item.done=!!incoming.done;
+      if(incoming){
+        item.done=!!incoming.done;
+        if(incoming.text!=null && incoming.text!=="")item.text=incoming.text;
+      }
     });
   });
+
+  syncTaskcardsFromTodos();
 }
 
 function p16RepairLegacyContainment(){
   if(!PROJECT16H_MODE)return;
+
   const sections=state.elements.filter(e=>e.type==="section");
   const todos=state.elements.filter(e=>e.type==="todo");
   if(!sections.length || !todos.length)return;
@@ -1901,16 +2078,18 @@ function p16RepairLegacyContainment(){
     const children=todos.filter(todo=>String(todo.parentSectionId||"")===String(sec.id));
     if(!children.length)return;
 
-    const cols=2,cardW=360,gapX=36,gapY=36,padX=55,top=110;
+    const cols=2,cardW=380,gapX=36,gapY=36,padX=55,top=110;
     let y=sec.y+top;
 
     for(let i=0;i<children.length;i+=cols){
       const row=children.slice(i,i+cols);
       const rowH=Math.max(...row.map(todo=>Math.max(todo.h||260,260)));
+
       row.forEach((todo,col)=>{
         todo.x=sec.x+padX+col*(cardW+gapX);
         todo.y=y;
       });
+
       y+=rowH+gapY;
     }
 
@@ -1921,65 +2100,78 @@ function p16RepairLegacyContainment(){
 
 function p16FocusNode(nodeId){
   if(!nodeId)return;
+
   const target=getEl(String(nodeId));
   if(!target)return;
 
   state.selectedIds=[target.id];
   const vr=viewport.getBoundingClientRect();
   const z=Math.max(.55,Math.min(1,state.viewport.zoom||.8));
+
   state.viewport.zoom=z;
   state.viewport.x=vr.width/2-(target.x+target.w/2)*z;
   state.viewport.y=vr.height/2-(target.y+target.h/2)*z;
   render();
 }
 
+/*
+  V18.1 detail map:
+  - root = work block
+  - each internal task = native taskcard
+  - taskcards are real hierarchy nodes, so dependencies and chronology work natively
+*/
 function p16SeedDetail(payload){
   if(!DETAIL16H_MODE || state.elements.length)return;
 
   const elements=[],connectors=[];
-  const root=el("shape",650,260,380,105,payload.title||HOST16H_TITLE,"rounded",{
+  const root=el("shape",650,260,400,110,payload.title||HOST16H_TITLE,"rounded",{
     fill:payload.color||HOST16H_COLOR,
     stroke:payload.color||HOST16H_COLOR,
     strokeWidth:2,
     radius:22,
     textColor:"#ffffff",
-    fontSize:22
+    fontSize:22,
+    textAlign:"center"
   });
   elements.push(root);
 
   (payload.items||[]).forEach((item,index)=>{
-    const cols=3;
-    const col=index%cols;
-    const row=Math.floor(index/cols);
+    const col=index%3;
+    const row=Math.floor(index/3);
 
     const task=el(
-      "shape",
+      "taskcard",
       300+col*330,
       500+row*165,
-      250,90,
+      240,72,
       item.text||`Tâche ${index+1}`,
-      "task",
+      "rect",
       {
-        fill:item.done?"#e7f4eb":"#ffffff",
-        stroke:item.done?"#439766":"#cfd5de",
-        strokeWidth:2,
-        radius:16,
-        textColor:"#17191d"
+        fill:"#ffffff",
+        stroke:"#b9bec8",
+        strokeWidth:1,
+        radius:12,
+        textAlign:"left"
       }
     );
+
     task.taskItemId=String(item.id);
-    task.taskDone=!!item.done;
+    task.done=!!item.done;
+    task.external16hTask=true;
     elements.push(task);
 
-    connectors.push(con(
+    const c=con(
       {elementId:root.id,anchor:"bottom"},
       {elementId:task.id,anchor:"top"}
-    ));
+    );
+    c.relation={type:"parent-child",parentId:root.id,childId:task.id,order:index};
+    connectors.push(c);
   });
 
   state.elements=elements;
   state.connectors=connectors;
   state.viewport={x:120,y:60,zoom:.7};
+  syncHierarchyFromConnectors();
   initHistory();
   autoArrangeMindmap();
   saveNow(false);
@@ -2100,33 +2292,24 @@ function handleKey(ev){
 nodeLayer.addEventListener("pointerdown",onNodePointerDown);
 nodeLayer.addEventListener("dblclick",onNodeDoubleClick);
 
-nodeLayer.addEventListener("click",ev=>{
+nodeLayer.addEventListener("change",ev=>{
   if(!DETAIL16H_MODE)return;
-  const btn=ev.target.closest(".detail-task-toggle");
-  if(!btn)return;
+  const ck=ev.target.closest(".taskcard-check");
+  if(!ck)return;
 
-  const node=btn.closest(".node[data-id]");
-  const e=getEl(node?.dataset.id);
-  if(!e?.taskItemId)return;
-
-  ev.preventDefault();
-  ev.stopPropagation();
-
-  e.taskDone=!e.taskDone;
-  e.style.fill=e.taskDone?"#e7f4eb":"#ffffff";
-  e.style.stroke=e.taskDone?"#439766":"#cfd5de";
-
-  commitHistory();
-  render();
-  saveNow(false);
+  const n=ck.closest(".node[data-id]");
+  const card=getEl(n?.dataset.id);
+  if(!card || card.type!=="taskcard" || !card.external16hTask || !card.taskItemId)return;
 
   window.parent?.postMessage({
     type:"16h:block-detail-task-toggle",
     projectId:HOST16H_PROJECT_ID,
     nodeId:HOST16H_NODE_ID,
-    itemId:String(e.taskItemId),
-    done:!!e.taskDone
+    itemId:String(card.taskItemId),
+    done:!!ck.checked
   },location.origin);
+
+  saveNow(false);
 },true);
 
 nodeLayer.addEventListener("click",ev=>{
@@ -2138,6 +2321,11 @@ nodeLayer.addEventListener("input",ev=>{
   if(e?.type==="table"){const td=ev.target.closest("td");if(td)e.rows[+td.dataset.ri][+td.dataset.ci]=td.innerText;return}
   if(editingId===e?.id)e.text=ev.target.innerText;
 });
+nodeLayer.addEventListener("change",ev=>{
+  const ck=ev.target.closest(".taskcard-check");if(!ck)return;
+  const n=ck.closest(".node[data-id]");const e=getEl(n?.dataset.id);if(!e||e.type!=="taskcard")return;
+  ev.stopPropagation();e.done=ck.checked;syncTaskcardToSource(e);commitHistory();render();
+},true);
 nodeLayer.addEventListener("change",ev=>{
   const n=ev.target.closest(".node[data-id]"); if(!n) return; const e=getEl(n.dataset.id); if(!e||e.type!=="todo") return;
   const row=ev.target.closest(".todo-row"); if(!row) return; const item=(e.items||[]).find(x=>x.id===row.dataset.itemId); if(!item) return;
@@ -2185,12 +2373,17 @@ nodeLayer.addEventListener("click",ev=>{
     return;
   }
 }, true);
+nodeLayer.addEventListener("input",ev=>{
+  const ta=ev.target.closest?.(".node-text-editor");if(!ta)return;
+  const n=ta.closest(".node[data-id]");const e=getEl(n?.dataset.id);if(!e||editingId!==e.id)return;
+  e.text=ta.value;scheduleSave();
+});
 nodeLayer.addEventListener("focusout",ev=>{if(editingId&&ev.target.classList.contains("node-text"))setTimeout(()=>{if(editingId)endEdit(true)},0)});
 viewport.addEventListener("dblclick",ev=>{
   const n=ev.target.closest?.(".node");
   if(!n)return;
   const e=getEl(n.dataset.id);
-  if(!e||e.locked||e.type==="draw"||e.type==="table"||e.type==="image"||e.type==="todo")return;
+  if(!e||e.locked||e.type==="draw"||e.type==="table"||e.type==="image"||e.type==="todo"||e.type==="taskcard")return;
   ev.preventDefault();
   ev.stopPropagation();
   interaction=null;
@@ -2225,7 +2418,7 @@ $("#shapePalette").addEventListener("click",ev=>{
   const b=ev.target.closest("[data-shape]");if(!b)return;const k=b.dataset.shape;let e;
   if(k==="section") e=createAtCenter("section","section","NOUVELLE SECTION",420,240);
   else if(k==="todo") {
-    e=createAtCenter("todo","todo",PROJECT16H_MODE?"Bloc de travail":"Todo list",290,260,{radius:16,fill:"#ffffff",stroke:"#c9cfd8",strokeWidth:1,textAlign:"left"});
+    e=createAtCenter("todo","todo",PROJECT16H_MODE?"Bloc de travail":"Todo list",380,260,{radius:16,fill:"#ffffff",stroke:"#c9cfd8",strokeWidth:1,textAlign:"left"});
     e.items=[{id:uid("todo"),text:"Première tâche",done:false},{id:uid("todo"),text:"Deuxième tâche",done:false}];
     if(PROJECT16H_MODE)e.blockMeta={durationMinutes:90,workMode:"solo",deadline:"",priority:3};
     commitHistory(); render();
@@ -2241,7 +2434,16 @@ selectionBox.addEventListener("pointerdown",ev=>{
   const h=ev.target.closest(".handle");if(h)return resizeStart(ev,h.dataset.h);
   if(ev.target.id==="rotateHandle"){ev.stopPropagation();const e=selectedEls()[0],b=boundsOf(e);interaction={type:"rotate",id:e.id,cx:b.cx,cy:b.cy};selectionBox.setPointerCapture(ev.pointerId)}
 });
-$$(".quick").forEach(q=>q.addEventListener("click",ev=>{ev.stopPropagation();quickFlow(q.dataset.dir)}));
+$$(".quick").forEach(q=>q.addEventListener("click",ev=>{ev.stopPropagation();quickFlow(q.dataset.dir,q)}));
+$("#todoTaskPicker").addEventListener("click",ev=>{
+  const b=ev.target.closest("[data-todo-item]");if(!b||!pendingTodoQuick)return;
+  ev.preventDefault();ev.stopPropagation();
+  const src=getEl(pendingTodoQuick.srcId);if(!src)return;
+  const item=(src.items||[]).find(x=>x.id===b.dataset.todoItem);if(!item)return;
+  createConnectedChild(src,pendingTodoQuick.dir,{type:"taskcard",text:item.text||"Tâche",todoItemId:item.id,done:!!item.done,w:210,h:62});
+  $("#todoTaskPicker").classList.remove("show");pendingTodoQuick=null;
+});
+document.addEventListener("pointerdown",ev=>{if(!ev.target.closest("#todoTaskPicker,.quick"))$("#todoTaskPicker")?.classList.remove("show")},{capture:true});
 topbar.addEventListener("click",ev=>{ const cb=ev.target.closest("[data-color-target]");if(cb){ev.stopPropagation();openColorPopover(cb.dataset.colorTarget,cb);return;} if(ev.target.closest("#borderStyleBtn")){ev.stopPropagation();openBorderPopover();return;} const b=ev.target.closest("[data-act]");if(b)action(b.dataset.act)});
 topbar.addEventListener("change",ev=>{
   const e=selectedEls()[0];if(!e)return;
@@ -2281,8 +2483,9 @@ $("#p16MetaCancel")?.addEventListener("click",()=>$("#p16MetaDialog").close());
 
 $("#p16MetaForm")?.addEventListener("submit",ev=>{
   ev.preventDefault();
+
   const todo=getEl(P16_EDITING_META_ID);
-  if(!todo||todo.type!=="todo"){
+  if(!todo || todo.type!=="todo"){
     $("#p16MetaDialog").close();
     return;
   }
@@ -2305,6 +2508,7 @@ $("#p16TodayBtn")?.addEventListener("click",()=>{
   if(!todo)return;
 
   saveNow(false);
+
   window.parent?.postMessage({
     type:"16h:schedule-project-block",
     projectId:HOST16H_PROJECT_ID,
@@ -2319,6 +2523,7 @@ $("#p16DetailBtn")?.addEventListener("click",()=>{
   if(!todo)return;
 
   saveNow(false);
+
   window.parent?.postMessage({
     type:"16h:open-project-block-detail",
     projectId:HOST16H_PROJECT_ID,
@@ -2361,6 +2566,7 @@ $("#newBtn").onclick=()=>{
     state.selectedIds=[];
   }
 
+  syncHierarchyFromConnectors();
   initHistory();
   saveNow();
   render();
@@ -2395,6 +2601,8 @@ function setControlIcons(){
 
 setControlIcons();
 const P16_RESTORED=restore();
+syncHierarchyFromConnectors();
+syncTaskcardsFromTodos();
 initHistory();
 render();
 layoutFloatingBars();
@@ -2405,7 +2613,13 @@ if(HOST16H){
   const badge=$("#host16hBadge");
   if(badge){
     badge.hidden=false;
-    badge.textContent=PROJECT16H_MODE?"Projet 16H":DETAIL16H_MODE?"Carte du bloc":"Bloc 16H";
+    badge.textContent=PROJECT16H_MODE
+      ? "Vue globale projet · Mindmap 18.1"
+      : STAGE16H_MODE
+        ? "Étape active · Mindmap 18.1"
+        : DETAIL16H_MODE
+          ? "Carte du bloc · Mindmap 18.1"
+          : "Bloc 16H · Mindmap 18.1";
   }
 
   window.addEventListener("message",event=>{
@@ -2421,9 +2635,13 @@ if(HOST16H){
       if(!P16_RESTORED && !state.elements.length){
         p16SeedProject(msg.project);
       }else{
-        if((P16_RESTORED?.integrationVersion||0)<12.2){
+        const integrationVersion=String(P16_RESTORED?.integrationVersion||"0");
+        if(integrationVersion!=="12.5"){
           p16RepairLegacyContainment();
-          // V17.2 recalculates sizes + sections + tree + live connector trunks.
+          syncHierarchyFromConnectors();
+
+          // V18.1 upgrades old layouts: hierarchy, multiline sizing,
+          // sibling chronology, semantic branch anchors and live shared trunks.
           autoArrangeMindmap();
         }
 
@@ -2434,6 +2652,15 @@ if(HOST16H){
 
       if(msg.focusNodeId){
         requestAnimationFrame(()=>p16FocusNode(msg.focusNodeId));
+      }
+    }
+
+    if(msg.type==="16h:stage-seed" &&
+       STAGE16H_MODE &&
+       String(msg.projectId||"")===String(HOST16H_PROJECT_ID) &&
+       String(msg.stage?.id||"")===String(HOST16H_STAGE_ID)){
+      if(!P16_RESTORED && !state.elements.length){
+        p16SeedStage(msg);
       }
     }
 
@@ -2449,12 +2676,15 @@ if(HOST16H){
 
     if(msg.type==="16h:mindmap-load" &&
        !PROJECT16H_MODE &&
+       !STAGE16H_MODE &&
        !DETAIL16H_MODE &&
        msg.doc?.elements){
 
       state.viewport=msg.doc.viewport||state.viewport;
       state.elements=msg.doc.elements;
       state.connectors=msg.doc.connectors||[];
+      syncHierarchyFromConnectors();
+      syncTaskcardsFromTodos();
       initHistory();
       render();
     }
@@ -2472,6 +2702,7 @@ if(HOST16H){
       mode:HOST16H_MODE,
       projectId:HOST16H_PROJECT_ID,
       nodeId:HOST16H_NODE_ID,
+      stageId:HOST16H_STAGE_ID,
       blockId:HOST16H_BLOCK_ID
     },location.origin);
   }
