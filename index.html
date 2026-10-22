@@ -2754,6 +2754,8 @@
               order:Math.max(1,Number(sp.order)||spi+1),
               completed:typeof sp.completed==="boolean" ? sp.completed : false,
               completedAt:Number(sp.completedAt)||0,
+              manuallyEnabled:sp.manuallyEnabled===true,
+              stageLocked:typeof sp.stageLocked==="boolean" ? sp.stageLocked : undefined,
               tasks:Array.isArray(sp.tasks) ? sp.tasks.map((t,ti)=>({
                 id:t.id || `pt-${ti}-${now}`,
                 name:t.name || "Tâche",
@@ -3355,19 +3357,51 @@
         const stages=orderedStages(project);
         stages.forEach((sp,index)=>{
           sp.order=index+1;
-          sp.priority=index+1; // backward compatibility with old exports
+          sp.priority=index+1;
+          if(typeof sp.manuallyEnabled!=="boolean") sp.manuallyEnabled=false;
         });
         project.subprojects=stages;
+        const firstIncomplete=stages.find(sp=>!stageIsComplete(sp));
+        stages.forEach(sp=>{
+          if(stageIsComplete(sp)){
+            sp.stageLocked=false;
+          }else if(firstIncomplete && String(sp.id)===String(firstIncomplete.id)){
+            sp.stageLocked=false;
+          }else if(sp.manuallyEnabled===true){
+            sp.stageLocked=false;
+          }else if(typeof sp.stageLocked!=="boolean"){
+            sp.stageLocked=true;
+          }
+        });
       }
 
       function stageIsComplete(stage){
         return !!stage?.completed;
       }
 
-      function activeStage(project){
+      function sequentialStage(project){
         if(!project) return null;
         normalizeStageOrder(project);
         return (project.subprojects||[]).find(sp=>!stageIsComplete(sp)) || null;
+      }
+
+      function availableStages(project){
+        if(!project) return [];
+        normalizeStageOrder(project);
+        const seq=sequentialStage(project);
+        return (project.subprojects||[]).filter(sp=>{
+          if(stageIsComplete(sp)) return false;
+          if(seq && String(seq.id)===String(sp.id)) return true;
+          return sp.manuallyEnabled===true || sp.stageLocked===false;
+        });
+      }
+
+      function activeStage(project){
+        return sequentialStage(project);
+      }
+
+      function stageIsAvailable(project,stage){
+        return !!stage && availableStages(project).some(sp=>String(sp.id)===String(stage.id));
       }
 
       function stageNumber(project,stageId){
@@ -3702,9 +3736,9 @@
         };
       }
 
-      function createProjectStageSession(projectId,dateKey=localDateKey(new Date()),selectedTaskIds=[]){
+      function createProjectStageSession(projectId,dateKey=localDateKey(new Date()),selectedTaskIds=[],stageId=null){
         const project=projectById(projectId);
-        const stage=activeStage(project);
+        const stage=subprojectById(project,stageId) || sequentialStage(project) || availableStages(project)[0] || null;
         if(!project || !stage){
           showToast(project ? "Toutes les étapes sont terminées" : "Projet introuvable");
           return null;
@@ -3738,8 +3772,9 @@
         return block;
       }
 
-      function openProjectStageSessionEditor(projectId,dateKey=localDateKey(new Date())){
-        const project=projectById(projectId), stage=activeStage(project);
+      function openProjectStageSessionEditor(projectId,dateKey=localDateKey(new Date()),stageId=null){
+        const project=projectById(projectId);
+        const stage=subprojectById(project,stageId) || sequentialStage(project) || availableStages(project)[0] || null;
         if(!project||!stage){
           showToast(project?"Projet terminé ✓":"Projet introuvable");return;
         }
@@ -3759,25 +3794,26 @@
       function recommendedProjectTasks(dateKey=localDateKey(new Date())){
         const candidates=[];
         activeProjectsForDate(dateKey).forEach(project=>{
-          const stage=activeStage(project);
-          if(!stage)return;
-          const remaining=(stage.tasks||[]).filter(t=>!t.done);
-          candidates.push({
-            project,sp:stage,
-            task:{
-              id:stage.id,
-              name:stage.name,
-              durationMinutes:Math.max(60,remaining.slice(0,3).reduce((sum,t)=>sum+(t.durationMinutes||30),0)||90),
-              workMode:"solo",done:false
-            },
-            deadline:stage.deadline||project.endDate||"9999-12-31",
-            stageSession:true
+          const seq=sequentialStage(project);
+          availableStages(project).forEach(stage=>{
+            const remaining=(stage.tasks||[]).filter(t=>!t.done);
+            candidates.push({
+              project,sp:stage,
+              task:{
+                id:stage.id,name:stage.name,
+                durationMinutes:Math.max(60,remaining.slice(0,3).reduce((sum,t)=>sum+(t.durationMinutes||30),0)||90),
+                workMode:"solo",done:false
+              },
+              deadline:stage.deadline||project.endDate||"9999-12-31",
+              stageSession:true,
+              isSequential:seq && String(seq.id)===String(stage.id)
+            });
           });
         });
         candidates.sort((a,b)=>{
-          const da=String(a.deadline||"9999-12-31"), db=String(b.deadline||"9999-12-31");
-          const d=da.localeCompare(db); if(d)return d;
-          return String(a.project.endDate||"9999-12-31").localeCompare(String(b.project.endDate||"9999-12-31"));
+          if(a.isSequential!==b.isSequential)return a.isSequential?-1:1;
+          const d=String(a.deadline).localeCompare(String(b.deadline)); if(d)return d;
+          return stageNumber(a.project,a.sp.id)-stageNumber(b.project,b.sp.id);
         });
         return candidates;
       }
@@ -3801,7 +3837,7 @@
           const remaining=(sp.tasks||[]).filter(t=>!t.done).length;
           card.querySelector("span").textContent=`${project.name} · Étape ${stageNumber(project,sp.id)} · ${remaining} tâche(s) restante(s)${sp.deadline?` · cible ${sp.deadline}`:""}`;
           card.querySelector("button").textContent="Planifier cette étape";
-          card.querySelector("button").onclick=()=>openProjectStageSessionEditor(project.id,localDateKey(new Date()));
+          card.querySelector("button").onclick=()=>openProjectStageSessionEditor(project.id,localDateKey(new Date()),sp.id);
           list.appendChild(card);
         });
       }
@@ -3880,24 +3916,34 @@
       function refreshProjectLinkFields(projectId=null,subprojectId=null){
         const pSelect=el("blockProjectSelect"), sSelect=el("blockSubprojectSelect");
         if(!pSelect || !sSelect) return;
+
         pSelect.innerHTML='<option value="">Aucun projet</option>';
         (state.projects||[]).forEach(p=>{
-          const opt=document.createElement("option"); opt.value=p.id; opt.textContent=p.name; pSelect.appendChild(opt);
+          const opt=document.createElement("option");
+          opt.value=p.id; opt.textContent=p.name; pSelect.appendChild(opt);
         });
         if(projectId) pSelect.value=String(projectId);
 
-        sSelect.innerHTML='<option value="">Aucune étape active</option>';
+        sSelect.disabled=false;
+        sSelect.innerHTML='<option value="">Choisir une étape disponible</option>';
+
         const project=projectById(pSelect.value);
-        const stage=activeStage(project);
-        if(stage){
+        const stages=availableStages(project);
+        const seq=sequentialStage(project);
+
+        stages.forEach(stage=>{
           const opt=document.createElement("option");
           opt.value=stage.id;
-          opt.textContent=`Étape ${stageNumber(project,stage.id)} — ${stage.name}`;
+          const kind=seq && String(seq.id)===String(stage.id) ? "principale" : "ouverte";
+          opt.textContent=`Étape ${stageNumber(project,stage.id)} — ${stage.name} · ${kind}`;
           sSelect.appendChild(opt);
-          sSelect.value=String(stage.id);
-        }
-        renderProjectStageTaskPicker(project?.id||null,stage?.id||null,editingDeepTasks.map(t=>String(t.id)));
+        });
+
+        let chosen=stages.find(sp=>String(sp.id)===String(subprojectId||"")) || seq || stages[0] || null;
+        if(chosen) sSelect.value=String(chosen.id);
+        renderProjectStageTaskPicker(project?.id||null,chosen?.id||null,editingDeepTasks.map(t=>String(t.id)));
       }
+
 
       function renderProjectStageTaskPicker(projectId,stageId,selectedIds=[]){
         const picker=el("projectStageTaskPicker"), list=el("projectStageTaskList");
@@ -4006,23 +4052,27 @@
         if(!weekAddTargetDate) return;
         const dateKey=localDateKey(weekAddTargetDate);
         const picker=el("weekProjectTaskPicker"), box=el("weekTaskOptions");
-        const recs=recommendedProjectTasks(dateKey);
         box.innerHTML="";
-        if(!recs.length){
-          box.innerHTML='<div class="week-empty">Aucune étape active de projet à cette date.</div>';
+        const choices=[];
+        activeProjectsForDate(dateKey).forEach(project=>{
+          availableStages(project).forEach(stage=>choices.push({project,stage}));
+        });
+
+        if(!choices.length){
+          box.innerHTML='<div class="week-empty">Aucune étape de projet disponible à cette date.</div>';
         }else{
-          recs.forEach(({project,sp})=>{
+          choices.forEach(({project,stage})=>{
             const button=document.createElement("button");
-            button.type="button";
-            button.className="week-task-option";
+            button.type="button"; button.className="week-task-option";
             button.style.setProperty("--project-color",project.color||"#23272d");
             button.innerHTML='<strong></strong><span></span>';
-            button.querySelector("strong").textContent=sp.name;
+            button.querySelector("strong").textContent=stage.name;
+            const main=String(sequentialStage(project)?.id||"")===String(stage.id);
             button.querySelector("span").textContent=
-              `${project.name} · Étape ${stageNumber(project,sp.id)} · ${(sp.tasks||[]).filter(t=>!t.done).length} tâche(s) restantes`;
+              `${project.name} · Étape ${stageNumber(project,stage.id)} · ${main?"principale":"ouverte"} · ${(stage.tasks||[]).filter(t=>!t.done).length} tâche(s) restantes`;
             button.onclick=()=>{
               el("weekAddChoiceDialog").close();
-              openProjectStageSessionEditor(project.id,dateKey);
+              openProjectStageSessionEditor(project.id,dateKey,stage.id);
             };
             box.appendChild(button);
           });
@@ -4733,7 +4783,11 @@
         return {
           id:project.id,name:project.name,description:project.description||"",color:project.color||"#7c5cff",
           startDate:project.startDate||"",endDate:project.endDate||"",
-          subprojects:(project.subprojects||[]).map(sp=>({...sp})),
+          subprojects:(project.subprojects||[]).map(sp=>({
+            ...sp,
+            stageLocked:stageIsAvailable(project,sp)?false:true,
+            manuallyEnabled:sp.manuallyEnabled===true
+          })),
           mindmapBlocks:project.mindmapBlocks||[]
         };
       }
@@ -5775,7 +5829,10 @@
         const projectId=el("blockProjectSelect")?.value || null;
         const subprojectId=el("blockSubprojectSelect")?.value || null;
         const linkedProject=projectById(projectId);
-        const linkedStage=activeStage(linkedProject);
+        const selectedStage=subprojectById(linkedProject,subprojectId);
+        const linkedStage=selectedStage && stageIsAvailable(linkedProject,selectedStage)
+          ? selectedStage
+          : (sequentialStage(linkedProject) || availableStages(linkedProject)[0] || null);
         const effectiveSubprojectId=linkedProject ? (linkedStage?.id || subprojectId) : subprojectId;
         const color=el("blockColor").value || linkedProject?.color || "#23272d";
         const floating=!el("blockHasTime").checked;
@@ -6297,7 +6354,7 @@
           const sp=subprojectById(project,ctx.subprojectId);
           Object.assign(sp,{name,description,deadline,order,priority:order});
         }else{
-          project.subprojects.push({id:uid(),name,description,deadline,order,priority:order,completed:false,completedAt:0,tasks:[]});
+          project.subprojects.push({id:uid(),name,description,deadline,order,priority:order,completed:false,completedAt:0,manuallyEnabled:false,stageLocked:true,tasks:[]});
         }
         normalizeStageOrder(project);
         // Move stage to requested chronological position.
@@ -6377,19 +6434,32 @@
         const pid=el("blockProjectSelect").value;
         editingDeepTasks=[];
         refreshProjectLinkFields(pid,null);
-        const project=projectById(pid), stage=activeStage(project);
+        const project=projectById(pid);
+        const stage=sequentialStage(project) || availableStages(project)[0] || null;
         if(project && stage){
           el("blockName").value=stage.name;
           el("blockDescription").value=`${project.name} · Étape ${stageNumber(project,stage.id)}`;
           el("blockColor").value=project.color || el("blockColor").value;
           el("blockSubprojectSelect").value=String(stage.id);
+          renderProjectStageTaskPicker(project.id,stage.id,[]);
         }
         renderDeepTaskEditor();
       });
 
+      el("blockSubprojectSelect").addEventListener("change",()=>{
+        const project=projectById(el("blockProjectSelect").value);
+        const stage=subprojectById(project,el("blockSubprojectSelect").value);
+        if(!project||!stage)return;
+        editingDeepTasks=[];
+        el("blockName").value=stage.name;
+        el("blockDescription").value=`${project.name} · Étape ${stageNumber(project,stage.id)}`;
+        renderDeepTaskEditor();
+        renderProjectStageTaskPicker(project.id,stage.id,[]);
+      });
+
       el("projectStageAddTaskBtn").addEventListener("click",()=>{
         const pid=el("blockProjectSelect").value;
-        const project=projectById(pid), stage=activeStage(project);
+        const project=projectById(pid); const stage=subprojectById(project,el("blockSubprojectSelect").value) || sequentialStage(project);
         const input=el("projectStageNewTaskInput");
         const name=input.value.trim();
         if(!project||!stage||!name)return;
@@ -7566,6 +7636,27 @@
           return;
         }
 
+        if(msg.type==="16h:project-stage-access-sync"){
+          const project=projectById(msg.projectId);
+          if(!project || !Array.isArray(msg.stages)) return;
+          const seq=sequentialStage(project);
+          msg.stages.forEach(remote=>{
+            const stage=subprojectById(project,remote.stageId);
+            if(!stage || stageIsComplete(stage)) return;
+            const isMain=seq && String(seq.id)===String(stage.id);
+            if(isMain){
+              stage.manuallyEnabled=false;
+              stage.stageLocked=false;
+            }else{
+              stage.manuallyEnabled=remote.locked===false;
+              stage.stageLocked=remote.locked!==false;
+            }
+          });
+          normalizeStageOrder(project);
+          project.updatedAt=Date.now();
+          saveState(false); render(); return;
+        }
+
         if(msg.type==="16h:stage-todo-sync"){
           applyStageTodoSnapshot(msg.projectId,msg.stageId,msg.items||[]);
           return;
@@ -7706,7 +7797,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=13.2").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=13.4").catch(() => {});
       });
     }
   </script>
