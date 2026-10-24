@@ -1833,7 +1833,7 @@
         <div class="brand-nav">
           <h1>16H</h1>
           <div class="view-switch">
-            <button class="view-switch-btn active" id="timelineViewBtn" type="button">16 HEURES</button>
+            <button class="view-switch-btn active" id="timelineViewBtn" type="button">16H</button>
             <button class="view-switch-btn" id="weeksViewBtn" type="button">SEMAINES</button>
             <button class="view-switch-btn" id="projectsViewBtn" type="button">PROJETS</button>
           </div>
@@ -1868,6 +1868,8 @@
     </div>
 
     <div id="timelinePage">
+    <iframe id="daily16hFrame" src="./16h.html?host=16h" title="16H — Ma journée" style="width:100%;height:calc(100vh - 96px);border:0;border-radius:24px;background:#f5f5f7;display:block"></iframe>
+    <div id="legacyTimelineContent" style="display:none">
     <div class="meal-nudge" id="mealNudge"></div>
     <section class="panel">
       <div class="timeline-toolbar">
@@ -1941,6 +1943,7 @@
     </section>
     </div>
 
+    </div>
     <div id="weeksPage" style="display:none">
       <section class="week-panel">
         <div class="timeline-toolbar">
@@ -3134,7 +3137,10 @@
 
         if(weeksPage) weeksPage.style.display=isWeeks ? "block" : "none";
         if(projectsPage) projectsPage.style.display=isProjects ? "block" : "none";
-        if(!isTimeline){
+        if(isTimeline){
+          if(timelinePage) timelinePage.style.display="block";
+          if(focusPage) focusPage.style.display="none";
+        }else{
           if(timelinePage) timelinePage.style.display="none";
           if(focusPage) focusPage.style.display="none";
         }
@@ -3145,13 +3151,77 @@
 
         if(topSubtitle){
           topSubtitle.textContent=isTimeline
-            ? "Ta journée fixe de 16 h, à partir de ton réveil."
+            ? "Prépare ta journée, puis concentre-toi uniquement sur maintenant."
             : isWeeks
               ? "Les projets et blocs importants de ta semaine."
               : "Pilote tes projets, sous-projets et tâches à long terme.";
         }
         if(el("recenterBtn")) el("recenterBtn").style.display=isTimeline ? "" : "none";
       }
+
+
+      function sendDaily16hState(){
+        const frame=el("daily16hFrame");
+        if(!frame?.contentWindow)return;
+        frame.contentWindow.postMessage({
+          type:"16h:daily-state",
+          blocks:state.blocks||[],
+          projects:state.projects||[],
+          blockTypes:state.blockTypes||[]
+        },location.origin);
+      }
+      function dailyTimestamp(timeText){
+        const [h,m]=String(timeText||"00:00").split(":").map(Number);
+        const d=new Date();d.setHours(h||0,m||0,0,0);return d.getTime();
+      }
+      function dailyBlock(id){return (state.blocks||[]).find(b=>String(b.id)===String(id))||null;}
+      function dailyAddAppointment(msg){
+        const start=dailyTimestamp(msg.startTime),rawEnd=dailyTimestamp(msg.endTime);
+        const end=rawEnd>start?rawEnd:start+60*60000;
+        const rdvType=(state.blockTypes||[]).find(t=>/RDV|RENDEZ/i.test(t.name||""));
+        state.blocks.push({
+          id:uid(),name:msg.name||"Rendez-vous",address:msg.address||"Aucune",description:msg.description||"",
+          typeId:rdvType?.id||"preset-rdv",start,end,color:"#111113",floating:false,plannedDate:localDateKey(new Date()),
+          durationMinutes:Math.max(15,Math.round((end-start)/60000)),tasks:[],projectId:null,subprojectId:null,updatedAt:Date.now()
+        });
+        saveState(false);render();sendDaily16hState();
+      }
+      window.addEventListener("message",event=>{
+        if(event.origin!==location.origin)return;
+        const msg=event.data||{};
+        if(msg.type==="16h:daily-ready"){sendDaily16hState();return;}
+        if(msg.type==="16h:daily-add-appointment"){dailyAddAppointment(msg);return;}
+        if(msg.type==="16h:daily-edit-block"){
+          const b=dailyBlock(msg.blockId);if(b)openEditBlock(b.id);return;
+        }
+        if(msg.type==="16h:daily-open-mindmap"){
+          const b=dailyBlock(msg.blockId);if(b)openCurrentMindmap(b);return;
+        }
+        if(msg.type==="16h:daily-complete-current"){
+          const b=dailyBlock(msg.blockId);if(!b)return;
+          const t=(b.tasks||[]).find(x=>!x.completedAt);
+          if(t){t.completedAt=Date.now();t.startedAt=t.startedAt||t.completedAt;}
+          b.updatedAt=Date.now();saveState(false);render();sendDaily16hState();return;
+        }
+        if(msg.type==="16h:daily-validated"){
+          const project=projectById(msg.projectId);
+          if(project){
+            const stage=sequentialStage(project)||availableStages(project)[0]||null;
+            if(stage){
+              const dateKey=localDateKey(new Date());
+              const exists=(state.blocks||[]).some(b=>String(b.projectId||"")===String(project.id)&&String(b.subprojectId||"")===String(stage.id)&&localDateKey(new Date(b.start))===dateKey);
+              if(!exists){
+                const parts={morning:[8,12],afternoon:[12,16],late:[16,20],evening:[20,24]},range=parts[msg.part]||[8,12];
+                const sd=new Date();sd.setHours(range[0],0,0,0);const ed=new Date(sd);ed.setHours(range[1]===24?23:range[1],range[1]===24?59:0,0,0);
+                state.blocks.push({id:uid(),name:stage.name,address:"Aucune",description:`${project.name} · Étape ${stageNumber(project,stage.id)}`,typeId:"preset-solo-work",start:sd.getTime(),end:ed.getTime(),color:project.color||"#7c5cff",floating:false,plannedDate:dateKey,durationMinutes:Math.round((ed-sd)/60000),tasks:[],projectId:project.id,subprojectId:stage.id,projectSession:true,updatedAt:Date.now()});
+                saveState(false);render();
+              }
+            }
+          }
+          sendDaily16hState();return;
+        }
+      });
+      el("daily16hFrame")?.addEventListener("load",sendDaily16hState);
 
       function setView(view){
         currentView=["timeline","weeks","projects"].includes(view) ? view : "timeline";
@@ -3163,10 +3233,9 @@
           renderProjectsView();
         }else{
           anchor=getAnchor(new Date());
-          updatePlanningUI();
-          renderNow();
-          renderMealGuidance();
-          renderProjectDayPlanner();
+          if(timelinePage)timelinePage.style.display="block";
+          if(focusPage)focusPage.style.display="none";
+          sendDaily16hState();
         }
       }
 
@@ -5152,17 +5221,18 @@
         renderDayBoard();
       }
       function updatePlanningUI(){
-        const locked=isTodayLocked(), timelineMode=currentView==='timeline';
-        if(focusPage)focusPage.style.display=(timelineMode&&locked)?'block':'none';
-        if(timelinePage)timelinePage.style.display=(timelineMode&&!locked)?'block':'none';
+        const timelineMode=currentView==='timeline';
+        // V14: the 16H tab is now entirely handled by 16h.html.
+        if(focusPage)focusPage.style.display='none';
+        if(timelinePage)timelinePage.style.display=timelineMode?'block':'none';
         const finish=el('finishPlanningBtn'),edit=el('editDayBtn'),add=el('addBtn'),recenter=el('recenterBtn'),rules=el('rulesBtn');
-        if(finish)finish.style.display=(timelineMode&&!locked)?'':'none';
-        if(edit)edit.style.display=(timelineMode&&locked)?'':'none';
-        if(add)add.style.display=(timelineMode&&!locked)?'':(currentView==='weeks'?'':'none');
-        if(recenter)recenter.style.display=(timelineMode&&!locked)?'':'none';
-        if(rules)rules.style.display=(timelineMode&&!locked)?'':'none';
-        if(timelineViewBtn)timelineViewBtn.textContent=locked?'AUJOURD’HUI':'16 HEURES';
-        renderFocusMode();
+        if(finish)finish.style.display='none';
+        if(edit)edit.style.display='none';
+        if(add)add.style.display=currentView==='weeks'?'':'none';
+        if(recenter)recenter.style.display='none';
+        if(rules)rules.style.display='none';
+        if(timelineViewBtn)timelineViewBtn.textContent='16H';
+        if(timelineMode)sendDaily16hState();
       }
 
       function render(){
@@ -7797,7 +7867,7 @@
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=13.4").catch(() => {});
+        navigator.serviceWorker.register("./service-worker.js?v=14").catch(() => {});
       });
     }
   </script>

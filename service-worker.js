@@ -1,4 +1,4 @@
-const CACHE_NAME = "16h-pwa-v13.4";
+const CACHE_NAME = "16h-pwa-v14";
 const APP_ASSETS = [
   "./mindmap.html",
   "./manifest.webmanifest",
@@ -29,7 +29,7 @@ self.addEventListener("fetch", event => {
   // Always try the network first for pages, so GitHub updates appear quickly.
   if (event.request.mode === "navigate") {
     const requestUrl = new URL(event.request.url);
-    const pageKey = requestUrl.pathname.endsWith("/mindmap.html") ? "./mindmap.html" : "./index.html";
+    const pageKey = requestUrl.pathname.endsWith("/mindmap.html") ? "./mindmap.html" : "./index.html","./16h.html";
     event.respondWith(
       fetch(event.request)
         .then(response => {
