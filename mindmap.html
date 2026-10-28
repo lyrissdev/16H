@@ -458,7 +458,10 @@
   #p16CountdownValue{font-variant-numeric:tabular-nums;font-size:13px}
   #p16Countdown.finished{background:#f3f4f6;color:#717782}
   #p16Countdown.finished #p16CountdownDot{background:#9aa1aa}
-  </style>
+  .v15-open-card{position:absolute;right:3px;top:3px;border:1px solid #dce2d8;background:#fff;border-radius:5px;color:#244e42;width:30px;height:30px;padding:0;font-size:18px;cursor:pointer;z-index:12}.todo-title{padding-right:34px}
+.bp-color{border-radius:50%!important;position:relative;background:#fff}.bp-color input{appearance:none;-webkit-appearance:none;display:block;border-radius:50%;overflow:hidden}.bp-color input::-webkit-color-swatch-wrapper{padding:3px}.bp-color input::-webkit-color-swatch{border:0;border-radius:50%}.bp-color input::-moz-color-swatch{border:0;border-radius:50%}#topbar .canva-swatch,.dynamic-fill-disc{aspect-ratio:1;border-radius:50%!important;flex-shrink:0}.color-popover .cp-custom{aspect-ratio:1;min-width:42px;box-shadow:inset 0 0 0 4px #fff}.color-chip{aspect-ratio:1;min-width:30px}#shapeColorGrid{display:none!important}.todo-row>button[title="Ouvrir la carte de cette tâche"]{padding:0;border:0;background:transparent;min-width:28px;height:28px;font-size:18px;cursor:pointer}
+</style>
+<link rel="stylesheet" href="./toolbox.css">
 </head>
 <body>
 <div id="app">
@@ -531,7 +534,8 @@
       </div>
       <div id="calcError" class="calc-error" aria-live="polite"></div>
     </div>
-    <button id="functionToggle" type="button" title="Fonctions — Calculatrice" aria-expanded="false" aria-controls="calculatorPanel">ƒx</button>
+    <div id="toolboxPanel" role="dialog" aria-label="Boîte à outils" hidden><div class="toolbox-head"><h2>🧰 Boîte à outils</h2><button id="toolboxClose" type="button" aria-label="Fermer la boîte à outils">×</button></div><button id="toolboxCalculator" type="button"><span>🧮</span><strong>Calculatrice</strong><small>Ajouter une calculatrice flottante sur la carte.</small></button><button id="toolboxDeepWork" type="button"><span>🎯</span><strong>Deep Work Session</strong><small>Choisir vos tâches et travailler avec un chrono.</small></button></div>
+    <button id="functionToggle" type="button" title="Boîte à outils" aria-label="Boîte à outils" aria-expanded="false" aria-controls="toolboxPanel">🧰</button>
   </div>
 
   <div id="zoomControls">
@@ -562,23 +566,17 @@
   <div id="colorPopover" class="popover color-popover">
     <div class="cp-title">Couleur</div>
     <div class="cp-current"><label class="cp-custom" title="Couleur personnalisée"><input id="customColorInput" type="color"></label><span class="cp-label">Couleur personnalisée</span></div>
+    <div class="color-grid" id="shapeColorGrid" hidden></div>
     <div class="color-section-label">Couleurs prédéfinies</div>
-    <div class="color-grid" id="shapeColorGrid"></div>
-    <div class="color-section-label">Couleurs unies</div>
     <div class="color-grid" id="defaultColorGrid"></div>
   </div>
   <div id="contextMenu" class="popover"></div>
 
-  <div id="p16Countdown" aria-live="polite">
-    <span id="p16CountdownDot"></span>
-    <span id="p16CountdownLabel">Fin dans</span>
-    <span id="p16CountdownValue">--:--</span>
-  </div>
-  <div id="project16hActions">
+  <div id="project16hActions" style="display:none!important">
     <span class="p16-label" id="p16ActionLabel">Bloc 16H</span>
     <button id="p16MetaBtn" type="button">90 min · Solo</button>
-    <button id="p16TodayBtn" class="primary" type="button">+ Aujourd’hui</button>
-    <button id="p16DetailBtn" class="icon" type="button" title="Ouvrir la carte de ce bloc">↗</button>
+    
+    <button id="p16DetailBtn" class="icon" type="button" title="Ouvrir la carte de ce bloc">🧠</button>
   </div>
 
   <dialog id="p16MetaDialog">
@@ -638,7 +636,11 @@
   </aside>
 </div>
 
-<script>
+<script type="module">
+import {PALETTE} from './colors.mjs';
+import * as repository from './repository.mjs';
+import {mapId} from './model.mjs';
+const initialState=await repository.getState();
 (() => {
 "use strict";
 const HOST16H_PARAMS=new URLSearchParams(location.search);
@@ -650,9 +652,6 @@ const DETAIL16H_MODE=HOST16H && HOST16H_MODE==="detail";
 const HOST16H_PROJECT_ID=HOST16H_PARAMS.get("projectId")||"";
 const HOST16H_NODE_ID=HOST16H_PARAMS.get("nodeId")||"";
 const HOST16H_STAGE_ID=HOST16H_PARAMS.get("stageId")||"";
-const HOST16H_SESSION_END=Number(HOST16H_PARAMS.get("sessionEnd")||0);
-const HOST16H_SESSION_START=Number(HOST16H_PARAMS.get("sessionStart")||0);
-let P16_COUNTDOWN_TIMER=null;
 const HOST16H_BLOCK_ID=HOST16H_PARAMS.get("blockId")||HOST16H_NODE_ID||"";
 const HOST16H_TITLE=HOST16H_PARAMS.get("title")||"Carte mentale";
 const HOST16H_COLOR=HOST16H_PARAMS.get("color")||"#7c5cff";
@@ -665,6 +664,23 @@ const HOST16H_STORAGE_KEY=PROJECT16H_MODE
       : HOST16H && HOST16H_BLOCK_ID
       ? `16h.mindmap.${HOST16H_BLOCK_ID}`
       : "homeMindmapEditor.v1";
+const MAP_OWNER=STAGE16H_MODE?HOST16H_STAGE_ID:DETAIL16H_MODE?HOST16H_NODE_ID:"";
+let storedMap=initialState.mindmaps.find(m=>m.id===mapId(HOST16H_MODE,HOST16H_PROJECT_ID,MAP_OWNER));
+let projectBaseline=JSON.stringify(initialState.projects.find(p=>p.id===HOST16H_PROJECT_ID)?.subprojects), mapRevision=storedMap?.revision||0, saveChain=Promise.resolve(),saveFailure=null;
+function readMap(){return storedMap?JSON.stringify(storedMap.doc):null;}
+function persistMap(json,flushed=false){
+ const doc=JSON.parse(json);
+ saveChain=saveChain.then(async()=>{
+   if(saveFailure)throw saveFailure;
+   const saved=await repository.saveMap(HOST16H_MODE,HOST16H_PROJECT_ID,MAP_OWNER,doc,mapRevision,projectBaseline);
+   mapRevision=saved.revision;storedMap=saved;projectBaseline=saved.baseline;
+ }).then(()=>window.parent.postMessage({type:'16h:save-status',flushed},location.origin)).catch(error=>{
+   saveFailure=error;
+   window.parent.postMessage({type:'16h:save-status',error:error.message,flushed},location.origin);
+   toast('Sauvegarde échouée : exportez votre carte avant de fermer.');
+ });
+ return saveChain;
+}
 let HOST16H_PROJECT=null;
 let P16_EDITING_META_ID=null;
 let P16_RESTORED_DOC=null;
@@ -708,6 +724,19 @@ const ICONS = {
   "top_underline": "asset/top_underline.png"
 };
 
+const iconSymbols={top_plus:'+',top_minus:'−',top_bold:'B',top_italic:'I',top_underline:'U',top_strikethrough:'S',top_menu:'☰',top_align:'≡',top_color:'●',top_text_color:'A',top_text_size:'T',top_text_spacing:'↕'};
+for(const name of Object.keys(ICONS))ICONS[name]='data:image/svg+xml,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><text x="12" y="18" text-anchor="middle" font-size="20" fill="#252d29">${iconSymbols[name]||'◇'}</text></svg>`);
+function openDedicated(node,item=null){
+ saveNow(false);
+ let scope='detail',owner,title=item?.text||node.text||'Tâche';
+ if(node.type==='shape'&&node.stageId){scope='stage';owner=String(node.stageId);}
+ else if(item)owner=node.stageId?`task:${node.stageId}:${item.id}`:`item:${node.id}:${item.id}`;
+ else if(node.type==='taskcard'){
+  const todo=state.elements.find(e=>e.id===node.sourceTodoId);
+  owner=todo?.stageId?`task:${todo.stageId}:${node.sourceTodoItemId}`:node.sourceTodoId?`item:${node.sourceTodoId}:${node.sourceTodoItemId}`:`card:${node.id}`;
+ }else owner=String(node.id);
+ window.parent.postMessage({type:'16h:open-map',scope,owner,title},location.origin);
+}
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const viewport = $("#viewport"), world = $("#world"), nodeLayer = $("#nodeLayer"), connectorSvg = $("#connectorSvg");
 const selectionBox = $("#selectionBox"), marquee = $("#marquee"), topbar = $("#topbar"), connectorOverlay = $("#connectorOverlay");
@@ -729,8 +758,8 @@ function openAssetDB(){
     req.onsuccess=()=>resolve(req.result); req.onerror=()=>reject(req.error);
   });
 }
-async function putLocalAsset(id,blob){const db=await openAssetDB();await new Promise((res,rej)=>{const tx=db.transaction(ASSET_STORE,"readwrite");tx.objectStore(ASSET_STORE).put(blob,id);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});db.close()}
-async function getLocalAsset(id){const db=await openAssetDB();const blob=await new Promise((res,rej)=>{const req=db.transaction(ASSET_STORE,"readonly").objectStore(ASSET_STORE).get(id);req.onsuccess=()=>res(req.result||null);req.onerror=()=>rej(req.error)});db.close();return blob}
+async function putLocalAsset(id,blob){return repository.putAsset(id,blob);}
+async function getLocalAsset(id){return repository.getAsset(id);}
 async function getLocalAssetURL(id){
   if(assetURLCache.has(id))return assetURLCache.get(id);
   const blob=await getLocalAsset(id);if(!blob)return null;
@@ -900,7 +929,9 @@ function renderNodes(){
         const ck=document.createElement("input");ck.type="checkbox";ck.className="todo-check todo-interactive";ck.checked=!!item.done;ck.title="Cocher la tâche";
         const inp=document.createElement("input");inp.type="text";inp.className="todo-text todo-interactive";inp.value=item.text||"";inp.placeholder="Tâche";
         const del=document.createElement("button");del.type="button";del.className="todo-delete todo-interactive";del.textContent="×";del.title="Supprimer la tâche";
-        row.append(ck,inp,del);list.appendChild(row);
+        row.append(ck,inp,del);
+        if(HOST16H){const open=document.createElement('button');open.type='button';open.className='todo-interactive';open.textContent='🧠';open.title='Ouvrir la carte de cette tâche';open.addEventListener('pointerdown',ev=>ev.stopPropagation());open.addEventListener('click',ev=>{ev.stopPropagation();openDedicated(e,item);});row.appendChild(open);}
+        list.appendChild(row);
       });
       shell.appendChild(list);
       const add=document.createElement("button");add.type="button";add.className="todo-add todo-interactive";add.textContent="＋ Ajouter une tâche";shell.appendChild(add);
@@ -961,7 +992,10 @@ function renderNodes(){
       n.appendChild(tx);
       if(editing) setTimeout(()=>{if(document.body.contains(tx)){tx.focus();tx.selectionStart=tx.selectionEnd=tx.value.length}},0);
     }
-    nodeLayer.appendChild(n);
+    if(HOST16H&&((PROJECT16H_MODE&&e.stageId)||e.type==='taskcard'||e.type==='todo')){
+ const button=document.createElement('button');button.type='button';button.textContent='🧠';button.title=e.type==='shape'&&e.stageId?'Ouvrir la carte de l’étape':'Ouvrir une carte dédiée';button.className='v15-open-card';button.addEventListener('pointerdown',ev=>ev.stopPropagation());button.addEventListener('click',ev=>{ev.stopPropagation();openDedicated(e);});n.appendChild(button);
+}
+nodeLayer.appendChild(n);
   });
 }
 function placeCaretEnd(el){const r=document.createRange();r.selectNodeContents(el);r.collapse(false);const s=window.getSelection();s.removeAllRanges();s.addRange(r)}
@@ -1084,13 +1118,14 @@ function renderTopbar(){
 }
 function toColor(v){return (!v||v==="transparent")?"#ffffff":v}
 const SHAPE_COLORS=["#ffffff","#f7f7f7","#d3d3d3","#aaaaaa","#000000","#06c167","#58d0d9","#3aaee8","#516ff5","#8247f5","#d8a0e8","#f652b5","#ff5757","#ff3131","#ff8c42","#ffbd59","#ffde59","#8ca36b","#a16b44"];
-const DEFAULT_COLORS=["#000000","#5f5f5f","#808080","#a6a6a6","#b8b8b8","#d3d3d3","#ffffff","#ff3131","#ff5757","#f652b5","#d99be8","#c562df","#8247f5","#5d17e8","#159bb5","#1db7d6","#58d0d9","#3aaee8","#516ff5","#135bbb","#1f0db6","#06c167","#8ca36b","#a16b44","#ffbd59","#ffde59"];
+const DEFAULT_COLORS=PALETTE.map(([,color])=>color);
 function currentTargetColor(){const e=selectedEls()[0];if(!e)return "#ffffff";if(colorTarget==="stroke")return toColor(e.style.stroke);if(colorTarget==="textColor")return toColor(e.style.textColor);return toColor(e.style.fill)}
-function renderColorGrid(el,colors){el.innerHTML=colors.map(c=>`<button class="color-chip ${currentTargetColor().toLowerCase()===c.toLowerCase()?"active":""}" data-color="${c}" style="background:${c}" title="${c}"></button>`).join("")}
+function renderColorGrid(el,colors){el.innerHTML=colors.map(c=>`<button class="color-chip ${currentTargetColor().toLowerCase()===c.toLowerCase()?"active":""}" data-color="${c}" style="background:${c}" title="${PALETTE.find(([,value])=>value===c)?.[0]||c}" aria-label="${PALETTE.find(([,value])=>value===c)?.[0]||c}" aria-pressed="${currentTargetColor().toLowerCase()===c.toLowerCase()}"></button>`).join("")}
 function openColorPopover(target,anchor){
   const e=selectedEls()[0];if(!e)return;colorTarget=target;
   renderColorGrid($("#shapeColorGrid"),SHAPE_COLORS);renderColorGrid($("#defaultColorGrid"),DEFAULT_COLORS);
   $("#customColorInput").value=currentTargetColor();
+  $("#customColorInput").parentElement.style.background=currentTargetColor();
   const r=anchor.getBoundingClientRect();colorPopover.style.left=Math.max(8,Math.min(window.innerWidth-326,r.left))+"px";colorPopover.style.top=(r.bottom+8)+"px";colorPopover.classList.add("show")
 }
 function applyPaletteColor(c,commit=true){const e=selectedEls()[0];if(!e||!colorTarget)return;e.style[colorTarget]=c;if(commit)commitHistory();render();colorPopover.classList.remove("show")}
@@ -2025,7 +2060,7 @@ function scheduleSave(){
   clearTimeout(scheduleSave.t);
   scheduleSave.t=setTimeout(()=>{
     if(HOST16H) saveNow(false);
-    else localStorage.setItem("homeMindmapEditor.v1",JSON.stringify({viewport:state.viewport,elements:state.elements,connectors:state.connectors}));
+    else toast("Ouvrez les cartes depuis Projets pour les enregistrer.");
   },250);
 }
 function p16ProjectBlocks(){
@@ -2052,7 +2087,7 @@ function p16ProjectBlocks(){
 function p16Document(){
   return {
     version:"18.5",
-    integrationVersion:"13.4",
+    integrationVersion:"15.0",
     mode:HOST16H_MODE,
     projectId:HOST16H_PROJECT_ID,
     nodeId:HOST16H_NODE_ID,
@@ -2103,25 +2138,24 @@ function p16ApplyStageSnapshot(stage){
   }));
   syncTaskcardsFromTodos();
   render();
-  localStorage.setItem(HOST16H_STORAGE_KEY,JSON.stringify(p16Document()));
+  persistMap(JSON.stringify(p16Document()));
 }
 
 function p16ApplyProjectSnapshot(project){
-  if(!project || !PROJECT16H_MODE) return;
-  const stages=[...(project.subprojects||[])].sort((a,b)=>(Number(a.order)||999)-(Number(b.order)||999));
-  const active=stages.find(sp=>!sp.completed)||null;
-  if(!active) return;
-
-  const todo=state.elements.find(e=>e.type==="todo" && String(e.stageId||"")===String(active.id));
-  if(todo){
-    todo.text=active.name||todo.text;
-    todo.items=(active.tasks||[]).map(task=>({
-      id:String(task.id), text:task.name||"Tâche", done:!!task.done
-    }));
-    syncTaskcardsFromTodos();
-    render();
-    localStorage.setItem(HOST16H_STORAGE_KEY,JSON.stringify(p16Document()));
-  }
+ if(!project || !PROJECT16H_MODE)return;
+ const stageIds=new Set(project.subprojects.map(s=>String(s.id)));
+ const removed=new Set(state.elements.filter(e=>e.stageId&&!stageIds.has(String(e.stageId))).map(e=>e.id));
+ state.elements=state.elements.filter(e=>!removed.has(e.id));
+ state.connectors=state.connectors.filter(c=>!removed.has(c.from?.elementId)&&!removed.has(c.to?.elementId));
+ for(const [i,stage] of project.subprojects.entries()){
+   let shape=state.elements.find(e=>e.type==='shape'&&String(e.stageId)===String(stage.id));
+   if(!shape){shape=el('shape',900,330+i*400,360,100,stage.name,'rounded',{fill:'#fff',stroke:project.color,strokeWidth:2,radius:18});shape.stageId=stage.id;state.elements.push(shape);}
+   shape.text=`ÉTAPE ${i+1}\n${stage.name}`;shape.stageLocked=false;shape.stageCompleted=!!stage.completed;
+   let todo=state.elements.find(e=>e.type==='todo'&&String(e.stageId)===String(stage.id));
+   if(!todo){todo=el('todo',1420,330+i*400,430,340,stage.name,'todo',{fill:'#fff',stroke:project.color,strokeWidth:2,radius:18});todo.stageId=stage.id;state.elements.push(todo);const c=con({elementId:shape.id,anchor:'right'},{elementId:todo.id,anchor:'left'});state.connectors.push(c);}
+   todo.text=stage.name;todo.items=stage.tasks.map(t=>({id:String(t.id),text:t.name,done:!!t.done}));
+ }
+ syncTaskcardsFromTodos();render();persistMap(JSON.stringify(p16Document()));
 }
 
 function p16PostProjectStageAccess(){
@@ -2144,7 +2178,7 @@ function saveNow(show=true){
   syncHierarchyFromConnectors();
   syncTaskcardsFromTodos();
   const doc=p16Document();
-  localStorage.setItem(HOST16H_STORAGE_KEY,JSON.stringify(doc));
+  persistMap(JSON.stringify(doc));
 
   if(HOST16H && window.parent!==window){
     if(PROJECT16H_MODE){
@@ -2165,7 +2199,7 @@ function saveNow(show=true){
 }
 function restore(){
   try{
-    const doc=JSON.parse(localStorage.getItem(HOST16H_STORAGE_KEY)||"null");
+    const doc=JSON.parse(readMap()||"null");
     if(doc&&doc.elements){
       P16_RESTORED_DOC=doc;
       state.viewport=doc.viewport||state.viewport;
@@ -2179,54 +2213,6 @@ function restore(){
   return null;
 }
 
-
-function p16FormatRemaining(ms){
-  const total=Math.max(0,Math.ceil(ms/1000));
-  const h=Math.floor(total/3600);
-  const min=Math.floor((total%3600)/60);
-  const sec=total%60;
-  if(h>0) return `${h} h ${String(min).padStart(2,"0")} min`;
-  if(min>0) return `${min} min ${String(sec).padStart(2,"0")} s`;
-  return `${sec} s`;
-}
-
-function p16UpdateCountdown(){
-  const box=$("#p16Countdown");
-  if(!box || !HOST16H || !HOST16H_SESSION_END){
-    if(box) box.classList.remove("show");
-    return;
-  }
-
-  const now=Date.now();
-  box.classList.add("show");
-
-  if(HOST16H_SESSION_START && now < HOST16H_SESSION_START){
-    $("#p16CountdownLabel").textContent="Commence dans";
-    $("#p16CountdownValue").textContent=p16FormatRemaining(HOST16H_SESSION_START-now);
-    box.classList.remove("finished");
-    return;
-  }
-
-  const remaining=HOST16H_SESSION_END-now;
-  if(remaining<=0){
-    $("#p16CountdownLabel").textContent="Temps prévu terminé";
-    $("#p16CountdownValue").textContent="00:00";
-    box.classList.add("finished");
-    return;
-  }
-
-  $("#p16CountdownLabel").textContent="Fin dans";
-  $("#p16CountdownValue").textContent=p16FormatRemaining(remaining);
-  box.classList.remove("finished");
-}
-
-function p16StartCountdown(){
-  clearInterval(P16_COUNTDOWN_TIMER);
-  p16UpdateCountdown();
-  if(HOST16H && HOST16H_SESSION_END){
-    P16_COUNTDOWN_TIMER=setInterval(p16UpdateCountdown,1000);
-  }
-}
 
 function p16SelectedTodo(){
   if(!PROJECT16H_MODE || state.selectedIds.length!==1)return null;
@@ -2278,7 +2264,7 @@ function p16SeedProject(project){
       });
     stage.stageId=String(sp.id);
     stage.stageOrder=index+1;
-    stage.stageLocked=!completed&&!activeNow;
+    stage.stageLocked=false;
     stage.stageCompleted=completed;
     elements.push(stage);
     const c=con({elementId:prev.id,anchor:"bottom"},{elementId:stage.id,anchor:"top"});
@@ -2286,7 +2272,7 @@ function p16SeedProject(project){
     connectors.push(c);
     prev=stage;
 
-    if(activeNow){
+    if(true){
       const todo=el("todo",1420,330+index*260,430,340,sp.name,"todo",{
         fill:"#fff",stroke:project.color||HOST16H_COLOR,strokeWidth:2,radius:18,textAlign:"left"
       });
@@ -3166,7 +3152,7 @@ topbar.addEventListener("change",ev=>{
 
 
 colorPopover.addEventListener("click",ev=>{const b=ev.target.closest("[data-color]");if(b)applyPaletteColor(b.dataset.color,true)});
-$("#customColorInput").addEventListener("input",ev=>{const e=selectedEls()[0];if(!e||!colorTarget)return;e.style[colorTarget]=ev.target.value;renderNodes();renderTopbar()});
+$("#customColorInput").addEventListener("input",ev=>{const e=selectedEls()[0];if(!e||!colorTarget)return;e.style[colorTarget]=ev.target.value;ev.target.parentElement.style.background=ev.target.value;renderNodes();renderTopbar()});
 $("#customColorInput").addEventListener("change",ev=>{const e=selectedEls()[0];if(!e||!colorTarget)return;e.style[colorTarget]=ev.target.value;commitHistory();render();colorPopover.classList.remove("show")});
 
 borderPopover.addEventListener("input",ev=>{
@@ -3209,21 +3195,6 @@ $("#p16MetaForm")?.addEventListener("submit",ev=>{
   $("#p16MetaDialog").close();
 });
 
-$("#p16TodayBtn")?.addEventListener("click",()=>{
-  const todo=p16SelectedTodo();
-  if(!todo)return;
-
-  saveNow(false);
-
-  window.parent?.postMessage({
-    type:"16h:schedule-project-block",
-    projectId:HOST16H_PROJECT_ID,
-    nodeId:String(todo.id)
-  },location.origin);
-
-  toast("Bloc envoyé vers aujourd’hui");
-});
-
 $("#p16DetailBtn")?.addEventListener("click",()=>{
   const todo=p16SelectedTodo();
   if(!todo)return;
@@ -3231,9 +3202,9 @@ $("#p16DetailBtn")?.addEventListener("click",()=>{
   saveNow(false);
 
   window.parent?.postMessage({
-    type:"16h:open-project-block-detail",
-    projectId:HOST16H_PROJECT_ID,
-    nodeId:String(todo.id),
+    type:"16h:open-map",
+    scope:"detail",
+    owner:String(todo.id),
     title:todo.text||"Bloc de travail"
   },location.origin);
 });
@@ -3302,8 +3273,7 @@ const calcInput = $("#calcInput"), calcFormula = $("#calcFormula"), calcResult =
 let calcLastResult = 0;
 function setCalculatorOpen(open){
   calculatorPanel.classList.toggle("show",open);
-  functionToggle.classList.toggle("active",open);
-  functionToggle.setAttribute("aria-expanded",String(open));
+
   if(open) requestAnimationFrame(()=>calcInput.focus());
 }
 function normalizeCalcExpression(raw){
@@ -3369,7 +3339,18 @@ function applyCalcCommand(cmd){
   if(cmd==="pow"){insertCalcToken("**");return}
   insertCalcToken(cmd);
 }
-functionToggle.addEventListener("click",ev=>{ev.stopPropagation();setCalculatorOpen(!calculatorPanel.classList.contains("show"))});
+function setToolboxOpen(open){$("#toolboxPanel").hidden=!open;functionToggle.setAttribute('aria-expanded',String(open));}
+functionToggle.addEventListener("click",ev=>{ev.stopPropagation();setToolboxOpen($("#toolboxPanel").hidden)});
+$("#toolboxClose").addEventListener('click',()=>setToolboxOpen(false));
+$("#toolboxCalculator").addEventListener('click',()=>{setToolboxOpen(false);setCalculatorOpen(true);});
+$("#toolboxDeepWork").addEventListener('click',()=>{setToolboxOpen(false);window.parent.postMessage({type:'16h:deepwork-open'},location.origin);});
+$("#toolboxPanel").addEventListener('pointerdown',ev=>ev.stopPropagation());
+let calcDrag=null;
+const calcHandle=$('#calculatorPanel .calc-head');
+calcHandle.addEventListener('pointerdown',ev=>{if(ev.target.closest('button'))return;const r=calculatorPanel.getBoundingClientRect();calcDrag={x:ev.clientX,y:ev.clientY,left:r.left,top:r.top};calcHandle.setPointerCapture(ev.pointerId);ev.preventDefault();ev.stopPropagation();});
+calcHandle.addEventListener('pointermove',ev=>{if(!calcDrag)return;calculatorPanel.style.left=Math.max(8,Math.min(window.innerWidth-calculatorPanel.offsetWidth-8,calcDrag.left+ev.clientX-calcDrag.x))+'px';calculatorPanel.style.top=Math.max(8,Math.min(window.innerHeight-60,calcDrag.top+ev.clientY-calcDrag.y))+'px';calculatorPanel.style.right='auto';calculatorPanel.style.bottom='auto';});
+calcHandle.addEventListener('pointerup',()=>calcDrag=null);
+calcHandle.addEventListener('pointercancel',()=>calcDrag=null);
 $("#calcClose").addEventListener("click",()=>setCalculatorOpen(false));
 $("#calcGrid").addEventListener("click",ev=>{const b=ev.target.closest("[data-calc]");if(!b)return;applyCalcCommand(b.dataset.calc)});
 calcInput.addEventListener("input",()=>refreshCalculator(true));
@@ -3404,17 +3385,16 @@ layoutFloatingBars();
 
 if(HOST16H){
   document.title=`Carte mentale · ${HOST16H_TITLE}`;
-  p16StartCountdown();
 
   const badge=$("#host16hBadge");
   if(badge){
     badge.hidden=false;
     badge.textContent=PROJECT16H_MODE
-      ? "Vue globale projet · Mindmap 18.5"
+      ? "Projet complet · 16H V15.2"
       : STAGE16H_MODE
-        ? "Étape active · Mindmap 18.5"
+        ? "Carte de l’étape · 16H V15.2"
         : DETAIL16H_MODE
-          ? "Carte du bloc · Mindmap 18.5"
+          ? "Carte dédiée · 16H V15.2"
           : "Bloc 16H · Mindmap 18.5";
   }
 
@@ -3432,16 +3412,15 @@ if(HOST16H){
         p16SeedProject(msg.project);
       }else{
         const integrationVersion=String(P16_RESTORED?.integrationVersion||"0");
-        if(integrationVersion!=="13.1"){
+        if(integrationVersion!=="15.0"){
           p16RepairLegacyContainment();
           syncHierarchyFromConnectors();
-          autoArrangeMindmap();
         }
 
         p16ApplyProjectBlocks(msg.project?.mindmapBlocks||[]);
         p16ApplyProjectSnapshot(msg.project);
         render();
-        localStorage.setItem(HOST16H_STORAGE_KEY,JSON.stringify(p16Document()));
+        persistMap(JSON.stringify(p16Document()));
       }
 
       if(msg.focusNodeId){
@@ -3485,14 +3464,22 @@ if(HOST16H){
       render();
     }
 
+    if(msg.type==='16h:refresh-project-tasks' && event.source===window.parent && msg.project?.id===HOST16H_PROJECT_ID){
+      clearTimeout(scheduleSave.t);
+      saveChain.then(()=>{
+        projectBaseline=JSON.stringify(msg.project.subprojects);HOST16H_PROJECT=msg.project;
+        if(msg.map){storedMap=msg.map;mapRevision=msg.map.revision;state.elements=msg.map.doc.elements;state.connectors=msg.map.doc.connectors||[];}
+        syncHierarchyFromConnectors();syncTaskcardsFromTodos();initHistory();render();
+        window.parent.postMessage({type:'16h:tasks-refreshed',token:msg.token},location.origin);
+      });
+    }
     if(msg.type==="16h:mindmap-flush"){
-      saveNow(false);
+      clearTimeout(scheduleSave.t);syncHierarchyFromConnectors();syncTaskcardsFromTodos();
+      persistMap(JSON.stringify(p16Document()),true);
     }
   });
 
   window.addEventListener("beforeunload",()=>{
-    clearInterval(P16_COUNTDOWN_TIMER);
-    saveNow(false);
   });
 
   if(window.parent!==window){
