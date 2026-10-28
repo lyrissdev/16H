@@ -1,3 +1,4 @@
+import {syncNestedRoot} from './mindmap-document.mjs';
 export const MINUTE=60000;
 const copy=x=>JSON.parse(JSON.stringify(x));
 export function createSession(projectId,projectName,totalMinutes,tasks,now=Date.now()) {
@@ -63,7 +64,7 @@ export function addStageTask(state,projectId,stageId,name,minutes){
  const task={id:globalThis.crypto.randomUUID(),name:title,description:'',durationMinutes:minutes,done:false};stage.tasks.push(task);
  for(const map of state.mindmaps.filter(m=>m.projectId===projectId&&m.scope!=='lesson')){let changed=false;for(const node of map.doc.elements.filter(n=>n.type==='todo'&&n.stageId===stageId)){
   node.items=stage.tasks.map(t=>({...node.items?.find(i=>String(i.id)===String(t.id)),id:t.id,text:t.name,done:!!t.done}));changed=true;
- }if(changed)map.revision++;}
+ }if(changed){map.revision++;syncNestedRoot(map.doc);}}
  return task;
 }
 export function markTaskDone(state,projectId,task){
@@ -73,6 +74,6 @@ export function markTaskDone(state,projectId,task){
   for(const node of map.doc.elements){
    if(node.type==='todo'&&((task.stageId&&node.stageId===task.stageId)||(task.todoId&&node.id===task.todoId))){const item=node.items?.find(i=>String(i.id)===String(task.taskId||task.itemId));if(item){item.done=true;changed=true;found=true;}}
    if(node.type==='taskcard'&&((task.cardId&&node.id===task.cardId)||(sourceTodos.has(node.sourceTodoId)&&String(node.sourceTodoItemId)===String(task.itemId||task.taskId))||(node.external16hTask&&sourceTodos.has(map.ownerId)&&String(node.taskItemId)===String(task.itemId||task.taskId)))){node.done=true;changed=true;found=true;}
-  }if(changed)map.revision++;
+  }if(changed){map.revision++;syncNestedRoot(map.doc);}
  }if(!found)throw Error('Cette tâche a été supprimée ou déplacée. Arrêtez la session pour revoir sa sélection.');
 }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<!-- Home Mindmap V18.2: local document blocks + split preview -->
+<!-- Home Mindmap V18.6: links + embeds + nested mindmaps -->
   <title>Home Mindmap</title>
 <style>
   :root{
@@ -460,6 +460,27 @@
   #p16Countdown.finished #p16CountdownDot{background:#9aa1aa}
   .v15-open-card{position:absolute;right:3px;top:3px;border:1px solid #dce2d8;background:#fff;border-radius:5px;color:#244e42;width:30px;height:30px;padding:0;font-size:18px;cursor:pointer;z-index:12}.todo-title{padding-right:34px}
 .bp-color{border-radius:50%!important;position:relative;background:#fff}.bp-color input{appearance:none;-webkit-appearance:none;display:block;border-radius:50%;overflow:hidden}.bp-color input::-webkit-color-swatch-wrapper{padding:3px}.bp-color input::-webkit-color-swatch{border:0;border-radius:50%}.bp-color input::-moz-color-swatch{border:0;border-radius:50%}#topbar .canva-swatch,.dynamic-fill-disc{aspect-ratio:1;border-radius:50%!important;flex-shrink:0}.color-popover .cp-custom{aspect-ratio:1;min-width:42px;box-shadow:inset 0 0 0 4px #fff}.color-chip{aspect-ratio:1;min-width:30px}#shapeColorGrid{display:none!important}.todo-row>button[title="Ouvrir la carte de cette tâche"]{padding:0;border:0;background:transparent;min-width:28px;height:28px;font-size:18px;cursor:pointer}
+/* V18.6 — lien, intégration et sous-cartes */
+  .link-node,.embed-node,.mindmap-node{display:block!important;overflow:hidden!important;background:#fff!important;border:1px solid #d6dbe4!important;border-radius:14px!important}
+  .link-shell,.mindmap-shell{width:100%;height:100%;padding:14px;display:flex;flex-direction:column;gap:9px}
+  .link-kicker,.mindmap-kicker{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#7862a8}
+  .link-title,.mindmap-title{font-size:16px;font-weight:800;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .link-url{font-size:12px;color:#69717d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .link-open,.mindmap-open{margin-top:auto;height:34px;border:1px solid #d9dfea;border-radius:9px;background:#fff;font-weight:750;cursor:pointer}
+  .link-open:hover,.mindmap-open:hover{background:#f5f0ff;border-color:#cab9ff;color:#6530c4}
+  .embed-node{background:#111!important;border-color:#cfd4dd!important}
+  .embed-shell{width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden}
+  .embed-toolbar{height:34px;display:flex;align-items:center;gap:8px;padding:0 9px;background:#fff;border-bottom:1px solid #e1e5eb;flex:0 0 auto}
+  .embed-label{font-size:11px;font-weight:800;color:#656d79;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+  .embed-open{border:0;background:#f3efff;color:#6530c4;border-radius:7px;height:24px;padding:0 8px;font-size:11px;font-weight:800;cursor:pointer}
+  .embed-frame{width:100%;height:calc(100% - 34px);border:0;background:#111;pointer-events:auto}
+  #mapNavBar{position:absolute;left:76px;top:68px;z-index:33;display:none;align-items:center;gap:8px;max-width:calc(100% - 160px);padding:6px 9px;border:1px solid #e0e4ea;border-radius:12px;background:rgba(255,255,255,.96);box-shadow:0 5px 18px rgba(0,0,0,.08);backdrop-filter:blur(8px)}
+  #mapNavBar.show{display:flex}
+  #mapNavBack{width:30px;height:30px;border:0;border-radius:8px;background:#f2f3f6;cursor:pointer;font-size:18px}
+  #mapNavTitle{font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #mapNavPath{font-size:11px;color:#737b87;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .shape-grid .special-create-btn{grid-column:1/-1;font-weight:750;background:#f7f3ff;border-color:#e4d8ff;color:#6030b7}
+
 </style>
 <link rel="stylesheet" href="./toolbox.css">
 </head>
@@ -551,6 +572,9 @@
       <button data-shape="circle">Cercle</button><button data-shape="pill">Pilule</button>
       <button data-shape="diamond">Losange</button><button data-shape="section">Section</button>
       <button data-shape="todo" class="todo-create-btn">☑ Todo list</button>
+      <button data-shape="link" class="special-create-btn">🔗 Bloc lien</button>
+      <button data-shape="embed" class="special-create-btn">▶ Intégration iframe</button>
+      <button data-shape="mindmap" class="special-create-btn">◉ Sous-carte mentale</button>
       <button class="import-image-btn" id="importLocalImageBtn" type="button">＋ Importer une image locale</button>
       <button class="import-image-btn" id="importLocalDocumentBtn" type="button">＋ Importer un document local</button>
     </div>
@@ -626,6 +650,10 @@
 
   <div id="host16hBadge" hidden></div>
   <div id="toast"></div>
+  <div id="mapNavBar" aria-label="Navigation de sous-carte">
+    <button id="mapNavBack" type="button" title="Retour à la carte parente">←</button>
+    <div style="min-width:0"><div id="mapNavTitle">Carte</div><div id="mapNavPath"></div></div>
+  </div>
   <aside id="documentPreviewPanel" aria-label="Prévisualisation du document">
     <div class="doc-preview-head">
       <span id="documentPreviewBadge" class="doc-preview-badge">DOC</span>
@@ -637,6 +665,7 @@
 </div>
 
 <script type="module">
+import {restoreCanvas,canvasDocument} from './mindmap-document.mjs';
 import {PALETTE} from './colors.mjs';
 import * as repository from './repository.mjs';
 import {mapId} from './model.mjs';
@@ -856,11 +885,44 @@ function demo(){
   els.push(d,e,c); cons.push(con({elementId:d.id,anchor:"bottom"},{elementId:e.id,anchor:"top"}),con({elementId:e.id,anchor:"right"},{elementId:c.id,anchor:"top"}));
   return {elements:els,connectors:cons};
 }
-const fresh = HOST16H ? {elements:[],connectors:[]} : demo();
+const fresh = HOST16H?{elements:[],connectors:[]}:demo();
 let state={
   viewport:{x:120,y:40,zoom:.9}, tool:"select", selectedIds:[],
   elements:fresh.elements,connectors:fresh.connectors
 };
+// Nested maps live inside the current 16H document, never in a shared global key.
+let currentMapId="root";
+let mapStore={root:{id:"root",title:HOST16H_TITLE,parentMapId:null,sourceBlockId:null,viewport:{x:120,y:40,zoom:.9},elements:[],connectors:[]}};
+function cloneMapPayload(){return {viewport:clone(state.viewport),elements:clone(state.elements),connectors:clone(state.connectors)}}
+function saveCurrentMapToStore(){
+  const prev=mapStore[currentMapId]||{id:currentMapId,title:currentMapId==="root"?"Carte principale":"Carte mentale"};
+  mapStore[currentMapId]={...prev,...cloneMapPayload()};
+}
+function persistMapStore(){saveNow(false);}
+function loadMapById(id){
+  if(!mapStore[id])return false;
+  saveCurrentMapToStore();
+  const m=mapStore[id];currentMapId=id;
+  state.viewport=clone(m.viewport||{x:120,y:40,zoom:.9});state.elements=clone(m.elements||[]);state.connectors=clone(m.connectors||[]);state.selectedIds=[];
+  selectedConnectorId=null;editingId=null;cropEditingId=null;history=[];future=[];initHistory();render();updateMapNav();scheduleSave();return true;
+}
+function updateMapNav(){
+  const bar=$("#mapNavBar");if(!bar)return;
+  const m=mapStore[currentMapId];
+  if(currentMapId==="root"){bar.classList.remove("show");return}
+  bar.classList.add("show");$("#mapNavTitle").textContent=m?.title||"Sous-carte mentale";
+  const names=[];let cur=m;let guard=0;while(cur&&guard++<12){names.unshift(cur.title||"Carte");cur=cur.parentMapId?mapStore[cur.parentMapId]:null}
+  $("#mapNavPath").textContent=names.join(" / ");
+}
+function createNestedMapForBlock(block){
+  if(block.mapId&&mapStore[block.mapId])return block.mapId;
+  const id=uid("map");block.mapId=id;
+  mapStore[id]={id,title:block.text||"Sous-carte mentale",parentMapId:currentMapId,sourceBlockId:block.id,viewport:{x:120,y:40,zoom:.9},elements:[],connectors:[]};
+  persistMapStore();return id;
+}
+function openNestedMap(block){if(!block||block.type!=="mindmap")return;const id=createNestedMapForBlock(block);commitHistory();loadMapById(id)}
+function goToParentMap(){const m=mapStore[currentMapId];if(m?.parentMapId)loadMapById(m.parentMapId)}
+
 let history=[], future=[];
 function docSnapshot(){return JSON.stringify({elements:state.elements,connectors:state.connectors});}
 function commitHistory(){
@@ -906,8 +968,14 @@ function render(){
   syncHierarchyFromConnectors();
   syncTaskcardsFromTodos();
   applyViewport(); renderNodes(); renderConnectors(); renderSelection(); renderTopbar();
-  if(PROJECT16H_MODE)p16RenderActions();
 }
+function normalizeHttpUrl(raw){
+  try{let s=String(raw||"").trim();if(!s)return null;if(!/^https?:\/\//i.test(s))s="https://"+s;const u=new URL(s);if(!["http:","https:"].includes(u.protocol))return null;return u.href}catch{return null}
+}
+function extractEmbedSrc(raw){
+  const s=String(raw||"").trim();if(!s)return null;const m=s.match(/<iframe[^>]+src=["']([^"']+)["']/i);return normalizeHttpUrl(m?m[1]:s)
+}
+function hostLabel(url){try{return new URL(url).hostname.replace(/^www\./,"")}catch{return "Lien"}}
 function renderNodes(){
   nodeLayer.innerHTML="";
   [...state.elements].sort((a,b)=>(a.z||0)-(b.z||0)).forEach(e=>{
@@ -915,7 +983,31 @@ function renderNodes(){
     if(isBlockedByCompletedTaskAncestor(e.id))n.classList.add("dependency-muted");
     n.dataset.id=e.id;n.style.left=e.x+"px";n.style.top=e.y+"px";n.style.width=e.w+"px";n.style.height=e.h+"px";n.style.zIndex=e.z||10;
     n.style.transform=`rotate(${e.rotation||0}deg)`;n.style.opacity=e.style.opacity??1;
-    if(e.type==="todo"){
+    if(e.type==="link"){
+      n.classList.add("link-node");
+      const shell=document.createElement("div");shell.className="link-shell";
+      const k=document.createElement("div");k.className="link-kicker";k.textContent="Lien";
+      const title=document.createElement("div");title.className="link-title";title.textContent=e.text||hostLabel(e.url);
+      const url=document.createElement("div");url.className="link-url";url.textContent=e.url||"";
+      const open=document.createElement("button");open.type="button";open.className="link-open";open.textContent="Ouvrir le lien";
+      shell.append(k,title,url,open);n.appendChild(shell);
+    } else if(e.type==="embed"){
+      n.classList.add("embed-node");
+      const shell=document.createElement("div");shell.className="embed-shell";
+      const tb=document.createElement("div");tb.className="embed-toolbar";
+      const label=document.createElement("div");label.className="embed-label";label.textContent=e.text||hostLabel(e.embedUrl);
+      const open=document.createElement("button");open.type="button";open.className="embed-open";open.textContent="↗";open.title="Ouvrir la source";tb.append(label,open);
+      const frame=document.createElement("iframe");frame.className="embed-frame";frame.src=e.embedUrl||"about:blank";frame.title=e.text||"Contenu intégré";frame.loading="lazy";frame.referrerPolicy="strict-origin-when-cross-origin";frame.allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share";frame.allowFullscreen=true;frame.setAttribute("sandbox","allow-scripts allow-same-origin allow-presentation allow-popups");
+      shell.append(tb,frame);n.appendChild(shell);
+    } else if(e.type==="mindmap"){
+      n.classList.add("mindmap-node");
+      const shell=document.createElement("div");shell.className="mindmap-shell";
+      const k=document.createElement("div");k.className="mindmap-kicker";k.textContent="Carte mentale";
+      const title=document.createElement("div");title.className="mindmap-title";title.textContent=e.text||"Sous-carte mentale";
+      const info=document.createElement("div");info.className="link-url";const sub=e.mapId&&mapStore[e.mapId];info.textContent=sub?`${(sub.elements||[]).length} blocs · ${(sub.connectors||[]).length} liens`:"Nouvelle sous-carte";
+      const open=document.createElement("button");open.type="button";open.className="mindmap-open";open.textContent="🧠 Ouvrir la carte mentale";
+      shell.append(k,title,info,open);n.appendChild(shell);
+    } else if(e.type==="todo"){
       n.classList.add("todo-node");
       n.style.background=e.style.fill||"#ffffff";
       n.style.border=`${e.style.strokeWidth||0}px ${e.style.borderStyle||"solid"} ${e.style.stroke||"transparent"}`;
@@ -1085,6 +1177,9 @@ function renderTopbar(){
     topbar.innerHTML=`<button class="tb-btn" data-act="group">Grouper</button><button class="tb-btn" data-act="duplicate">Dupliquer</button><button class="tb-btn" data-act="front">Premier plan</button><button class="tb-btn" data-act="back">Arrière-plan</button>`;
     layoutFloatingBars(); return;
   }
+  if(e.type==="link"){topbar.innerHTML=`<button class="image-toolbar-btn" data-act="editlink">Modifier le lien</button><button class="image-toolbar-btn" data-act="duplicate">Dupliquer</button>`;layoutFloatingBars();return}
+  if(e.type==="embed"){topbar.innerHTML=`<button class="image-toolbar-btn" data-act="editembed">Modifier l’intégration</button><button class="image-toolbar-btn" data-act="duplicate">Dupliquer</button>`;layoutFloatingBars();return}
+  if(e.type==="mindmap"){topbar.innerHTML=`<button class="image-toolbar-btn" data-act="openmindmap">Ouvrir</button><button class="image-toolbar-btn" data-act="renamemindmap">Renommer</button><button class="image-toolbar-btn" data-act="duplicate">Dupliquer</button>`;layoutFloatingBars();return}
   if(e.type==="image"){
     topbar.innerHTML=`<button class="image-toolbar-btn ${cropEditingId===e.id?"active":""}" data-act="cropimage">Rogner</button><button class="image-toolbar-btn" data-act="resetcrop">Réinitialiser</button><button class="image-toolbar-btn" data-act="duplicate">Dupliquer</button>`;
     layoutFloatingBars(); return;
@@ -1301,6 +1396,9 @@ function onNodePointerDown(ev){
     return;
   }
   if(e.type==="document" && ev.target.closest(".document-open")){ev.stopPropagation();return}
+  if(e.type==="link" && ev.target.closest(".link-open")){ev.stopPropagation();return}
+  if(e.type==="embed" && ev.target.closest(".embed-open,.embed-frame")){ev.stopPropagation();return}
+  if(e.type==="mindmap" && ev.target.closest(".mindmap-open")){ev.stopPropagation();return}
   if(editingId===id){ev.stopPropagation();return;}
   if(ev.button!==0)return;
   ev.stopPropagation();
@@ -1314,7 +1412,7 @@ function onNodePointerDown(ev){
   const now=performance.now();
   const isDouble=(lastNodePointerId===id && (now-lastNodePointerAt)<420);
   lastNodePointerId=id; lastNodePointerAt=now;
-  if(isDouble && !e.locked && e.type!=="draw" && e.type!=="table" && e.type!=="image" && e.type!=="document"){
+  if(isDouble && !e.locked && e.type!=="draw" && e.type!=="table" && e.type!=="image" && e.type!=="document" && e.type!=="link" && e.type!=="embed" && e.type!=="mindmap"){
     ev.preventDefault();
     interaction=null;
     hideGuides();
@@ -1338,7 +1436,7 @@ function onNodeDoubleClick(ev){
   const n=ev.target.closest(".node");
   if(!n)return;
   const e=getEl(n.dataset.id);
-  if(!e||e.locked||e.type==="draw"||e.type==="table"||e.type==="image"||e.type==="document"||e.type==="todo"||e.type==="taskcard")return;
+  if(!e||e.locked||e.type==="draw"||e.type==="table"||e.type==="image"||e.type==="document"||e.type==="todo"||e.type==="taskcard"||e.type==="link"||e.type==="embed"||e.type==="mindmap")return;
   ev.preventDefault();
   ev.stopImmediatePropagation();
   interaction=null;
@@ -2086,17 +2184,7 @@ function p16ProjectBlocks(){
   });
 }
 function p16Document(){
-  return {
-    version:"18.5",
-    integrationVersion:"15.0",
-    mode:HOST16H_MODE,
-    projectId:HOST16H_PROJECT_ID,
-    nodeId:HOST16H_NODE_ID,
-    blockId:HOST16H_BLOCK_ID,
-    viewport:state.viewport,
-    elements:state.elements,
-    connectors:state.connectors
-  };
+  return canvasDocument(mapStore,currentMapId,state,{integrationVersion:'15.0',mode:HOST16H_MODE,projectId:HOST16H_PROJECT_ID,nodeId:HOST16H_NODE_ID,blockId:HOST16H_BLOCK_ID});
 }
 
 function p16CurrentStageTodo(){
@@ -2199,21 +2287,16 @@ function saveNow(show=true){
   if(show)toast("Sauvegardé");
 }
 function restore(){
-  try{
-    const doc=JSON.parse(readMap()||"null");
-    if(doc&&doc.elements){
-      P16_RESTORED_DOC=doc;
-      state.viewport=doc.viewport||state.viewport;
-      state.elements=doc.elements;
-      state.connectors=doc.connectors||[];
-      syncHierarchyFromConnectors();
-      syncTaskcardsFromTodos();
-      return doc;
-    }
-  }catch{}
-  return null;
+ try{
+  const doc=JSON.parse(readMap()||'null');
+  if(doc&&doc.elements){
+   P16_RESTORED_DOC=doc;mapStore=restoreCanvas(doc,HOST16H_TITLE);currentMapId='root';
+   state.viewport=clone(mapStore.root.viewport);state.elements=clone(mapStore.root.elements);state.connectors=clone(mapStore.root.connectors);
+   syncHierarchyFromConnectors();syncTaskcardsFromTodos();updateMapNav();return doc;
+  }
+ }catch(error){console.error(error);toast('Carte illisible : conservez votre sauvegarde avant toute modification.');}
+ return null;
 }
-
 
 function p16SelectedTodo(){
   if(!PROJECT16H_MODE || state.selectedIds.length!==1)return null;
@@ -2475,7 +2558,9 @@ function p16OpenMeta(){
   $("#p16MetaDialog").showModal();
 }
 function exportJSON(){
-  const blob=new Blob([JSON.stringify({version:1,...state,selectedIds:[],tool:"select"},null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="home-mindmap.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
+  saveCurrentMapToStore();
+  const payload={...p16Document(),selectedIds:[],tool:"select"};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="home-mindmap.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
 }
 
 async function exportPNG(){
@@ -2602,7 +2687,13 @@ async function drawElementForExport(ctx,e){
   if(isBlockedByCompletedTaskAncestor(e.id)){
     ctx.globalAlpha*=0.42;
   }
-  if(e.type==="todo"){
+  if(e.type==="link"){
+    ctx.fillStyle="#fff";ctx.strokeStyle="#d6dbe4";ctx.lineWidth=1;roundRect(ctx,0,0,e.w,e.h,14);ctx.fill();ctx.stroke();ctx.fillStyle="#7862a8";ctx.font="800 11px Arial";ctx.textAlign="left";ctx.fillText("LIEN",14,22);ctx.fillStyle="#17191d";ctx.font="800 16px Arial";ctx.fillText((e.text||"Lien").slice(0,42),14,50);ctx.fillStyle="#69717d";ctx.font="12px Arial";ctx.fillText((e.url||"").slice(0,55),14,74);
+  }else if(e.type==="embed"){
+    ctx.fillStyle="#111";roundRect(ctx,0,0,e.w,e.h,14);ctx.fill();ctx.fillStyle="#fff";ctx.fillRect(0,0,e.w,34);ctx.fillStyle="#656d79";ctx.font="800 11px Arial";ctx.fillText((e.text||"INTÉGRATION").slice(0,45),10,22);ctx.fillStyle="#23262c";ctx.font="700 18px Arial";ctx.textAlign="center";ctx.fillText("Contenu intégré",e.w/2,e.h/2);
+  }else if(e.type==="mindmap"){
+    ctx.fillStyle="#fff";ctx.strokeStyle="#d6dbe4";ctx.lineWidth=1;roundRect(ctx,0,0,e.w,e.h,14);ctx.fill();ctx.stroke();ctx.fillStyle="#7862a8";ctx.font="800 11px Arial";ctx.textAlign="left";ctx.fillText("CARTE MENTALE",14,22);ctx.fillStyle="#17191d";ctx.font="800 16px Arial";ctx.fillText((e.text||"Sous-carte mentale").slice(0,42),14,51);ctx.fillStyle="#69717d";ctx.font="12px Arial";const sm=e.mapId&&mapStore[e.mapId];ctx.fillText(sm?`${(sm.elements||[]).length} blocs · ${(sm.connectors||[]).length} liens`:"Sous-carte locale",14,76);
+  }else if(e.type==="todo"){
     drawTodoNodeForExport(ctx,e);
   }else if(e.type==="taskcard"){
     drawTaskcardForExport(ctx,e);
@@ -2912,6 +3003,11 @@ function updateSelectedBorder(prop,value,commit=false){
   if(commit) commitHistory(); else scheduleSave();
 }
 function action(act){
+  const special=selectedEls()[0];
+  if(act==="editlink"&&special?.type==="link"){const raw=prompt("Adresse du lien",special.url||"");const u=normalizeHttpUrl(raw);if(!u)return;special.url=u;special.text=prompt("Nom du lien",special.text||hostLabel(u))||special.text||hostLabel(u);commitHistory();render();return}
+  if(act==="editembed"&&special?.type==="embed"){const raw=prompt("URL ou code iframe",special.embedUrl||"");const u=extractEmbedSrc(raw);if(!u)return;special.embedUrl=u;special.text=prompt("Titre",special.text||hostLabel(u))||special.text||hostLabel(u);commitHistory();render();return}
+  if(act==="openmindmap"&&special?.type==="mindmap"){openNestedMap(special);return}
+  if(act==="renamemindmap"&&special?.type==="mindmap"){const t=prompt("Nom de la carte mentale",special.text||"Sous-carte mentale");if(!t)return;special.text=t;if(special.mapId&&mapStore[special.mapId])mapStore[special.mapId].title=t;commitHistory();render();return}
   const e=selectedEls()[0];if(!e&&act!=="paste")return;
   if(act==="duplicate")return cloneSelected(); if(act==="delete")return deleteSelected(); if(act==="group")return groupSelected(); if(act==="ungroup")return ungroupSelected();
   if(act==="front"){selectedEls().forEach(x=>x.z=maxZ()+1);commitHistory();render();return}
@@ -2976,31 +3072,22 @@ nodeLayer.addEventListener("mousedown",ev=>{
 },true);
 nodeLayer.addEventListener("pointerdown",onNodePointerDown);
 nodeLayer.addEventListener("dblclick",onNodeDoubleClick);
-
-nodeLayer.addEventListener("change",ev=>{
-  if(!DETAIL16H_MODE)return;
-  const ck=ev.target.closest(".taskcard-check");
-  if(!ck)return;
-
-  const n=ck.closest(".node[data-id]");
-  const card=getEl(n?.dataset.id);
-  if(!card || card.type!=="taskcard" || !card.external16hTask || !card.taskItemId)return;
-
-  window.parent?.postMessage({
-    type:"16h:block-detail-task-toggle",
-    projectId:HOST16H_PROJECT_ID,
-    nodeId:HOST16H_NODE_ID,
-    itemId:String(card.taskItemId),
-    done:!!ck.checked
-  },location.origin);
-
-  saveNow(false);
-},true);
-
 nodeLayer.addEventListener("click",ev=>{
   const n=ev.target.closest(".node");
   if(n && state.tool==="text" && !editingId) beginEdit(n.dataset.id);
 });
+nodeLayer.addEventListener("click",ev=>{
+  const btn=ev.target.closest?.(".link-open");if(!btn)return;const n=btn.closest(".node[data-id]");const e=n&&getEl(n.dataset.id);if(!e?.url)return;ev.preventDefault();ev.stopPropagation();window.open(e.url,"_blank","noopener,noreferrer");
+},true);
+nodeLayer.addEventListener("click",ev=>{
+  const btn=ev.target.closest?.(".embed-open");if(!btn)return;const n=btn.closest(".node[data-id]");const e=n&&getEl(n.dataset.id);if(!e?.embedUrl)return;ev.preventDefault();ev.stopPropagation();window.open(e.embedUrl,"_blank","noopener,noreferrer");
+},true);
+nodeLayer.addEventListener("click",ev=>{
+  const btn=ev.target.closest?.(".mindmap-open");if(!btn)return;const n=btn.closest(".node[data-id]");const e=n&&getEl(n.dataset.id);if(!e)return;ev.preventDefault();ev.stopPropagation();openNestedMap(e);
+},true);
+nodeLayer.addEventListener("dblclick",ev=>{
+  const n=ev.target.closest?.(".node[data-id]");if(!n)return;const e=getEl(n.dataset.id);if(e?.type!=="mindmap")return;ev.preventDefault();ev.stopPropagation();openNestedMap(e);
+},true);
 nodeLayer.addEventListener("click",ev=>{
   const btn=ev.target.closest?.(".document-open");if(!btn)return;
   const n=btn.closest(".node[data-id]");if(!n)return;
@@ -3110,18 +3197,16 @@ $("#localImageFile").addEventListener("change",async ev=>{await importLocalImage
 $("#shapePalette").addEventListener("click",ev=>{
   const b=ev.target.closest("[data-shape]");if(!b)return;const k=b.dataset.shape;let e;
   if(k==="section") e=createAtCenter("section","section","NOUVELLE SECTION",420,240);
-  else if(k==="todo") {
-    e=createAtCenter("todo","todo",PROJECT16H_MODE?"Bloc de travail":"Todo list",380,260,{radius:16,fill:"#ffffff",stroke:"#c9cfd8",strokeWidth:1,textAlign:"left"});
-    e.items=[{id:uid("todo"),text:"Première tâche",done:false},{id:uid("todo"),text:"Deuxième tâche",done:false}];
-    if(PROJECT16H_MODE)e.blockMeta={durationMinutes:90,workMode:"solo",deadline:"",priority:3};
-    commitHistory(); render();
-  }
+  else if(k==="todo") { e=createAtCenter("todo","todo","Todo list",290,260,{radius:16,fill:"#ffffff",stroke:"#c9cfd8",strokeWidth:1,textAlign:"left"}); e.items=[{id:uid("todo"),text:"Première tâche",done:false},{id:uid("todo"),text:"Deuxième tâche",done:false}]; commitHistory(); render(); }
+  else if(k==="link"){const raw=prompt("Adresse du lien (https://…)","https://");const url=normalizeHttpUrl(raw);if(!url)return;const title=prompt("Nom du lien",hostLabel(url))||hostLabel(url);e=createAtCenter("link","link",title,280,135,{fill:"#ffffff",stroke:"#d6dbe4",strokeWidth:1,radius:14,textAlign:"left"});e.url=url;commitHistory();render();}
+  else if(k==="embed"){const raw=prompt("Collez une URL intégrable ou le code <iframe …>","https://www.youtube.com/embed/");const url=extractEmbedSrc(raw);if(!url){alert("URL ou iframe invalide.");return}const title=prompt("Titre de l’intégration",hostLabel(url))||hostLabel(url);e=createAtCenter("embed","embed",title,560,315,{fill:"#111111",stroke:"#cfd4dd",strokeWidth:1,radius:14});e.embedUrl=url;commitHistory();render();}
+  else if(k==="mindmap"){const title=prompt("Nom de la nouvelle carte mentale","Nouvelle carte mentale")||"Nouvelle carte mentale";e=createAtCenter("mindmap","mindmap",title,300,145,{fill:"#ffffff",stroke:"#d6dbe4",strokeWidth:1,radius:14,textAlign:"left"});createNestedMapForBlock(e);commitHistory();render();}
   else if(k==="circle") e=createAtCenter("shape","circle","Texte",120,120,{radius:999});
   else if(k==="pill") e=createAtCenter("shape","task","Texte",210,64,{radius:32,fill:"#efe5ff"});
   else if(k==="rounded") e=createAtCenter("shape","rounded","Texte",180,70,{radius:16});
   else if(k==="diamond") e=createAtCenter("shape","diamond","Texte",120,120,{fill:"#fff"});
   else e=createAtCenter("shape","rect","Texte",180,70);
-  shapePalette.classList.remove("show");setTool("select");if(e.type!=="todo")beginEdit(e.id)
+  shapePalette.classList.remove("show");setTool("select");if(e && !["todo","link","embed","mindmap"].includes(e.type))beginEdit(e.id)
 });
 selectionBox.addEventListener("pointerdown",ev=>{
   const h=ev.target.closest(".handle");if(h)return resizeStart(ev,h.dataset.h);
@@ -3224,47 +3309,23 @@ contextMenu.addEventListener("click",ev=>{
   if(a==="cut"){copySelected();deleteSelected()}if(a==="copy")copySelected();if(a==="paste")paste();if(a==="dup")cloneSelected();if(a==="del")deleteSelected();
   if(a==="front")action("front");if(a==="back")action("back");if(a==="group")groupSelected();if(a==="ungroup")ungroupSelected();if(a==="lock")action("lock");contextMenu.classList.remove("show")
 });
-$("#zoomIn").onclick=()=>zoomAtCenter(1.15);$("#zoomOut").onclick=()=>zoomAtCenter(1/1.15);$("#fitBtn").onclick=fitContent;
+$("#zoomIn").onclick=()=>zoomAtCenter(1.15);$("#zoomOut").onclick=()=>zoomAtCenter(1/1.15);$("#fitBtn").onclick=()=>fitContent();
 $("#zoomPct").onclick=()=>{const v=prompt("Zoom en %",Math.round(state.viewport.zoom*100));if(v!==null){const z=Math.max(10,Math.min(500,+v||100))/100;zoomAtCenter(z/state.viewport.zoom)}};
 $("#saveBtn").onclick=saveNow;$("#autoArrangeBtn").onclick=autoArrangeMindmap;$("#exportBtn").onclick=exportJSON;$("#pngBtn").onclick=exportPNG;$("#importBtn").onclick=()=>$("#importFile").click();
 $("#documentPreviewClose").onclick=closeDocumentPreview;
+$("#mapNavBack").onclick=goToParentMap;
 $("#importLocalDocumentBtn").onclick=()=>$("#localDocumentFile").click();
 $("#localDocumentFile").addEventListener("change",async ev=>{await importLocalDocuments([...ev.target.files]);ev.target.value="";shapePalette.classList.remove("show")});
-$("#importFile").addEventListener("change",async ev=>{const f=ev.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());state.viewport=d.viewport||state.viewport;state.elements=d.elements||[];state.connectors=d.connectors||[];state.selectedIds=[];initHistory();saveNow();render();toast("Importé")}catch{alert("Fichier JSON invalide")}ev.target.value=""});
-$("#newBtn").onclick=()=>{
-  if(!confirm("Créer un nouveau tableau ?"))return;
-
-  if(HOST16H){
-    state.elements=[];
-    state.connectors=[];
-    state.viewport={x:120,y:40,zoom:.9};
-    state.selectedIds=[];
-  }else{
-    const d=demo();
-    state.elements=d.elements;
-    state.connectors=d.connectors;
-    state.viewport={x:120,y:40,zoom:.9};
-    state.selectedIds=[];
-  }
-
-  syncHierarchyFromConnectors();
-  initHistory();
-  saveNow();
-  render();
-};
-$("#closeBtn").onclick=()=>{
-  if(HOST16H){
-    saveNow(false);
-    window.parent?.postMessage({type:"16h:mindmap-close"},location.origin);
-    return;
-  }
-
-  const hidden=$("#leftToolbar").style.display==="none";
-  $("#leftToolbar").style.display=hidden?"flex":"none";
-  $("#filebar").style.display=hidden?"flex":"none";
-  topbar.style.visibility=hidden?"visible":"hidden";
-  $("#closeBtn").textContent=hidden?"×":"☰";
-};
+$("#importFile").addEventListener('change',async ev=>{
+ const f=ev.target.files[0];if(!f)return;
+ try{const d=JSON.parse(await f.text());if(!d.maps?.root&&!Array.isArray(d.elements))throw Error('Le fichier ne contient pas de carte mentale.');
+  mapStore=restoreCanvas(d,HOST16H_TITLE,false);currentMapId=d.currentMapId&&mapStore[d.currentMapId]?d.currentMapId:'root';
+  const m=mapStore[currentMapId];state.viewport=clone(m.viewport);state.elements=clone(m.elements);state.connectors=clone(m.connectors);state.selectedIds=[];
+  initHistory();saveNow(false);render();updateMapNav();toast('Importé');
+ }catch(error){alert('Fichier JSON invalide : '+error.message);}ev.target.value='';
+});
+$("#newBtn").onclick=()=>{if(confirm("Créer un nouveau tableau ?")){const d=HOST16H?{elements:[],connectors:[]}:demo();currentMapId="root";state.elements=d.elements;state.connectors=d.connectors;state.viewport={x:120,y:40,zoom:.9};state.selectedIds=[];mapStore={root:{id:"root",title:"Carte principale",parentMapId:null,sourceBlockId:null,viewport:clone(state.viewport),elements:clone(state.elements),connectors:clone(state.connectors)}};initHistory();saveNow();render();updateMapNav()}};
+$("#closeBtn").onclick=()=>{const hidden=$("#leftToolbar").style.display==="none";$("#leftToolbar").style.display=hidden?"flex":"none";$("#filebar").style.display=hidden?"flex":"none";topbar.style.visibility=hidden?"visible":"hidden";$("#closeBtn").textContent=hidden?"×":"☰"};
 
 
 
@@ -3391,12 +3452,12 @@ if(HOST16H){
   const badge=$("#host16hBadge");
   if(badge){
     badge.hidden=false;
-    badge.textContent=LESSON16H_MODE?"Leçon · carte libre · 16H V15.3":PROJECT16H_MODE
-      ? "Projet complet · 16H V15.3"
+    badge.textContent=LESSON16H_MODE?"Leçon · carte libre · 16H V15.4":PROJECT16H_MODE
+      ? "Projet complet · 16H V15.4"
       : STAGE16H_MODE
-        ? "Carte de l’étape · 16H V15.3"
+        ? "Carte de l’étape · 16H V15.4"
         : DETAIL16H_MODE
-          ? "Carte dédiée · 16H V15.3"
+          ? "Carte dédiée · 16H V15.4"
           : "Bloc 16H · Mindmap 18.5";
   }
 
@@ -3476,8 +3537,8 @@ if(HOST16H){
       clearTimeout(scheduleSave.t);
       saveChain.then(()=>{
         projectBaseline=JSON.stringify(msg.project.subprojects);HOST16H_PROJECT=msg.project;
-        if(msg.map){storedMap=msg.map;mapRevision=msg.map.revision;state.elements=msg.map.doc.elements;state.connectors=msg.map.doc.connectors||[];}
-        syncHierarchyFromConnectors();syncTaskcardsFromTodos();initHistory();render();
+        if(msg.map){storedMap=msg.map;mapRevision=msg.map.revision;const active=currentMapId;mapStore=restoreCanvas(msg.map.doc,HOST16H_TITLE);currentMapId=mapStore[active]?active:'root';const m=mapStore[currentMapId];state.viewport=clone(m.viewport);state.elements=clone(m.elements);state.connectors=clone(m.connectors);}
+        syncHierarchyFromConnectors();syncTaskcardsFromTodos();initHistory();render();updateMapNav();
         window.parent.postMessage({type:'16h:tasks-refreshed',token:msg.token},location.origin);
       });
     }

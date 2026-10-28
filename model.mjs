@@ -1,3 +1,4 @@
+import {syncNestedRoot,restoreCanvas} from './mindmap-document.mjs';
 export const SCHEMA = 1;
 export const uid = () => globalThis.crypto.randomUUID();
 export const empty = () => ({schemaVersion:SCHEMA, revision:0, events:[], projects:[], lessons:[], mindmaps:[], assets:[], migration:null});
@@ -33,7 +34,7 @@ export function validate(s) {
     if(!Array.isArray(p.subprojects)) throw Error('Étapes invalides.');
     for(const stage of p.subprojects) {requireText(stage.name,'Étape'); requireText(stage.id,'Identifiant étape'); if(ids.has(stage.id)) throw Error('Étape en double.'); ids.add(stage.id); const tasks=new Set(); for(const t of stage.tasks || []) {requireText(t.id,'Identifiant tâche'); requireText(t.name,'Tâche'); if(tasks.has(t.id)) throw Error('Tâche en double.'); tasks.add(t.id);}}
   }
-  for(const m of s.mindmaps) {if(m.scope==='lesson'?!s.lessons.some(l=>l.id===m.projectId):(!['project','stage','detail'].includes(m.scope)||!s.projects.some(p=>p.id===m.projectId))) throw Error('Carte sans projet ou leçon valide.'); if(!Array.isArray(m.doc?.elements) || !Array.isArray(m.doc?.connectors)) throw Error('Document de carte invalide.');}
+  for(const m of s.mindmaps) {if(m.scope==='lesson'?!s.lessons.some(l=>l.id===m.projectId):(!['project','stage','detail'].includes(m.scope)||!s.projects.some(p=>p.id===m.projectId))) throw Error('Carte sans projet ou leçon valide.'); if(!Array.isArray(m.doc?.elements) || !Array.isArray(m.doc?.connectors)) throw Error('Document de carte invalide.');if(m.doc.maps)restoreCanvas(m.doc);}
   return s;
 }
 export const mapId = (scope,pid,owner='') => JSON.stringify([scope,pid,owner]);
@@ -46,10 +47,10 @@ export function applyMap(s,scope,pid,owner,doc) {
   }
   if(scope==='detail')for(const card of doc.elements.filter(e=>e.type==='taskcard'&&e.external16hTask)) {
     for(const other of s.mindmaps.filter(m=>m.scope!=='lesson'&&m.projectId===pid&&m.ownerId!==owner))for(const todo of other.doc.elements.filter(e=>e.type==='todo'&&e.id===owner)) {
-      const item=todo.items?.find(i=>String(i.id)===String(card.taskItemId));if(item&&item.done!==!!card.done){item.done=!!card.done;other.revision++;if(todo.stageId){const t=p.subprojects.find(v=>v.id===String(todo.stageId))?.tasks.find(t=>t.id===String(item.id));if(t)t.done=item.done;}}
+      const item=todo.items?.find(i=>String(i.id)===String(card.taskItemId));if(item&&item.done!==!!card.done){item.done=!!card.done;other.revision++;syncNestedRoot(other.doc);if(todo.stageId){const t=p.subprojects.find(v=>v.id===String(todo.stageId))?.tasks.find(t=>t.id===String(item.id));if(t)t.done=item.done;}}
     }
   }
-  const id=mapId(scope,pid,owner),old=s.mindmaps.find(m=>m.id===id),saved={id,scope,projectId:pid,ownerId:owner,doc:clone(doc),revision:(old?.revision||0)+1};
+  const id=mapId(scope,pid,owner),old=s.mindmaps.find(m=>m.id===id),saved={id,scope,projectId:pid,ownerId:owner,doc:syncNestedRoot(clone(doc)),revision:(old?.revision||0)+1};
   s.mindmaps=s.mindmaps.filter(m=>m.id!==id);s.mindmaps.push(saved);return saved;
 }
 export function legacyMapKey(scope,pid,owner='') {return scope==='project' ? `16h.projectmindmap.${pid}` : scope==='stage' ? `16h.stagemindmap.${pid}.${owner}` : `16h.blockdetail.${pid}.${owner}`;}
