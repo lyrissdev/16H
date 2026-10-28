@@ -646,6 +646,7 @@ const initialState=await repository.getState();
 const HOST16H_PARAMS=new URLSearchParams(location.search);
 const HOST16H=HOST16H_PARAMS.get("host")==="16h";
 const HOST16H_MODE=HOST16H_PARAMS.get("mode")||"standalone";
+const LESSON16H_MODE=HOST16H && HOST16H_MODE==="lesson";
 const PROJECT16H_MODE=HOST16H && HOST16H_MODE==="project";
 const STAGE16H_MODE=HOST16H && HOST16H_MODE==="stage";
 const DETAIL16H_MODE=HOST16H && HOST16H_MODE==="detail";
@@ -666,7 +667,7 @@ const HOST16H_STORAGE_KEY=PROJECT16H_MODE
       : "homeMindmapEditor.v1";
 const MAP_OWNER=STAGE16H_MODE?HOST16H_STAGE_ID:DETAIL16H_MODE?HOST16H_NODE_ID:"";
 let storedMap=initialState.mindmaps.find(m=>m.id===mapId(HOST16H_MODE,HOST16H_PROJECT_ID,MAP_OWNER));
-let projectBaseline=JSON.stringify(initialState.projects.find(p=>p.id===HOST16H_PROJECT_ID)?.subprojects), mapRevision=storedMap?.revision||0, saveChain=Promise.resolve(),saveFailure=null;
+let projectBaseline=JSON.stringify((LESSON16H_MODE?initialState.lessons:initialState.projects).find(p=>p.id===HOST16H_PROJECT_ID)?.subprojects), mapRevision=storedMap?.revision||0, saveChain=Promise.resolve(),saveFailure=null;
 function readMap(){return storedMap?JSON.stringify(storedMap.doc):null;}
 function persistMap(json,flushed=false){
  const doc=JSON.parse(json);
@@ -930,7 +931,7 @@ function renderNodes(){
         const inp=document.createElement("input");inp.type="text";inp.className="todo-text todo-interactive";inp.value=item.text||"";inp.placeholder="Tâche";
         const del=document.createElement("button");del.type="button";del.className="todo-delete todo-interactive";del.textContent="×";del.title="Supprimer la tâche";
         row.append(ck,inp,del);
-        if(HOST16H){const open=document.createElement('button');open.type='button';open.className='todo-interactive';open.textContent='🧠';open.title='Ouvrir la carte de cette tâche';open.addEventListener('pointerdown',ev=>ev.stopPropagation());open.addEventListener('click',ev=>{ev.stopPropagation();openDedicated(e,item);});row.appendChild(open);}
+        if(HOST16H&&!LESSON16H_MODE){const open=document.createElement('button');open.type='button';open.className='todo-interactive';open.textContent='🧠';open.title='Ouvrir la carte de cette tâche';open.addEventListener('pointerdown',ev=>ev.stopPropagation());open.addEventListener('click',ev=>{ev.stopPropagation();openDedicated(e,item);});row.appendChild(open);}
         list.appendChild(row);
       });
       shell.appendChild(list);
@@ -992,7 +993,7 @@ function renderNodes(){
       n.appendChild(tx);
       if(editing) setTimeout(()=>{if(document.body.contains(tx)){tx.focus();tx.selectionStart=tx.selectionEnd=tx.value.length}},0);
     }
-    if(HOST16H&&((PROJECT16H_MODE&&e.stageId)||e.type==='taskcard'||e.type==='todo')){
+    if(HOST16H&&!LESSON16H_MODE&&((PROJECT16H_MODE&&e.stageId)||e.type==='taskcard'||e.type==='todo')){
  const button=document.createElement('button');button.type='button';button.textContent='🧠';button.title=e.type==='shape'&&e.stageId?'Ouvrir la carte de l’étape':'Ouvrir une carte dédiée';button.className='v15-open-card';button.addEventListener('pointerdown',ev=>ev.stopPropagation());button.addEventListener('click',ev=>{ev.stopPropagation();openDedicated(e);});n.appendChild(button);
 }
 nodeLayer.appendChild(n);
@@ -3343,6 +3344,7 @@ function setToolboxOpen(open){$("#toolboxPanel").hidden=!open;functionToggle.set
 functionToggle.addEventListener("click",ev=>{ev.stopPropagation();setToolboxOpen($("#toolboxPanel").hidden)});
 $("#toolboxClose").addEventListener('click',()=>setToolboxOpen(false));
 $("#toolboxCalculator").addEventListener('click',()=>{setToolboxOpen(false);setCalculatorOpen(true);});
+if(LESSON16H_MODE){$("#toolboxDeepWork").hidden=true;}
 $("#toolboxDeepWork").addEventListener('click',()=>{setToolboxOpen(false);window.parent.postMessage({type:'16h:deepwork-open'},location.origin);});
 $("#toolboxPanel").addEventListener('pointerdown',ev=>ev.stopPropagation());
 let calcDrag=null;
@@ -3389,12 +3391,12 @@ if(HOST16H){
   const badge=$("#host16hBadge");
   if(badge){
     badge.hidden=false;
-    badge.textContent=PROJECT16H_MODE
-      ? "Projet complet · 16H V15.2"
+    badge.textContent=LESSON16H_MODE?"Leçon · carte libre · 16H V15.3":PROJECT16H_MODE
+      ? "Projet complet · 16H V15.3"
       : STAGE16H_MODE
-        ? "Carte de l’étape · 16H V15.2"
+        ? "Carte de l’étape · 16H V15.3"
         : DETAIL16H_MODE
-          ? "Carte dédiée · 16H V15.2"
+          ? "Carte dédiée · 16H V15.3"
           : "Bloc 16H · Mindmap 18.5";
   }
 
@@ -3402,6 +3404,12 @@ if(HOST16H){
     if(event.origin!==location.origin)return;
     const msg=event.data||{};
 
+    if(msg.type==='16h:lesson-seed' && LESSON16H_MODE && event.source===window.parent && msg.lesson?.id===HOST16H_PROJECT_ID){
+      if(!P16_RESTORED && !state.elements.length){
+        const root=el('shape',650,260,430,110,msg.lesson.name,'rounded',{fill:msg.lesson.color,stroke:msg.lesson.color,strokeWidth:2,radius:22,textColor:'#fff',fontSize:22,textAlign:'center'});
+        root.lessonRoot=true;state.elements=[root];state.connectors=[];state.viewport={x:100,y:70,zoom:.8};initHistory();render();autoArrangeMindmap();saveNow(false);
+      }else{const root=state.elements.find(e=>e.lessonRoot);if(root)root.text=msg.lesson.name;render();}
+    }
     if(msg.type==="16h:project-seed" &&
        PROJECT16H_MODE &&
        String(msg.project?.id||"")===String(HOST16H_PROJECT_ID)){
